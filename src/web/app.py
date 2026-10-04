@@ -32,6 +32,29 @@ def create_app(test_config=None) -> Flask:
     if test_config is not None:
         app.config.update(test_config)
 
+    # Resolve DATABASE_PATH to absolute SQLite URI for SQLAlchemy
+    db_path = app.config.get("DATABASE_PATH", "taskcontrol.db")
+    if db_path == ":memory:":
+        abs_db_path = ":memory:"
+        uri = "sqlite:///:memory:"
+    else:
+        abs_db_path = os.path.abspath(db_path)
+        uri = f"sqlite:///{abs_db_path.replace(os.sep, '/')}"
+
+    app.config.setdefault("SQLALCHEMY_DATABASE_URI", uri)
+    app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+
+    # Startup diagnostic log displaying exact resolved database file path
+    print(f"[DB RESOLUTION] Flask opening database file: {abs_db_path}")
+
+    # Initialize SQLAlchemy & Flask-Migrate extensions
+    from src.infrastructure.database import db, migrate
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    # Import models so Alembic / SQLAlchemy metadata discovers them
+    import src.infrastructure.models  # noqa: F401
+
     @app.teardown_appcontext
     def close_db(error=None):
         db = g.pop("db", None)

@@ -2,6 +2,13 @@ import sqlite3
 import os
 from typing import Optional
 
+os.environ.setdefault("DISABLE_SQLALCHEMY_CEXT", "1")
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+db = SQLAlchemy()
+migrate = Migrate()
+
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
 

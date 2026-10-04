@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault("DISABLE_SQLALCHEMY_CEXT", "1")
 import pytest
 import sqlite3
 from src.infrastructure.database import init_db_schema
