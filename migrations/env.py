@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from flask import current_app
 
 from alembic import context
+from sqlalchemy import text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -93,18 +94,39 @@ def run_migrations_online():
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
-
     connectable = get_engine()
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=get_metadata(),
-            **conf_args
-        )
+        is_sqlite = (connection.dialect.name == "sqlite")
+        if is_sqlite:
+            raw_conn = connection.connection.dbapi_connection
+            cur = raw_conn.cursor()
+            cur.execute("PRAGMA foreign_keys = OFF;")
+            cur.close()
 
-        with context.begin_transaction():
-            context.run_migrations()
+        try:
+            context.configure(
+                connection=connection,
+                target_metadata=get_metadata(),
+                **conf_args
+            )
+
+            with context.begin_transaction():
+                context.run_migrations()
+
+            if is_sqlite:
+                raw_conn = connection.connection.dbapi_connection
+                cur = raw_conn.cursor()
+                fk_violations = cur.execute("PRAGMA foreign_key_check;").fetchall()
+                cur.close()
+                if fk_violations:
+                    raise RuntimeError(f"Foreign key violations detected after migration: {fk_violations}")
+        finally:
+            if is_sqlite:
+                raw_conn = connection.connection.dbapi_connection
+                cur = raw_conn.cursor()
+                cur.execute("PRAGMA foreign_keys = ON;")
+                cur.close()
 
 
 if context.is_offline_mode():

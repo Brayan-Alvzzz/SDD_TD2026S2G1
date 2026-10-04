@@ -11,10 +11,10 @@ task_bp = Blueprint("tasks", __name__)
 
 
 def get_task_service() -> TaskService:
-    db = get_db()
-    task_repo = TaskRepository(db)
-    audit_repo = AuditLogRepository(db)
-    return TaskService(task_repo, audit_repo)
+    session = get_db()
+    task_repo = TaskRepository(session)
+    audit_repo = AuditLogRepository(session)
+    return TaskService(task_repo, audit_repo, session=session)
 
 
 @task_bp.route("/tasks", methods=["GET"])

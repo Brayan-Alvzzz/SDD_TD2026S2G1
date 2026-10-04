@@ -5,15 +5,9 @@ from src.infrastructure.database import get_db_connection, init_db_schema
 
 
 def get_db():
-    """Retrieve or initialize the active database connection for the current request context."""
-    if "db" not in g:
-        if current_app.config.get("DATABASE_CONN"):
-            g.db = current_app.config["DATABASE_CONN"]
-        else:
-            db_path = current_app.config.get("DATABASE_PATH", "taskcontrol.db")
-            g.db = get_db_connection(db_path)
-            init_db_schema(g.db)
-    return g.db
+    """Retrieve the active SQLAlchemy session for the current request context."""
+    from src.infrastructure.database import db
+    return db.session
 
 
 def create_app(test_config=None) -> Flask:
@@ -57,9 +51,9 @@ def create_app(test_config=None) -> Flask:
 
     @app.teardown_appcontext
     def close_db(error=None):
-        db = g.pop("db", None)
-        if db is not None and not app.config.get("DATABASE_CONN"):
-            db.close()
+        raw_db = g.pop("db", None)
+        if raw_db is not None and hasattr(raw_db, "close"):
+            raw_db.close()
 
     # Context processor for templates
     @app.context_processor

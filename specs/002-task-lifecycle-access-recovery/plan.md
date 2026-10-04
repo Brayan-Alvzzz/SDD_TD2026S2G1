@@ -58,7 +58,7 @@ Adicionalmente, se diseña la adopción de **SQLAlchemy como ORM** y **Flask-Mig
 
 | Principio Constitucional | Estado | Justificación y Mecanismo de Cumplimiento |
 |---|---|---|
-| **I. Modularidad y Núcleo de Dominio Independiente** | **PASS** | Los modelos de dominio (`Task`, `User`, `AuditLog`, `PasswordResetToken`) continúan residiendo en `src/domain/models.py` como clases limpias. La máquina de estados `TaskStateMachine` y los servicios `TaskService`/`UserService` no importan componentes web de Flask. Los modelos ORM de SQLAlchemy se confinan exclusivamente a la capa de infraestructura (`src/infrastructure/models.py`), actuando los repositorios como traductores. |
+| **I. Modularidad y Núcleo de Dominio Independiente** | **PASS** | Los modelos de dominio (`Task`, `User`, `AuditLog`, `PasswordResetToken`) continúan residiendo en `src/domain/models.py` como clases limpias desacopladas del framework. Los modelos ORM de SQLAlchemy se confinan exclusivamente a la capa de infraestructura (`src/infrastructure/models.py`), actuando los repositorios (`UserRepository`, `TaskRepository`, `AuditLogRepository`) como traductores que operan mediante una sesión activa compartida de SQLAlchemy (`db.session` / `Session`), garantizando atomicidad transaccional entre mutaciones de tareas y registros de auditoría. |
 | **II. Autoridad Estricta del Backend y Contratos Explícitos** | **PASS** | Todas las validaciones (verificación de propietario, estado previo al reabrir, validez y vigencia de tokens, longitud mínima de 8 caracteres para contraseñas) son gobernadas por el backend. Los contratos en [`contracts/`](contracts/) definen con exactitud las cargas y códigos de respuesta. |
 | **III. Enfoque Test-First y Verificación Automatizada** | **PASS** | Se definen pruebas unitarias, de integración y de migración bloqueantes antes de la codificación. Las 39 pruebas del Incremento 1 deben mantenerse al 100% en verde, sumando las pruebas del Incremento 2. |
 | **IV. Trazabilidad, Auditoría e Inmutabilidad del Historial** | **PASS** | Cumplimiento pleno: La eliminación de tareas es puramente lógica (`is_deleted=1`, `deleted_at=ISO 8601`) y genera un registro de auditoría (`action='delete'`). La reapertura de tareas completadas se registra con una acción específica (`action='reopen'`), garantizando trazabilidad completa. |
@@ -97,15 +97,15 @@ src/
 │   └── state_machine.py                 # TaskStateMachine (validación determinista de avance y reapertura a pendiente)
 ├── infrastructure/                      # Adaptadores de persistencia, ORM y servicios
 │   ├── __init__.py
-│   ├── database.py                      # Instancia db de Flask-SQLAlchemy y configuración de conexión
+│   ├── database.py                      # Instancia db de Flask-SQLAlchemy, gestión de sesión y configuración
 │   ├── models.py                        # Modelos SQLAlchemy: UserORM, TaskORM, PasswordResetTokenORM, AuditLogORM
-│   ├── repositories.py                  # TaskRepository (filtrado activo por defecto), UserRepository, PasswordResetTokenRepository, AuditLogRepository
+│   ├── repositories.py                  # Repositorios ORM (TaskRepository, UserRepository, AuditLogRepository) con sesión y transacción compartida
 │   ├── notifications.py                 # ConsoleNotificationService (impresión segura de enlaces en terminal)
 │   ├── security.py                      # Hashing de contraseñas (Werkzeug) y tokens SHA-256
 │   └── seed.py                          # Semilla de datos para pruebas locales
 └── web/                                 # Controladores delgados y presentación (Flask)
     ├── __init__.py
-    ├── app.py                           # Application Factory con Flask-SQLAlchemy y Flask-Migrate
+    ├── app.py                           # Application Factory con Flask-SQLAlchemy, Flask-Migrate y db.session
     ├── auth_routes.py                   # /forgot-password y /reset-password/<token> (alineados con /login y /register)
     ├── task_routes.py                   # /tasks/<id>/delete, /tasks/<id>/reopen, /api/tasks/...
     ├── static/
@@ -126,7 +126,7 @@ migrations/                              # Control de versiones de esquema con A
     └── yyyy_002_task_lifecycle_recovery.py # Migración incremental (soft delete, CHECK audit_logs, tokens)
 
 tests/
-├── conftest.py                          # Fixtures de Flask y base de datos de prueba
+├── conftest.py                          # Fixtures de Flask y bases temporales migradas con Alembic (sin db.create_all())
 ├── unit/
 │   ├── test_state_machine.py            # Pruebas de máquina de estados (reapertura a pendiente, transiciones inválidas)
 │   ├── test_task_service.py             # Pruebas de servicio: soft delete, exclusión en listado, no doble borrado
@@ -134,7 +134,8 @@ tests/
 └── integration/
     ├── test_auth_routes.py              # Pruebas HTTP: forgot-password neutro, reset-password flujo completo
     ├── test_task_routes.py              # Pruebas HTTP: delete y reopen con sesiones activas y denegaciones
-    └── test_migrations.py               # Pruebas de migración limpia, conservación de datos y ampliación de CHECK
+    ├── test_migrations.py               # Pruebas de migración limpia, conservación de datos y ampliación de CHECK
+    └── test_transaction_rollback.py     # Prueba de rollback atómico entre mutación de tarea y registro de auditoría
 ```
 
 ---
@@ -158,14 +159,17 @@ tests/
       created_at: str = ""
       updated_at: str = ""
   ```
-- **Persistencia en `TaskRepository` (`src/infrastructure/repositories.py`)**:
-  - En `list_by_user(user_id, status=None)`: Se incorpora de forma obligatoria en la cláusula `WHERE` la condición `is_deleted = False` (o `deleted_at IS NULL`). De esta forma, el listado general y los filtros por estado del Incremento 1 (HU-02) continúan excluyendo de forma automática y transparente las tareas eliminadas.
-  - En `get_by_id(task_id)`: Recupera la tarea incluyendo sus banderas de borrado.
-  - En `delete(task_id, user_id)`: Ejecuta un `UPDATE tasks SET is_deleted = 1, deleted_at = :now, updated_at = :now WHERE id = :id AND user_id = :user_id`.
+- **Persistencia en `TaskRepository` con SQLAlchemy ORM (`src/infrastructure/repositories.py`)**:
+  - `TaskRepository` se inicializa con la sesión activa compartida de SQLAlchemy (`session`).
+  - En `list_by_user(user_id, status=None)`: Ejecuta una consulta tipificada sobre `TaskORM`:
+    `select(TaskORM).where(TaskORM.user_id == user_id, TaskORM.is_deleted == False)`. De esta forma, el listado general y los filtros por estado del Incremento 1 (HU-02) continúan excluyendo de forma automática y transparente las tareas eliminadas, mapeando cada entidad `TaskORM` a un objeto limpio de dominio `Task`.
+  - En `get_by_id(task_id)`: Recupera la entidad `TaskORM` por clave primaria, retornando la entidad de dominio `Task` incluyendo sus banderas `is_deleted` y `deleted_at`.
+  - En `soft_delete(task_id, user_id, deleted_at)`: Recupera la entidad `TaskORM`, actualiza `task_orm.is_deleted = True`, `task_orm.deleted_at = deleted_at`, `task_orm.updated_at = deleted_at` dentro de la sesión compartida, coordinando la confirmación atómica con `AuditLogRepository`.
 - **Regla de Dominio en `TaskService.delete_task`**:
   - Si la tarea no existe o no pertenece al usuario: lanza `NotFoundError` / `UnauthorizedError`.
   - Si `task.is_deleted` ya es `True`: lanza `NotFoundError` o `ValidationError("La tarea ya se encuentra eliminada.")`, impidiendo la doble eliminación.
   - Operaciones sobre tareas eliminadas: Si un usuario intenta editar (`update_task`) o avanzar de estado (`advance_task_status`) una tarea con `is_deleted == True`, el servicio rechaza la operación informando que la tarea no está disponible.
+  - Transaccionalidad atómica: La mutación de la tarea y el registro del log de auditoría (`action='delete'`) comparten la misma transacción; ante cualquier error de validación o fallo de persistencia, se invoca `session.rollback()` impidiendo estados parciales.
 
 ---
 
@@ -352,6 +356,7 @@ python -c "import sqlite3; conn = sqlite3.connect('taskcontrol.db'); cur = conn.
 | `test_clean_database_upgrade_from_scratch` | `integration/test_migrations.py` | Ejecuta `upgrade()` desde una base vacía y verifica que el esquema completo (001 y 002) se cree de cero. |
 | `test_migration_preserves_existing_data` | `integration/test_migrations.py` | Carga una copia de la base con datos reales de muestra, aplica estampado 001 y upgrade 002, comprobando que los datos no se pierdan. |
 | `test_audit_logs_check_constraint_allows_new_actions` | `integration/test_migrations.py` | Inserta registros con `action='delete'` y `action='reopen'`, comprobando que el `CHECK` ampliado los acepta y rechaza valores inválidos. |
+| `test_task_and_audit_shared_transaction_rollback` | `integration/test_transaction_rollback.py` | Verifica que un fallo al registrar auditoría revierte atómicamente la mutación de la tarea (rollback conjunto), impidiendo estados parciales. |
 | `test_soft_delete_marks_task_deleted` | `unit/test_task_service.py` | `delete_task()` establece `is_deleted=True` y `deleted_at` con timestamp válido. |
 | `test_list_tasks_excludes_deleted_tasks` | `unit/test_task_service.py` | `list_tasks()` no retorna tareas con `is_deleted=True`. |
 | `test_cannot_delete_already_deleted_task` | `unit/test_task_service.py` | Intentar eliminar una tarea ya eliminada lanza excepción de no encontrada / conflicto. |
@@ -366,6 +371,30 @@ python -c "import sqlite3; conn = sqlite3.connect('taskcontrol.db'); cur = conn.
 | `test_reset_password_rejects_used_token` | `unit/test_user_service.py` | Tokens con `used=True` son rechazados impidiendo cualquier reutilización. |
 | `test_new_request_revokes_previous_tokens` | `unit/test_user_service.py` | Solicitar un nuevo enlace invalida proactivamente cualquier token previo no consumido. |
 | `test_reset_password_rejects_short_password`| `unit/test_user_service.py` | Contraseñas menores a 8 caracteres son rechazadas por el validador de dominio. |
+
+---
+
+### 8. Arquitectura de Repositorios ORM, Transaccionalidad Atómica Compartida y Aislamiento de Pruebas con Migraciones
+
+#### A. Repositorios sobre Modelos ORM (SQLAlchemy)
+- **Desacoplamiento Estricto (Principio I)**: Los modelos de dominio en `src/domain/models.py` (`User`, `Task`, `AuditLog`, `PasswordResetToken`) continúan siendo dataclasses puras.
+- **Traducción en Repositorios**: Cada repositorio (`UserRepository`, `TaskRepository`, `AuditLogRepository`) en `src/infrastructure/repositories.py` se instancia con una sesión activa de SQLAlchemy (`session: Session`) y realiza la traducción bidireccional entre las entidades de dominio y los modelos ORM (`UserORM`, `TaskORM`, `AuditLogORM`):
+  - `UserRepository`: Búsquedas por email/id e inserciones operando sobre `UserORM`.
+  - `TaskRepository`: Consultas (`select(TaskORM)...`), creación, actualización y marcado de borrado lógico (`is_deleted=True`, `deleted_at=...`) operando sobre `TaskORM`.
+  - `AuditLogRepository`: Inserción de eventos históricos y consultas cronológicas operando sobre `AuditLogORM`.
+
+#### B. Unidad de Trabajo y Transaccionalidad Atómica Compartida
+- **Consistencia y Prevención de Bloqueos en SQLite**: En operaciones compuestas de ciclo de vida (como `create_task`, `update_task`, `advance_task_status`, `delete_task`, `reopen_task`), `TaskService` interactúa tanto con `TaskRepository` como con `AuditLogRepository`. Ambos repositorios comparten obligatoriamente la misma instancia de `session` y **no realizan commits individuales**.
+- **Uso de `session.flush()` para Claves Primarias**: Cuando se crea una tarea nueva (`create_task`), el repositorio invoca `session.flush()` (en lugar de `commit`) para forzar la asignación del `id` autogenerado por SQLite sin cerrar la transacción, permitiendo que `audit_repo.create` use de inmediato `task_id` dentro del mismo bloque transaccional.
+- **Límite Transaccional Único en Servicios (`src/domain/services.py`)**:
+  - `TaskService` gobierna el ciclo transaccional: ejecuta las mutaciones de tarea y auditoría sobre la sesión compartida y realiza un único `session.commit()` al finalizar exitosamente la operación.
+  - Ante cualquier excepción en la mutación o en la auditoría, se invoca `session.rollback()`, garantizando que ninguna tabla quede con cambios huérfanos o inconsistentes.
+  - `UserService` conserva igualmente la confirmación atómica al registrar nuevos usuarios (`register_user`) mediante `session.commit()`.
+- **Prueba de Rollback Atómico**: Se implementa `tests/integration/test_transaction_rollback.py` para forzar un fallo en la persistencia de la auditoría tras una mutación de tarea y comprobar que el rollback revierte el cambio de estado de la tarea y no deja registros en auditoría.
+
+#### C. Aislamiento de Pruebas con Migraciones Versionadas (Sin `db.create_all()`)
+- **Prohibición de `db.create_all()` en Pruebas**: Los fixtures de pruebas (`tests/conftest.py`) crearán bases de datos SQLite temporales aisladas aplicando las revisiones versionadas de Alembic (`flask db upgrade` / `command.upgrade(alembic_cfg, 'head')`) hasta la revisión `3acae1929949`.
+- **Protección de la Base de Trabajo**: `taskcontrol.db` y `taskcontrol_backup.db` permanecen estrictamente intactas en su versión actual `3acae1929949`; las pruebas nunca ejecutarán `stamp` ni `upgrade` sobre la base de trabajo ni su respaldo.
 
 ---
 

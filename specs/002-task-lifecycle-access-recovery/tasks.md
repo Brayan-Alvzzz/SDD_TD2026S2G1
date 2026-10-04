@@ -50,7 +50,28 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 - [X] T017 Apply revision 002 to working database `taskcontrol.db` via `flask --app src.web.app:create_app db upgrade` and verify post-migration row counts (`users: 1`, `tasks: 4` with `is_deleted=0`, `audit_logs: 7`) and presence of new columns
 - [X] T018 Run regression test suite `pytest tests/` to confirm that all 39 Increment 1 tests remain 100% passing
 
-**Checkpoint**: Database infrastructure and migrations complete and verified. User story implementation can now begin.
+**Checkpoint**: Database infrastructure and migrations complete and verified.
+
+---
+
+## Phase 2.5: Foundational ORM Architecture (Repositories, Shared Session/Transaction & Test Harness Migration) (Priority: P0 - Blocking Prerequisite)
+
+**Purpose**: Transition persistence layer from raw `sqlite3` to real SQLAlchemy ORM models (`UserORM`, `TaskORM`, `AuditLogORM`), unify session and transactional boundaries between task operations and audit logging, update Flask factory and route handlers, and refactor the test harness to run versioned Alembic migrations on isolated temporary databases (strictly avoiding `db.create_all()`).
+
+> [!CRITICAL]
+> **Blocking Gate**: All 42 existing tests must continue passing 100% and a new atomic transaction rollback test must pass before starting User Story 1 (HU-05). Working database `taskcontrol.db` and backup `taskcontrol_backup.db` must remain untouched.
+
+- [X] T018A [P] [Test-First] Implement automated integration test in `tests/integration/test_transaction_rollback.py` verifying that task mutations and audit log creation share an atomic transaction: assert that when an audit log write or task operation fails mid-transaction, `session.rollback()` is executed and neither the task state change nor the audit log record is committed.
+- [X] T018B Refactor test harness in `tests/conftest.py` to create isolated temporary SQLite database files for test runs, execute versioned Alembic migrations (`flask db upgrade` / Alembic runner to revision `3acae1929949`), provide a scoped `db_session` fixture, and inject it into repositories without using `db.create_all()`, preserving `taskcontrol.db` and `taskcontrol_backup.db`.
+- [X] T018C Adapt application factory and database integration in `src/web/app.py` and `src/infrastructure/database.py` to manage request-scoped SQLAlchemy sessions (`db.session`), deprecate raw `sqlite3.Connection` factory, and handle proper request teardown.
+- [X] T018D Refactor `UserRepository` in `src/infrastructure/repositories.py` to execute queries and persistence against `UserORM` using the shared SQLAlchemy session without individual commit, converting between `UserORM` and domain `User` dataclass to preserve domain interfaces.
+- [X] T018E Refactor `AuditLogRepository` in `src/infrastructure/repositories.py` to execute queries and persistence against `AuditLogORM` using the shared SQLAlchemy session without individual commit, converting between `AuditLogORM` and domain `AuditLog` dataclass.
+- [X] T018F Refactor `TaskRepository` in `src/infrastructure/repositories.py` to execute queries and persistence against `TaskORM` using the shared SQLAlchemy session without individual commit (using `session.flush()` when generating IDs for new tasks), converting between `TaskORM` and domain `Task` dataclass, and sharing transaction context with `AuditLogRepository`.
+- [X] T018G Adapt `TaskService` and `UserService` in `src/domain/services.py` to manage atomic unit of work: coordinate task creation, update, and status change so that task mutation and audit logging are committed together in a single `session.commit()` and both rolled back via `session.rollback()` upon any failure; ensure user registration in `UserService` preserves its commit.
+- [X] T018H Update Flask route controllers and dependency helpers in `src/web/task_routes.py` and `src/web/auth_routes.py` to instantiate `TaskRepository`, `UserRepository`, and `AuditLogRepository` with the active `db.session`.
+- [X] T018I **MANDATORY VERIFICATION STOP GATE (42 Regression Tests + 2 Rollback Tests + 4 Foreign Key Tests)**: Execute full automated test suite `pytest tests/` ensuring all 42 previous tests, the 2 atomic rollback tests, and the 4 foreign key enforcement tests pass cleanly (48/48 tests passing) on the real SQLAlchemy ORM persistence layer before proceeding to HU-05.
+
+**Checkpoint**: Persistence layer is 100% migrated to SQLAlchemy ORM, shared session/transaction atomic boundaries are verified with rollback test, SQLite foreign key enforcement is verified on all connections (including post-migration recovery with try/finally), test harness runs versioned Alembic migrations, and 48 tests pass cleanly.
 
 ---
 
@@ -70,8 +91,8 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 ### Implementation for User Story 1
 
 - [ ] T021 [P] [US1] Update domain model `Task` dataclass in `src/domain/models.py` adding `is_deleted: bool = False` and `deleted_at: Optional[str] = None`
-- [ ] T022 [US1] Update `TaskRepository` in `src/infrastructure/repositories.py` to filter `is_deleted = 0` by default in `list_by_user()`, implement `soft_delete(task_id, user_id, deleted_at)`, and update `get_by_id()` to return `is_deleted` and `deleted_at` fields
-- [ ] T023 [US1] Implement `delete_task(task_id, user_id)` in `src/domain/services.py` with ownership check, double-deletion prevention, and audit log recording with `action='delete'` via `AuditLogRepository`
+- [ ] T022 [US1] Update `TaskRepository` in `src/infrastructure/repositories.py` to filter `TaskORM.is_deleted == False` by default in `list_by_user()`, implement `soft_delete(task_id, user_id, deleted_at)` on `TaskORM` using the shared session, and update `get_by_id()` to return `is_deleted` and `deleted_at` fields
+- [ ] T023 [US1] Implement `delete_task(task_id, user_id)` in `src/domain/services.py` with ownership check, double-deletion prevention, and audit log recording with `action='delete'` via `AuditLogRepository` in atomic transaction with rollback on failure
 - [ ] T024 [US1] Protect task modification in `TaskService.update_task` and `TaskService.advance_task_status` in `src/domain/services.py` to reject operations on tasks where `is_deleted == True` with `ValidationError`
 - [ ] T025 [US1] Implement HTTP routes `POST /tasks/<id>/delete` and `DELETE /api/tasks/<id>` in `src/web/task_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/task-lifecycle-api.json`
 - [ ] T026 [US1] Update list view template in `src/web/templates/tasks/list.html` to include the "Eliminar" form button and wire native browser confirmation `confirm("¿Está seguro de que desea eliminar esta tarea?")` in `src/web/static/js/tasks.js`
@@ -146,7 +167,7 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies — executes first.
-- **Foundational (Phase 2)**: Depends on Phase 1 completion. **BLOCKS all user stories**.
+- **Foundational Migrations (Phase 2)**: Depends on Phase 1 completion.
   - T003 – T005 establish ORM setup and base schema.
   - T006 writes migration tests first (Red).
   - T007 – T009 generate revision 001 against `clean_init.db` and upgrade `clean_init.db` to 001.
@@ -155,9 +176,17 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
   - T014 is the **MANDATORY STOP GATE**: No touching `taskcontrol.db` unless T013 passes 100%.
   - T015 – T017 safely backup, stamp 001, and upgrade `taskcontrol.db`.
   - T018 confirms all 39 regression tests pass.
-- **User Story 1 (Phase 3)**: Depends on Foundational completion.
-- **User Story 2 (Phase 4)**: Depends on Foundational completion. Can run in parallel with or after US1.
-- **User Story 3 (Phase 5)**: Depends on Foundational completion. Can run in parallel with or after US1/US2.
+- **Foundational ORM Architecture (Phase 2.5)**: Depends on Phase 2 completion. **BLOCKS all user stories (Phase 3, 4, 5)**.
+  - T018A implements the atomic transaction rollback test first (Red).
+  - T018B adapts test harness in `tests/conftest.py` with versioned Alembic migrations on temp databases (no `db.create_all()`).
+  - T018C adapts Flask app factory and request-scoped session management.
+  - T018D, T018E, T018F refactor `UserRepository`, `AuditLogRepository`, and `TaskRepository` to use `UserORM`, `AuditLogORM`, and `TaskORM` sharing the same session without individual commits (using `flush` for IDs).
+  - T018G adapts `TaskService` and `UserService` in `src/domain/services.py` to manage atomic unit of work with single commit/rollback.
+  - T018H updates route controllers.
+  - T018I is the **MANDATORY VERIFICATION STOP GATE**: All 42 previous tests, the 2 atomic rollback tests, and the 4 foreign key enforcement tests must pass (48/48) on the ORM layer before starting HU-05.
+- **User Story 1 (Phase 3)**: Depends on Phase 2.5 completion.
+- **User Story 2 (Phase 4)**: Depends on Phase 2.5 and US1 completion.
+- **User Story 3 (Phase 5)**: Depends on Phase 2.5 completion.
 - **Polish (Phase 6)**: Depends on all desired user stories being implemented.
 
 ### Within Each User Story
@@ -171,6 +200,10 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 ---
 
 ## Parallel Execution Opportunities
+
+### Phase 2.5 (Foundational ORM Architecture)
+*Note: Repositories in `src/infrastructure/repositories.py` are refactored sequentially (T018D, T018E, T018F) to avoid concurrent edit conflicts on the same file.*
+
 
 ### User Story 1 (P1)
 ```bash
@@ -211,11 +244,15 @@ Task: T038 "Implement ConsoleNotificationService in src/infrastructure/notificat
 
 1. **Phase 1 + Phase 2 (Foundational & Safe Migrations)**:
    - Sets up SQLAlchemy, validates migrations on test databases, satisfies the Stop Gate (T014), backs up `taskcontrol.db`, stamps 001, applies 002, and verifies 39 existing tests.
-2. **Phase 3 (User Story 1 - Soft Delete)**:
-   - Delivers the core **MVP** increment. Tasks can be deleted safely without data loss.
-3. **Phase 4 (User Story 2 - Reopen)**:
+2. **Phase 2.5 (Foundational ORM Architecture & Unit of Work)**:
+   - Migrates `UserRepository`, `TaskRepository`, and `AuditLogRepository` to SQLAlchemy ORM models with shared session/transaction atomic boundary.
+   - Refactors test harness to run versioned Alembic migrations on isolated temporary databases (strictly avoiding `db.create_all()`).
+   - Verifies all 42 regression tests + 2 rollback tests + 4 foreign key tests (48/48) before touching any user story.
+3. **Phase 3 (User Story 1 - Soft Delete)**:
+   - Delivers the core **MVP** increment. Tasks can be deleted safely without data loss, operating on `TaskORM`.
+4. **Phase 4 (User Story 2 - Reopen)**:
    - Completes task lifecycle closure, distinguishing `reopen` from ordinary changes in audit logs.
-4. **Phase 5 (User Story 3 - Password Recovery)**:
+5. **Phase 5 (User Story 3 - Password Recovery)**:
    - Delivers autonomous user access recovery with secure token lifecycle and dev console output.
-5. **Phase 6 (Polish & Verification)**:
-   - Validates all 39 previous tests + new test suite and runs end-to-end quickstart scenario.
+6. **Phase 6 (Polish & Verification)**:
+   - Validates all 47 previous tests + new test suite and runs end-to-end quickstart scenario.

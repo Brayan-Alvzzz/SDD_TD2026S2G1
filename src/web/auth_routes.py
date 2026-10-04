@@ -11,8 +11,9 @@ auth_bp = Blueprint("auth", __name__)
 
 
 def get_user_service() -> UserService:
-    repo = UserRepository(get_db())
-    return UserService(repo)
+    session = get_db()
+    repo = UserRepository(session)
+    return UserService(repo, session=session)
 
 
 def login_required(f):

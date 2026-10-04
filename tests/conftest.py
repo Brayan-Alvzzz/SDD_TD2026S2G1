@@ -1,58 +1,85 @@
 import os
 os.environ.setdefault("DISABLE_SQLALCHEMY_CEXT", "1")
 import pytest
-import sqlite3
-from src.infrastructure.database import init_db_schema
+from flask_migrate import upgrade
+from src.infrastructure.database import db
 from src.infrastructure.repositories import UserRepository, TaskRepository, AuditLogRepository
 from src.domain.services import UserService, TaskService
 from src.web.app import create_app
 
 
 @pytest.fixture
-def db_conn():
-    """In-memory SQLite database fixture with foreign keys enabled."""
-    conn = sqlite3.connect(":memory:")
-    conn.execute("PRAGMA foreign_keys = ON;")
-    init_db_schema(conn)
-    yield conn
-    conn.close()
+def test_db_path(tmp_path):
+    """Provide an isolated temporary SQLite database path for testing."""
+    db_file = str(tmp_path / "test_temp.db")
+    yield db_file
+    if os.path.exists(db_file):
+        try:
+            os.remove(db_file)
+        except OSError:
+            pass
 
 
 @pytest.fixture
-def user_repo(db_conn):
-    return UserRepository(db_conn)
+def app(test_db_path):
+    """Test Flask application configured with isolated temporary database initialized via versioned Alembic migrations."""
+    migrations_dir = os.path.abspath("migrations")
+    abs_path = os.path.abspath(test_db_path)
+    uri = f"sqlite:///{abs_path.replace(os.sep, '/')}"
 
-
-@pytest.fixture
-def task_repo(db_conn):
-    return TaskRepository(db_conn)
-
-
-@pytest.fixture
-def audit_repo(db_conn):
-    return AuditLogRepository(db_conn)
-
-
-@pytest.fixture
-def user_service(user_repo):
-    return UserService(user_repo)
-
-
-@pytest.fixture
-def task_service(task_repo, audit_repo):
-    return TaskService(task_repo, audit_repo)
-
-
-@pytest.fixture
-def app(db_conn):
-    """Test Flask application configured with in-memory database."""
     test_config = {
         "TESTING": True,
         "SECRET_KEY": "test-secret-key",
-        "DATABASE_CONN": db_conn
+        "DATABASE_PATH": test_db_path,
+        "SQLALCHEMY_DATABASE_URI": uri,
+        "SQLALCHEMY_TRACK_MODIFICATIONS": False,
     }
-    app = create_app(test_config)
-    return app
+    flask_app = create_app(test_config)
+
+    with flask_app.app_context():
+        # Apply versioned Alembic migrations strictly (no db.create_all())
+        upgrade(directory=migrations_dir)
+        yield flask_app
+
+
+@pytest.fixture
+def db_session(app):
+    """Scoped SQLAlchemy database session for testing."""
+    with app.app_context():
+        yield db.session
+        db.session.rollback()
+        db.session.remove()
+
+
+@pytest.fixture
+def db_conn(db_session):
+    """Provide underlying DBAPI connection for compatibility if needed."""
+    return db_session.connection().connection
+
+
+@pytest.fixture
+def user_repo(db_session):
+    return UserRepository(db_session)
+
+
+@pytest.fixture
+def task_repo(db_session):
+    return TaskRepository(db_session)
+
+
+@pytest.fixture
+def audit_repo(db_session):
+    return AuditLogRepository(db_session)
+
+
+@pytest.fixture
+def user_service(user_repo, db_session):
+    return UserService(user_repo, session=db_session)
+
+
+@pytest.fixture
+def task_service(task_repo, audit_repo, db_session):
+    return TaskService(task_repo, audit_repo, session=db_session)
 
 
 @pytest.fixture
