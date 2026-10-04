@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tasks API Contract",
+  "version": "1.0.0",
+  "security": "Cookie session auth required for all endpoints",
+  "endpoints": {
+    "/api/tasks": {
+      "GET": {
+        "summary": "Obtener listado de tareas del usuario autenticado",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pendiente", "en_progreso", "completada"]
+            },
+            "description": "Filtro opcional por estado de la tarea"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de tareas ordenada por created_at descendente",
+            "body": {
+              "success": true,
+              "data": [
+                {
+                  "id": 101,
+                  "title": "Preparar informe mensual",
+                  "description": "Incluir metricas de rendimiento",
+                  "due_date": "2026-10-15",
+                  "status": "pendiente",
+                  "created_at": "2026-09-29T21:00:00Z",
+                  "updated_at": "2026-09-29T21:00:00Z"
+                }
+              ]
+            }
+          },
+          "401": {
+            "description": "Sesion no valida o expirada",
+            "body": {
+              "success": false,
+              "error": "No autorizado. Inicie sesion para continuar."
+            }
+          }
+        }
+      },
+      "POST": {
+        "summary": "Crear una nueva tarea para el usuario autenticado",
+        "requestBody": {
+          "type": "object",
+          "required": ["title"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 150,
+              "description": "Titulo obligatorio de la tarea"
+            },
+            "description": {
+              "type": ["string", "null"],
+              "maxLength": 1000,
+              "description": "Descripcion opcional de la tarea"
+            },
+            "due_date": {
+              "type": ["string", "null"],
+              "description": "Fecha limite opcional en formato YYYY-MM-DD"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tarea creada exitosamente con estado inicial 'pendiente' y audit log generado",
+            "body": {
+              "success": true,
+              "data": {
+                "id": 102,
+                "title": "Configurar ambiente",
+                "description": null,
+                "due_date": null,
+                "status": "pendiente",
+                "created_at": "2026-09-29T21:10:00Z",
+                "updated_at": "2026-09-29T21:10:00Z"
+              }
+            }
+          },
+          "400": {
+            "description": "Validacion fallida (titulo vacio o limites de longitud excedidos)",
+            "body": {
+              "success": false,
+              "error": "El titulo es obligatorio y no puede exceder 150 caracteres"
+            }
+          },
+          "401": {
+            "description": "Sesion no valida",
+            "body": {
+              "success": false,
+              "error": "No autorizado"
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "PUT": {
+        "summary": "Modificar los datos de una tarea existente del usuario",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "type": "object",
+          "required": ["title"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+            "description": { "type": ["string", "null"], "maxLength": 1000 },
+            "due_date": { "type": ["string", "null"] }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tarea actualizada correctamente",
+            "body": {
+              "success": true,
+              "data": {
+                "id": 101,
+                "title": "Titulo corregido",
+                "description": "Nueva descripcion",
+                "due_date": "2026-10-20",
+                "status": "pendiente",
+                "updated_at": "2026-09-29T21:15:00Z"
+              }
+            }
+          },
+          "400": {
+            "description": "Validacion fallida de datos",
+            "body": {
+              "success": false,
+              "error": "El titulo no puede estar vacio"
+            }
+          },
+          "404": {
+            "description": "Tarea no encontrada o no pertenece al usuario",
+            "body": {
+              "success": false,
+              "error": "Tarea no encontrada"
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/status": {
+      "PATCH": {
+        "summary": "Actualizar el estado de una tarea segun la maquina de estados",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["en_progreso", "completada"]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado exitosamente con registro de auditoria",
+            "body": {
+              "success": true,
+              "data": {
+                "id": 101,
+                "status": "en_progreso",
+                "updated_at": "2026-09-29T21:20:00Z"
+              }
+            }
+          },
+          "400": {
+            "description": "Transicion de estado invalida (p. ej. completada -> pendiente)",
+            "body": {
+              "success": false,
+              "error": "Transicion no permitida: no es posible pasar de 'completada' a 'pendiente' sin reapertura explicita"
+            }
+          },
+          "404": {
+            "description": "Tarea no encontrada o ajena",
+            "body": {
+              "success": false,
+              "error": "Tarea no encontrada"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="card auth-card">
+    <h1 class="card-title text-center">Iniciar Sesión</h1>
+    <form action="{{ url_for('auth.login') }}" method="POST">
+        <div class="form-group">
+            <label for="email" class="form-label">Correo Electrónico</label>
+            <input type="email" id="email" name="email" class="form-input" required 
+                   value="{{ email or '' }}" placeholder="tu-correo@ejemplo.com" autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" id="password" name="password" class="form-input" required 
+                   placeholder="Tu contraseña">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Entrar</button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--text-muted);">
+        ¿No tienes cuenta todavía? <a href="{{ url_for('auth.register_view') }}" style="color: var(--primary); font-weight: 500;">Regístrate gratis</a>
+    </div>
+</div>
+{% endblock %}

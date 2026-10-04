@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Tareas{% endblock %}
+
+{% block content %}
+<div class="tasks-header">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">Mis Tareas</h1>
+        <p style="color: var(--text-muted); font-size: 0.9375rem;">Administra tus actividades en curso con control de estados y auditoría</p>
+    </div>
+    <div class="filter-tabs">
+        <a href="{{ url_for('tasks.list_tasks_view') }}" class="filter-tab {% if not current_filter %}active{% endif %}">Todas</a>
+        <a href="{{ url_for('tasks.list_tasks_view', status='pendiente') }}" class="filter-tab {% if current_filter == 'pendiente' %}active{% endif %}">Pendientes</a>
+        <a href="{{ url_for('tasks.list_tasks_view', status='en_progreso') }}" class="filter-tab {% if current_filter == 'en_progreso' %}active{% endif %}">En Progreso</a>
+        <a href="{{ url_for('tasks.list_tasks_view', status='completada') }}" class="filter-tab {% if current_filter == 'completada' %}active{% endif %}">Completadas</a>
+    </div>
+</div>
+
+{% if not tasks %}
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        {% if current_filter %}
+            <h2 class="empty-title">No hay tareas con estado "{{ current_filter }}"</h2>
+            <p class="empty-desc">No se encontraron tareas coincidentes con este filtro.</p>
+            <a href="{{ url_for('tasks.list_tasks_view') }}" class="btn btn-outline">Ver todas las tareas</a>
+        {% else %}
+            <h2 class="empty-title">No tienes tareas registradas</h2>
+            <p class="empty-desc">¡Empieza a organizarte! Crea tu primera tarea para realizar un seguimiento a tus actividades.</p>
+            <a href="{{ url_for('tasks.create_task_view') }}" class="btn btn-primary">Crear mi primera tarea</a>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="task-list" id="task-list-container">
+        {% for task in tasks %}
+            <div class="task-item" id="task-item-{{ task.id }}" data-task-id="{{ task.id }}">
+                <div class="task-main">
+                    <h3 class="task-title">{{ task.title }}</h3>
+                    {% if task.description %}
+                        <p class="task-desc">{{ task.description }}</p>
+                    {% endif %}
+                    <div class="task-meta">
+                        <span class="badge badge-{{ task.status }}" id="task-badge-{{ task.id }}">
+                            {{ task.status | replace('_', ' ') }}
+                        </span>
+                        {% if task.due_date %}
+                            <span title="Fecha límite">📅 Vence: {{ task.due_date }}</span>
+                        {% endif %}
+                        <span title="Creada el">🕒 Creada: {{ task.created_at[:10] }}</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    {% if task.status == 'pendiente' %}
+                        <button type="button" class="btn btn-sm btn-primary btn-advance-status" 
+                                data-task-id="{{ task.id }}" data-next-status="en_progreso">
+                            Iniciar ▶
+                        </button>
+                    {% elif task.status == 'en_progreso' %}
+                        <button type="button" class="btn btn-sm btn-success btn-advance-status" 
+                                data-task-id="{{ task.id }}" data-next-status="completada">
+                            Completar ✓
+                        </button>
+                    {% endif %}
+                    <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+{% endblock %}

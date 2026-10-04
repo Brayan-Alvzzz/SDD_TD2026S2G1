@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Auth API Contract",
+  "version": "1.0.0",
+  "endpoints": {
+    "/register": {
+      "POST": {
+        "summary": "Registrar un nuevo usuario en la plataforma",
+        "consumes": "application/x-www-form-urlencoded or application/json",
+        "requestBody": {
+          "type": "object",
+          "required": ["email", "password"],
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Correo electronico unico del usuario"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8,
+              "description": "Contrasena segura de minimo 8 caracteres"
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado exitosamente con sesion iniciada",
+            "body": {
+              "success": true,
+              "message": "Usuario registrado con exito",
+              "user": {
+                "id": 1,
+                "email": "usuario@ejemplo.com"
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validacion en datos de entrada",
+            "body": {
+              "success": false,
+              "error": "La contrasena debe tener al menos 8 caracteres"
+            }
+          },
+          "409": {
+            "description": "Conflicto por correo ya registrado",
+            "body": {
+              "success": false,
+              "error": "El correo ya se encuentra registrado"
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "POST": {
+        "summary": "Iniciar sesion de usuario",
+        "consumes": "application/x-www-form-urlencoded or application/json",
+        "requestBody": {
+          "type": "object",
+          "required": ["email", "password"],
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credenciales validas, sesion establecida con cookie HttpOnly (24h inactividad)",
+            "headers": {
+              "Set-Cookie": "session=...; HttpOnly; SameSite=Lax; Path=/"
+            },
+            "body": {
+              "success": true,
+              "message": "Inicio de sesion exitoso",
+              "user": {
+                "id": 1,
+                "email": "usuario@ejemplo.com"
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales invalidas",
+            "body": {
+              "success": false,
+              "error": "Credenciales incorrectas"
+            }
+          }
+        }
+      }
+    },
+    "/logout": {
+      "POST": {
+        "summary": "Cerrar sesion activa",
+        "responses": {
+          "200": {
+            "description": "Sesion invalidada y cookie eliminada",
+            "body": {
+              "success": true,
+              "message": "Sesion cerrada exitosamente"
+            }
+          }
+        }
+      }
+    }
+  }
+}

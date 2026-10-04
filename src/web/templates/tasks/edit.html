@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Tarea{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 650px; margin: 1rem auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h1 class="card-title" style="margin-bottom: 0;">Editar Tarea</h1>
+        <span class="badge badge-{{ task.status }}">{{ task.status | replace('_', ' ') }}</span>
+    </div>
+
+    <form action="{{ url_for('tasks.update_task_view', id=task.id) }}" method="POST">
+        <div class="form-group">
+            <label for="title" class="form-label">Título <span style="color: var(--danger)">*</span></label>
+            <input type="text" id="title" name="title" class="form-input" required 
+                   maxlength="150" value="{{ title if title is not none else task.title }}" autofocus>
+            <p class="form-help">Obligatorio. Máximo 150 caracteres.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="description" class="form-label">Descripción</label>
+            <textarea id="description" name="description" class="form-textarea" rows="4" 
+                      maxlength="1000">{{ description if description is not none else (task.description or '') }}</textarea>
+            <p class="form-help">Opcional. Máximo 1,000 caracteres.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="due_date" class="form-label">Fecha Límite</label>
+            <input type="date" id="due_date" name="due_date" class="form-input" 
+                   value="{{ due_date if due_date is not none else (task.due_date or '') }}">
+            <p class="form-help">Opcional.</p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <a href="{{ url_for('tasks.list_tasks_view') }}" class="btn btn-outline">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
