@@ -18,7 +18,7 @@ class UserORM(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.String(35), nullable=False)
 
-    tasks = db.relationship("TaskORM", backref="user", cascade="all, delete-orphan", passive_deletes=True)
+    tasks = db.relationship("TaskORM", foreign_keys="TaskORM.user_id", backref="user", cascade="all, delete-orphan", passive_deletes=True)
     reset_tokens = db.relationship("PasswordResetTokenORM", backref="user", cascade="all, delete-orphan", passive_deletes=True)
 
     __table_args__ = (
@@ -47,6 +47,7 @@ class TaskORM(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    assignee_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.String(1000), nullable=True)
     due_date = db.Column(db.String(30), nullable=True)
@@ -80,6 +81,7 @@ class TaskORM(db.Model):
         db.Index("idx_tasks_user_active", "user_id", "is_deleted", "created_at"),
         db.Index("idx_tasks_user_priority", "user_id", "priority"),
         db.Index("idx_tasks_user_category", "user_id", "category_id"),
+        db.Index("idx_tasks_assignee", "assignee_id", "is_deleted", "created_at"),
     )
 
 
@@ -97,7 +99,7 @@ class AuditLogORM(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "action IN ('create', 'update', 'status_change', 'delete', 'reopen', 'priority_change', 'category_change')",
+            "action IN ('create', 'update', 'status_change', 'delete', 'reopen', 'priority_change', 'category_change', 'assign', 'reassign', 'unassign')",
             name="chk_audit_logs_action"
         ),
         db.Index("idx_audit_logs_task", "task_id"),
@@ -119,3 +121,28 @@ class PasswordResetTokenORM(db.Model):
         db.Index("idx_reset_token_hash", "token_hash"),
         db.Index("idx_reset_token_user_pending", "user_id", "used"),
     )
+
+
+class NotificationORM(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    type = db.Column(db.String(20), nullable=False)
+    message = db.Column(db.String(255), nullable=False)
+    is_read = db.Column(db.Boolean, nullable=False, default=False, server_default=sa.text("0"))
+    read_at = db.Column(db.String(35), nullable=True)
+    created_at = db.Column(db.String(35), nullable=False)
+
+    recipient = db.relationship("UserORM", foreign_keys=[recipient_id], backref=db.backref("notifications", cascade="all, delete-orphan", passive_deletes=True))
+    task_rel = db.relationship("TaskORM", foreign_keys=[task_id], backref=db.backref("notifications", cascade="all, delete-orphan", passive_deletes=True))
+    actor = db.relationship("UserORM", foreign_keys=[actor_id])
+
+    __table_args__ = (
+        db.CheckConstraint("type IN ('task_assigned')", name="chk_notifications_type"),
+        db.Index("idx_notifications_recipient", "recipient_id", "is_read", "created_at"),
+        db.Index("idx_notifications_task_recipient", "task_id", "recipient_id"),
+    )
+

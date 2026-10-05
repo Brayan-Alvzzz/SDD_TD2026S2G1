@@ -116,5 +116,31 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
     2. Aislamiento: `list_by_recipient` devuelve solo las notificaciones de ese usuario.
     3. Vista `available`: La disponibilidad se calcula en tiempo de ejecución (tarea no eliminada, asignado coincide con el destinatario, y es la notificación más reciente para esa tupla tarea-destinatario). Se validó pérdida de disponibilidad por reasignación, desasignación o eliminación.
     4. Contador de no leídas (`count_unread`).
-- **Resultado RED:** Las pruebas arrojan fallos de funcionalidad ausente puros (`Failed: NotificationRepository not implemented yet` al evaluar la existencia de los modelos de dominio y repositorios). Evidencia almacenada en `docs/evidencias/inc4/red-repo.txt`.
+- **Resultado RED:** Las pruebas arrojan fallos de funcionalidad ausente puros (`Failed: NotificationRepository not implemented yet` al evaluar la existencia de los modelos de dominio y repositorios). Evidencia almacenada en `docs/evidencias/inc4/red-repo.txt`. Adicionalmente, se ampliaron las pruebas para certificar la reversibilidad (`test_notification_rollback`) y el correcto aislamiento de la vista mediante partición global del `MAX(id)` (`test_notification_global_max_id_isolation`), cuyo fallo fue registrado de igual forma en `docs/evidencias/inc4/red-repo-ampliado.txt`.
 - No se implementó código productivo, cumpliendo con la directiva TDD estricta.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 2 (Repositorio GREEN)
+
+- Se completaron íntegramente las tareas **T005**, **T007** y **T009** según `tasks.md`.
+- **T005 (Completa):**
+  - Se definieron `Notification` (dataclass) en el dominio y `NotificationORM` en la infraestructura.
+  - Se completó el mapeo de `Task` para dar cabida a `assignee_id` en las entidades de `TaskORM` e índices correspondientes, conservando el comportamiento general previo.
+  - Se actualizó el `CHECK` constraint de `AuditLogORM` para aceptar acciones de asignación.
+- **T007:**
+  - Se implementó `NotificationRepository` en `src/infrastructure/repositories.py`.
+  - La consulta central en `list_by_recipient` utiliza subconsultas con `MAX(id)` asociadas y agrupadas por tarea y destinatario (`task_id`, `recipient_id`), lo cual resuelve el campo derivado `available` combinando la validación contra el modelo actual (`is_deleted=False` y `assignee_id==recipient_id`).
+  - No ejecuta confirmaciones (`session.commit()`), permitiendo la correcta participación en transacciones envolventes del servicio. 
+- **T009:**
+  - Las 6 pruebas que certificaban el repositorio y sus restricciones en la BD generaron respuesta completamente GREEN. Las evidencias de paso reposan en `docs/evidencias/inc4/repositorio-green.txt`.
+  - La regresión íntegra de la base (173/173 tests, abarcando previos y este repositorio) arrojó compatibilidad inquebrantable, constatado en `docs/evidencias/inc4/regresion-repositorio.txt`.
+
+## 2026-10-05 — Corrección Crítica (AmbiguousForeignKeysError)
+
+- **Fallo Descubierto:** El reporte previo de 173 pruebas aprobadas en la regresión del repositorio fue incorrecto debido a que la salida de error fue enmascarada. El fallo real fue un `AmbiguousForeignKeysError` masivo que impedía instanciar cualquier modelo al iniciar SQLAlchemy.
+- **Causa:** La adición de `assignee_id` a `TaskORM` introdujo múltiples rutas de clave foránea hacia `UserORM`, volviendo ambigua la relación bidireccional `UserORM.tasks`.
+- **Corrección (RED/GREEN):**
+  - Se creó la prueba de regresión `tests/unit/test_orm_relationships.py::test_task_owner_assignee_relationship` confirmando que asignar una tarea a B no afecta su permanencia en la colección `tasks` del propietario A. Salida RED real (Exit Code 1) guardada en `docs/evidencias/inc4/relacion-propietario-red.txt`.
+  - Se actualizó `UserORM.tasks` añadiendo explícitamente `foreign_keys="TaskORM.user_id"`. No hubo otras ambigüedades similares en `AuditLogORM` o `NotificationORM` ya que sus relaciones declaran `foreign_keys` desde su creación.
+- **Resultado (GREEN):**
+  - Las pruebas de repositorio pasaron y se guardaron en `docs/evidencias/inc4/repositorio-green-corregido.txt`.
+  - La suite de regresión completa ejecutada directamente confirmó el éxito total: **174 passed**. Evidencia almacenada en `docs/evidencias/inc4/regresion-repositorio-corregida.txt`.

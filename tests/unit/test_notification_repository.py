@@ -150,3 +150,47 @@ def test_notification_unread_count(repo, users, task_obj):
     
     repo.mark_as_read(n1.id, assignee.id)
     assert repo.count_unread(assignee.id) == 0
+
+def test_notification_rollback(repo, users, task_obj, db_session):
+    """Comprueba que una inserción puede revertirse con rollback."""
+    owner, assignee, _ = users
+    
+    repo.create(assignee.id, task_obj.id, owner.id, "task_assigned", "msg rollback")
+    db_session.rollback()
+    
+    assert repo.count_unread(assignee.id) == 0
+    assert len(repo.list_by_recipient(assignee.id)) == 0
+
+def test_notification_global_max_id_isolation(repo, users, task_obj, task_repo, db_session):
+    """
+    Comprueba que las pruebas incluyen varias tareas y varios destinatarios,
+    para detectar un MAX(id) global incorrecto.
+    """
+    owner, assignee, other = users
+    
+    # owner asigna task_obj a assignee
+    repo.create(assignee.id, task_obj.id, owner.id, "task_assigned", "msg 1 para assignee")
+    
+    # owner crea task2 y asigna a other
+    task2 = task_repo.create(owner.id, "Task 2")
+    db_session.execute(sa.update(TaskORM).where(TaskORM.id == task2.id).values(assignee_id=other.id))
+    db_session.commit()
+    repo.create(other.id, task2.id, owner.id, "task_assigned", "msg 1 para other")
+    
+    # owner crea task3 y asigna a assignee
+    task3 = task_repo.create(owner.id, "Task 3")
+    db_session.execute(sa.update(TaskORM).where(TaskORM.id == task3.id).values(assignee_id=assignee.id))
+    db_session.commit()
+    repo.create(assignee.id, task3.id, owner.id, "task_assigned", "msg 2 para assignee")
+    
+    # Consultamos
+    notifs_assignee = repo.list_by_recipient(assignee.id)
+    assert len(notifs_assignee) == 2
+    # Ambas de assignee deben estar disponibles porque MAX(id) es particionado por (task_id, recipient_id)
+    for n in notifs_assignee:
+        assert getattr(n, "available", False) is True, f"Notificación {n.id} para {n.task_id} debe estar available"
+    
+    notifs_other = repo.list_by_recipient(other.id)
+    assert len(notifs_other) == 1
+    assert getattr(notifs_other[0], "available", False) is True, "Notificación para other debe estar available"
+

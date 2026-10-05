@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional, List, Union
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
-from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM, CategoryORM
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
+from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM, CategoryORM, NotificationORM
 
 
 class UserRepository:
@@ -69,6 +69,7 @@ class TaskRepository:
             priority=r.priority if r.priority else "media",
             category_id=r.category_id,
             category_name=category_name,
+            assignee_id=r.assignee_id,
             is_overdue=is_overdue,
             is_deleted=r.is_deleted,
             deleted_at=r.deleted_at,
@@ -173,6 +174,7 @@ class TaskRepository:
             task_orm.status = task.status
             task_orm.priority = task.priority or "media"
             task_orm.category_id = task.category_id
+            task_orm.assignee_id = task.assignee_id
             task_orm.is_deleted = task.is_deleted
             task_orm.deleted_at = task.deleted_at
             task_orm.updated_at = now
@@ -364,4 +366,95 @@ class CategoryRepository:
         return True
 
 
+class NotificationRepository:
+    def __init__(self, session: Session):
+        self.session = session
 
+    def create(self, recipient_id: int, task_id: int, actor_id: int, type: str, message: str) -> Notification:
+        now = datetime.now(timezone.utc).isoformat()
+        notif_orm = NotificationORM(
+            recipient_id=recipient_id,
+            task_id=task_id,
+            actor_id=actor_id,
+            type=type,
+            message=message,
+            created_at=now
+        )
+        self.session.add(notif_orm)
+        self.session.flush()
+        return Notification(
+            id=notif_orm.id,
+            recipient_id=notif_orm.recipient_id,
+            task_id=notif_orm.task_id,
+            actor_id=notif_orm.actor_id,
+            type=notif_orm.type,
+            message=notif_orm.message,
+            is_read=notif_orm.is_read,
+            read_at=notif_orm.read_at,
+            created_at=notif_orm.created_at
+        )
+
+    def list_by_recipient(self, recipient_id: int) -> List[Notification]:
+        subq = (
+            sa.select(
+                NotificationORM.task_id,
+                sa.func.max(NotificationORM.id).label("max_id")
+            )
+            .where(NotificationORM.recipient_id == recipient_id)
+            .group_by(NotificationORM.task_id)
+            .subquery()
+        )
+        
+        stmt = (
+            sa.select(NotificationORM, TaskORM, subq.c.max_id)
+            .outerjoin(TaskORM, TaskORM.id == NotificationORM.task_id)
+            .outerjoin(subq, subq.c.task_id == NotificationORM.task_id)
+            .where(NotificationORM.recipient_id == recipient_id)
+            .order_by(NotificationORM.is_read.asc(), NotificationORM.created_at.desc(), NotificationORM.id.desc())
+            .limit(50)
+        )
+        
+        rows = self.session.execute(stmt).all()
+        results = []
+        for n_orm, t_orm, max_id in rows:
+            available = False
+            if t_orm and not t_orm.is_deleted and t_orm.assignee_id == recipient_id and n_orm.id == max_id:
+                available = True
+                
+            n = Notification(
+                id=n_orm.id,
+                recipient_id=n_orm.recipient_id,
+                task_id=n_orm.task_id,
+                actor_id=n_orm.actor_id,
+                type=n_orm.type,
+                message=n_orm.message,
+                is_read=n_orm.is_read,
+                read_at=n_orm.read_at,
+                created_at=n_orm.created_at,
+                available=available,
+                task_title=t_orm.title if available and t_orm else None,
+                task_status=t_orm.status if available and t_orm else None
+            )
+            results.append(n)
+        return results
+
+    def count_unread(self, recipient_id: int) -> int:
+        stmt = sa.select(sa.func.count()).where(
+            NotificationORM.recipient_id == recipient_id,
+            NotificationORM.is_read == False
+        )
+        return self.session.execute(stmt).scalar() or 0
+
+    def mark_as_read(self, notification_id: int, recipient_id: int) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        stmt = (
+            sa.update(NotificationORM)
+            .where(
+                NotificationORM.id == notification_id,
+                NotificationORM.recipient_id == recipient_id,
+                NotificationORM.is_read == False
+            )
+            .values(is_read=True, read_at=now)
+        )
+        self.session.execute(stmt)
+        self.session.flush()

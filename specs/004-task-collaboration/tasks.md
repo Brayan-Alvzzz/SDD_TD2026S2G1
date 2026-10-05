@@ -20,14 +20,14 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 - [x] T004 [F1] Escribir prueba unitaria en `tests/unit/test_notification_repository.py` para verificar la inserción base y la vista lógica `available`. Guardar salida RED en `docs/evidencias/inc4/red-repo.txt`.
 
 ### Implementation
-- [ ] T005 [F1] Actualizar modelos en `src/domain/models.py` y `src/infrastructure/models.py` (`Task`, `TaskORM`, `Notification`, `NotificationORM`) y restricciones de `AuditLogORM`.
+- [x] T005 [F1] Actualizar modelos en `src/domain/models.py` y `src/infrastructure/models.py` (`Task`, `TaskORM`, `Notification`, `NotificationORM`) y restricciones de `AuditLogORM`.
 - [x] T006 [F1] Crear la migración `migrations/versions/<rev>_004_task_collaboration.py` con `assignee_id`, tabla `notifications`, ampliación del `CHECK` de auditoría, y el *pre-flight check* para proteger el downgrade.
-- [ ] T007 [F1] Implementar `NotificationRepository` en `src/infrastructure/repositories.py` para que esté disponible para la transacción del servicio de asignación.
+- [x] T007 [F1] Implementar `NotificationRepository` en `src/infrastructure/repositories.py` para que esté disponible para la transacción del servicio de asignación.
 - [x] T008 [F2] Implementar `src/domain/permissions.py` y añadir `TaskNotAccessibleError`, `OperationNotPermittedError` en `src/domain/exceptions.py`.
 
 ### Checkpoint (GREEN)
-- [ ] T009 [F1] Ejecutar pruebas de migración/repositorio y guardar GREEN en `docs/evidencias/inc4/green-f1.txt`.
-- [x] T010 [F2] Ejecutar pruebas de permisos y guardar GREEN en `docs/evidencias/inc4/permisos-green.txt`.
+- [x] T009 [F1] Ejecutar pruebas de migración/repositorio y guardar GREEN en `docs/evidencias/inc4/repositorio-green-corregido.txt`.
+- [x] T010 [F2] Ejecutar pruebas de permisos y guardar GREEN en `docs/evidencias/inc4/permisos-green.txt` (Regresión corregida confirmada con 174 passed).
 
 ---
 
