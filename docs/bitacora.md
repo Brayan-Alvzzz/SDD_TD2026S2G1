@@ -47,3 +47,8 @@ Registro de decisiones tomadas en esta sesión. No se ejecutaron pruebas de este
 - Fuera de alcance: Incremento 5 y drag-and-drop.
 
 Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-model.md, quickstart.md, contracts/task-collaboration-api.json}`.
+
+### Correcciones post-análisis (speckit-analyze)
+- **C1 (Dependencias):** Se adelantó la creación y prueba de `NotificationRepository` a la Fase 2 (Fundacional) para que esté disponible antes de implementar el servicio de asignación en la Fase 3, resolviendo la dependencia cruzada en la transacción atómica. La tarea duplicada en US2 fue eliminada.
+- **C2 (Alcance MVP):** Se corrigió la sugerencia de MVP en `tasks.md`, aclarando que ninguna entrega del Incremento 4 se considera completa sin las historias HU-10 y HU-11 integradas; las etapas intermedias son hitos de desarrollo progresivos, no entregables funcionales finales.
+- **C3 (Dependencia temporal):** Se explicitó en la Fase 5 que la inyección del contador de notificaciones no leídas en el procesador de contexto de Flask (`app.py`) requiere estrictamente que el repositorio de notificaciones esté finalizado.
