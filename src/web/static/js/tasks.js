@@ -7,12 +7,64 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!listContainer) return;
 
     listContainer.addEventListener("click", async (e) => {
+        const reopenBtn = e.target.closest(".btn-reopen-task");
+        if (reopenBtn) {
+            e.preventDefault();
+            const taskId = reopenBtn.dataset.taskId;
+            const badge = document.getElementById(`task-badge-${taskId}`);
+            const actionsContainer = reopenBtn.closest(".task-actions");
+
+            if (!taskId || !badge || !actionsContainer) return;
+
+            // 1. Save previous state for rollback
+            const prevStatusText = badge.textContent;
+            const prevBadgeClass = badge.className;
+            const prevActionsHTML = actionsContainer.innerHTML;
+
+            // 2. Optimistic UI update
+            badge.textContent = "pendiente";
+            badge.className = "badge badge-pendiente";
+            reopenBtn.disabled = true;
+            reopenBtn.textContent = "Reabriendo...";
+
+            // 3. Send API request
+            const result = await API.post(`/api/tasks/${taskId}/reopen`);
+
+            if (!result.success) {
+                // 4. Rollback on failure
+                badge.textContent = prevStatusText;
+                badge.className = prevBadgeClass;
+                actionsContainer.innerHTML = prevActionsHTML;
+                showNotification(`Error al reabrir tarea: ${result.error}`, "error");
+                return;
+            }
+
+            // 5. Update actions container upon success
+            const deleteFormHTML = `
+                <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
+                    <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
+                        Eliminar
+                    </button>
+                </form>
+            `;
+            actionsContainer.innerHTML = `
+                <button type="button" class="btn btn-sm btn-primary btn-advance-status" 
+                        data-task-id="${taskId}" data-next-status="en_progreso">
+                    Iniciar ▶
+                </button>
+                <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
+                ${deleteFormHTML}
+            `;
+            showNotification("Tarea reabierta exitosamente.", "success");
+            return;
+        }
+
         const btn = e.target.closest(".btn-advance-status");
         if (!btn) return;
 
         const taskId = btn.dataset.taskId;
         const nextStatus = btn.dataset.nextStatus;
-        const badge = document.getElementById(`task-badge-{{ task.id }}`.replace("{{ task.id }}", taskId));
+        const badge = document.getElementById(`task-badge-${taskId}`);
         const actionsContainer = btn.parentElement;
 
         if (!taskId || !nextStatus || !badge) return;
@@ -60,7 +112,15 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
             showNotification("Tarea marcada como 'en progreso'", "success");
         } else if (nextStatus === "completada") {
+            const reopenFormHTML = `
+                <form method="POST" action="/tasks/${taskId}/reopen" class="reopen-task-form inline-form">
+                    <button type="submit" class="btn btn-sm btn-secondary btn-reopen-task" data-task-id="${taskId}">
+                        Reabrir ↺
+                    </button>
+                </form>
+            `;
             actionsContainer.innerHTML = `
+                ${reopenFormHTML}
                 <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
                 ${deleteFormHTML}
             `;

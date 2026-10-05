@@ -175,6 +175,36 @@ class TaskService:
             self._rollback()
             raise
 
+    def reopen_task(self, task_id: int, user_id: int) -> Task:
+        task = self.get_task(task_id, user_id, include_deleted=True)
+        if task.is_deleted:
+            raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
+
+        target_status = TaskStateMachine.validate_reopen(task.status)
+        old_status = task.status
+        task.status = target_status
+        try:
+            updated = self.task_repo.update(task)
+
+            # Audit log reopen event
+            audit_details = json.dumps({
+                "from": old_status,
+                "to": target_status,
+                "reason": "reopen_by_user"
+            })
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=user_id,
+                action="reopen",
+                details=audit_details
+            )
+
+            self._commit()
+            return updated
+        except Exception:
+            self._rollback()
+            raise
+
     def update_task(self, task_id: int, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[str] = None) -> Task:
         task = self.get_task(task_id, user_id)
         if task.is_deleted:

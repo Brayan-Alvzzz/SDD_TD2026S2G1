@@ -1,6 +1,6 @@
 import pytest
 import json
-from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError
+from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError, InvalidStateTransitionError
 
 
 def test_create_task_success(task_service, user_service):
@@ -194,5 +194,69 @@ def test_soft_delete_blocks_subsequent_modifications(task_service, user_service)
 
     with pytest.raises((ValidationError, NotFoundError)):
         task_service.update_task_status(task.id, user.id, "en_progreso")
+
+
+def test_reopen_task_success(task_service, user_service, audit_repo):
+    user = user_service.register_user("reopen_user1@example.com", "password123")
+    task = task_service.create_task(user.id, "Tarea a completar y reabrir")
+    task_service.update_task_status(task.id, user.id, "en_progreso")
+    task_service.update_task_status(task.id, user.id, "completada")
+
+    reopened = task_service.reopen_task(task.id, user.id)
+    assert reopened.status == "pendiente"
+
+    # Verify audit log entry
+    logs = audit_repo.list_by_task(task.id)
+    assert len(logs) == 4
+    reopen_log = logs[-1]
+    assert reopen_log.action == "reopen"
+    details = json.loads(reopen_log.details)
+    assert details["from"] == "completada"
+    assert details["to"] == "pendiente"
+
+
+def test_reopen_task_non_completed_fails(task_service, user_service):
+    user = user_service.register_user("reopen_user2@example.com", "password123")
+    t_pending = task_service.create_task(user.id, "Tarea Pendiente")
+    t_progress = task_service.create_task(user.id, "Tarea En Progreso")
+    task_service.update_task_status(t_progress.id, user.id, "en_progreso")
+
+    # Reopening pending task must fail
+    with pytest.raises(InvalidStateTransitionError):
+        task_service.reopen_task(t_pending.id, user.id)
+
+    # Reopening in_progress task must fail
+    with pytest.raises(InvalidStateTransitionError):
+        task_service.reopen_task(t_progress.id, user.id)
+
+
+def test_reopen_task_deleted_fails(task_service, user_service):
+    user = user_service.register_user("reopen_user3@example.com", "password123")
+    task = task_service.create_task(user.id, "Tarea Completada y luego Borrada")
+    task_service.update_task_status(task.id, user.id, "en_progreso")
+    task_service.update_task_status(task.id, user.id, "completada")
+    task_service.delete_task(task.id, user.id)
+
+    # Reopening deleted task must fail
+    with pytest.raises((NotFoundError, ValidationError)):
+        task_service.reopen_task(task.id, user.id)
+
+
+def test_reopen_task_unauthorized_alien(task_service, user_service):
+    user_owner = user_service.register_user("reopen_owner@example.com", "password123")
+    user_alien = user_service.register_user("reopen_alien@example.com", "password123")
+    task = task_service.create_task(user_owner.id, "Tarea Completada de Owner")
+    task_service.update_task_status(task.id, user_owner.id, "en_progreso")
+    task_service.update_task_status(task.id, user_owner.id, "completada")
+
+    with pytest.raises(UnauthorizedError):
+        task_service.reopen_task(task.id, user_alien.id)
+
+
+def test_reopen_task_nonexistent_fails(task_service, user_service):
+    user = user_service.register_user("reopen_user4@example.com", "password123")
+    with pytest.raises(NotFoundError):
+        task_service.reopen_task(99999, user.id)
+
 
 

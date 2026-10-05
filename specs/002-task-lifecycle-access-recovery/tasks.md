@@ -111,16 +111,16 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T027 [P] [US2] Unit tests for state machine reopen validation in `tests/unit/test_state_machine.py` (verify `validate_reopen("completada")` returns `"pendiente"`, and raises `InvalidStateTransitionError` when current status is `"pendiente"` or `"en_progreso"`)
-- [ ] T028 [P] [US2] Unit tests for reopen service in `tests/unit/test_task_service.py` (verify `reopen_task(task_id, user_id)` sets status to `"pendiente"`, updates `updated_at`, and creates an immutable audit log entry with `action='reopen'` and details JSON `{"from": "completada", "to": "pendiente", "reason": "reopen_by_user"}`)
-- [ ] T029 [P] [US2] Integration tests for reopen HTTP endpoints in `tests/integration/test_task_routes.py` (verify `POST /tasks/<id>/reopen` redirects to `/tasks`, `POST /api/tasks/<id>/reopen` returns 200 JSON with `status="pendiente"`, returns 400 for tasks not in `"completada"`, returns 401 for unauthenticated, and returns 404 for nonexistent or alien tasks)
+- [X] T027 [P] [US2] Unit tests for state machine reopen validation in `tests/unit/test_state_machine.py` (verify `validate_reopen("completada")` returns `"pendiente"`, and raises `InvalidStateTransitionError` when current status is `"pendiente"` or `"en_progreso"`)
+- [X] T028 [P] [US2] Unit tests for reopen service in `tests/unit/test_task_service.py` (verify `reopen_task(task_id, user_id)` sets status to `"pendiente"`, updates `updated_at`, and creates an immutable audit log entry with `action='reopen'` and details JSON `{"from": "completada", "to": "pendiente", "reason": "reopen_by_user"}`)
+- [X] T029 [P] [US2] Integration tests for reopen HTTP endpoints in `tests/integration/test_task_routes.py` (verify `POST /tasks/<id>/reopen` redirects to `/tasks`, `POST /api/tasks/<id>/reopen` returns 200 JSON with `status="pendiente"`, returns 400 for tasks not in `"completada"`, returns 401 for unauthenticated, and returns 404 for nonexistent or alien tasks)
 
 ### Implementation for User Story 2
 
-- [ ] T030 [P] [US2] Implement deterministic reopen transition `TaskStateMachine.validate_reopen(current_status)` in `src/domain/state_machine.py` returning `"pendiente"` only if `current_status == "completada"`
-- [ ] T031 [US2] Implement `TaskService.reopen_task(task_id, user_id)` in `src/domain/services.py` validating task state via `TaskStateMachine.validate_reopen` and recording audit entry with `action='reopen'`
-- [ ] T032 [US2] Implement HTTP routes `POST /tasks/<id>/reopen` and `POST /api/tasks/<id>/reopen` in `src/web/task_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/task-lifecycle-api.json`
-- [ ] T033 [US2] Update `src/web/templates/tasks/list.html` to conditionally render the "Reabrir" button exclusively for tasks with `status == 'completada'`, and update `src/web/static/js/tasks.js` to handle asynchronous reopen requests
+- [X] T030 [P] [US2] Implement deterministic reopen transition `TaskStateMachine.validate_reopen(current_status)` in `src/domain/state_machine.py` returning `"pendiente"` only if `current_status == "completada"`
+- [X] T031 [US2] Implement `TaskService.reopen_task(task_id, user_id)` in `src/domain/services.py` validating task state via `TaskStateMachine.validate_reopen` and recording audit entry with `action='reopen'`
+- [X] T032 [US2] Implement HTTP routes `POST /tasks/<id>/reopen` and `POST /api/tasks/<id>/reopen` in `src/web/task_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/task-lifecycle-api.json`
+- [X] T033 [US2] Update `src/web/templates/tasks/list.html` to conditionally render the "Reabrir" button exclusively for tasks with `status == 'completada'`, and update `src/web/static/js/tasks.js` to handle asynchronous reopen requests
 
 **Checkpoint**: User Stories 1 and 2 fully functional and testable independently.
 

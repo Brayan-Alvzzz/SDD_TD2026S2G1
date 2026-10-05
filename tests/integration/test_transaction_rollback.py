@@ -62,3 +62,26 @@ def test_delete_task_rolls_back_when_audit_fails(user_service, task_service, tas
     assert len(logs) == 1
     assert logs[0].action == "create"
 
+
+def test_reopen_task_rolls_back_when_audit_fails(user_service, task_service, task_repo, audit_repo, db_session):
+    """Verify that when audit logging fails during reopen, task status modification is rolled back to 'completada'."""
+    user = user_service.register_user("rollback_reopen@example.com", "password123")
+    task = task_service.create_task(user_id=user.id, title="Task for Reopen Rollback")
+    task_service.update_task_status(task.id, user.id, "en_progreso")
+    task_service.update_task_status(task.id, user.id, "completada")
+
+    with patch.object(audit_repo, "create", side_effect=RuntimeError("Simulated audit reopen failure")):
+        with pytest.raises(RuntimeError, match="Simulated audit reopen failure"):
+            task_service.reopen_task(task.id, user.id)
+
+    # Verify task in database remains 'completada'
+    db_session.expire_all()
+    persisted = task_repo.get_by_id(task.id)
+    assert persisted.status == "completada"
+
+    # Verify audit logs only contain 'create' and 2 'status_change' events (no 'reopen')
+    logs = audit_repo.list_by_task(task.id)
+    assert len(logs) == 3
+    assert all(log.action != "reopen" for log in logs)
+
+
