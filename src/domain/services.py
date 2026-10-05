@@ -1,20 +1,39 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import secrets
+import hashlib
 import re
 import json
-from typing import Optional, List
-from src.domain.models import User, Task, AuditLog
+from typing import Optional, List, Any
+from src.domain.models import User, Task, AuditLog, PasswordResetToken
 from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
 from src.domain.state_machine import TaskStateMachine
 from src.infrastructure.security import hash_password, verify_password
-from src.infrastructure.repositories import UserRepository, TaskRepository, AuditLogRepository
+from src.infrastructure.repositories import (
+    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository
+)
+from src.infrastructure.notifications import ConsoleNotificationService
 
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class UserService:
-    def __init__(self, user_repo: UserRepository, session=None):
+    def __init__(
+        self,
+        user_repo: UserRepository,
+        token_repo: Optional[PasswordResetTokenRepository] = None,
+        notification_service: Optional[Any] = None,
+        session=None
+    ):
         self.user_repo = user_repo
         self.session = session or getattr(user_repo, "session", None)
+        self.token_repo = token_repo or (PasswordResetTokenRepository(self.session) if self.session is not None else None)
+        self.notification_service = notification_service
+
+    def is_delivery_configured(self) -> bool:
+        """Check whether an active delivery mechanism is configured and enabled."""
+        if self.notification_service is None:
+            return False
+        return bool(getattr(self.notification_service, "enabled", True))
 
     def _commit(self):
         if self.session is not None:
@@ -57,6 +76,98 @@ class UserService:
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         return self.user_repo.get_by_id(user_id)
+
+    def request_password_reset(self, email: str, base_url: str = "") -> Optional[str]:
+        if not email or not EMAIL_REGEX.match(email.strip()):
+            raise ValidationError("Debe proporcionar una dirección de correo electrónico válida.")
+
+        normalized_email = email.strip().lower()
+        user = self.user_repo.get_by_email(normalized_email)
+        delivery_active = self.is_delivery_configured()
+
+        if user and delivery_active:
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+            now = datetime.now(timezone.utc)
+            expires_at = (now + timedelta(minutes=30)).isoformat()
+
+            try:
+                if self.token_repo is not None:
+                    # Revoke unconsumed previous tokens for this user
+                    self.token_repo.revoke_all_for_user(user.id)
+                    # Persist only the token SHA-256 hash
+                    self.token_repo.create_token(
+                        user_id=user.id,
+                        token_hash=token_hash,
+                        expires_at=expires_at
+                    )
+                self._commit()
+
+                reset_url = f"{base_url}/reset-password/{raw_token}" if base_url else f"/reset-password/{raw_token}"
+                self.notification_service.send_password_reset_link(user.email, reset_url)
+
+                return raw_token
+            except Exception:
+                self._rollback()
+                raise
+        else:
+            # Timing variation mitigation conforme a SC-004:
+            # Execute dummy cryptographic hashing, dummy DB lookup, and calibrated delay.
+            dummy_token = secrets.token_urlsafe(32)
+            dummy_hash = hashlib.sha256(dummy_token.encode("utf-8")).hexdigest()
+            if self.token_repo is not None:
+                self.token_repo.find_active_by_hash(dummy_hash)
+            import time
+            time.sleep(0.005)
+            return None
+
+
+    def reset_password(self, token: str, new_password: str, new_password_confirm: str) -> None:
+        if not new_password or not new_password_confirm:
+            raise ValidationError("La contraseña y su confirmación son obligatorias.")
+
+        if new_password != new_password_confirm:
+            raise ValidationError("Las contraseñas no coinciden.")
+
+        if len(new_password) < 8 or not new_password.strip():
+            raise ValidationError("La contraseña debe tener al menos 8 caracteres.")
+
+        if not token or not token.strip():
+            raise ValidationError("El token de restablecimiento es inválido o ha expirado.")
+
+        token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+
+        if self.token_repo is None:
+            raise ValidationError("Repositorio de tokens no configurado.")
+
+        token_obj = self.token_repo.find_active_by_hash(token_hash)
+        if not token_obj:
+            raise ValidationError("El token de restablecimiento es inválido o ha expirado.")
+
+        # Expiration check
+        try:
+            token_expires = datetime.fromisoformat(token_obj.expires_at)
+            if token_expires.tzinfo is None:
+                token_expires = token_expires.replace(tzinfo=timezone.utc)
+        except Exception:
+            raise ValidationError("El token de restablecimiento es inválido o ha expirado.")
+
+        now = datetime.now(timezone.utc)
+        if token_expires < now:
+            self.token_repo.mark_as_used(token_obj.id)
+            self._commit()
+            raise ValidationError("El token de restablecimiento ha expirado.")
+
+        # Update password and consume token atomically
+        new_pwd_hash = hash_password(new_password)
+        try:
+            self.user_repo.update_password(token_obj.user_id, new_pwd_hash)
+            self.token_repo.mark_as_used(token_obj.id)
+            self._commit()
+        except Exception:
+            self._rollback()
+            raise
+
 
 
 class TaskService:
@@ -205,7 +316,14 @@ class TaskService:
             self._rollback()
             raise
 
-    def update_task(self, task_id: int, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[str] = None) -> Task:
+    def update_task(
+        self,
+        task_id: int,
+        user_id: int,
+        title: str,
+        description: Optional[str] = None,
+        due_date: Optional[str] = None
+    ) -> Task:
         task = self.get_task(task_id, user_id)
         if task.is_deleted:
             raise ValidationError("No se puede modificar una tarea eliminada.")

@@ -33,6 +33,7 @@ def app(test_db_path):
         "DATABASE_PATH": test_db_path,
         "SQLALCHEMY_DATABASE_URI": uri,
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
+        "ENABLE_CONSOLE_PASSWORD_RESET": True,
     }
     flask_app = create_app(test_config)
 
@@ -74,7 +75,10 @@ def audit_repo(db_session):
 
 @pytest.fixture
 def user_service(user_repo, db_session):
-    return UserService(user_repo, session=db_session)
+    from src.infrastructure.notifications import ConsoleNotificationService
+    notification_svc = ConsoleNotificationService(enabled=True)
+    return UserService(user_repo, notification_service=notification_svc, session=db_session)
+
 
 
 @pytest.fixture

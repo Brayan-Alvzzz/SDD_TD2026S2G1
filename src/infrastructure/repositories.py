@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional, List
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from src.domain.models import User, Task, AuditLog
-from src.infrastructure.models import UserORM, TaskORM, AuditLogORM
+from src.domain.models import User, Task, AuditLog, PasswordResetToken
+from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM
 
 
 class UserRepository:
@@ -34,12 +34,25 @@ class UserRepository:
             return User(id=user_orm.id, email=user_orm.email, password_hash=user_orm.password_hash, created_at=user_orm.created_at)
         return None
 
+    def update_password(self, user_id: int, password_hash: str) -> None:
+        user_orm = self.session.get(UserORM, user_id)
+        if user_orm:
+            user_orm.password_hash = password_hash
+            self.session.flush()
+
 
 class TaskRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create(self, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[str] = None, status: str = "pendiente") -> Task:
+    def create(
+        self,
+        user_id: int,
+        title: str,
+        description: Optional[str] = None,
+        due_date: Optional[str] = None,
+        status: str = "pendiente"
+    ) -> Task:
         now = datetime.now(timezone.utc).isoformat()
         task_orm = TaskORM(
             user_id=user_id,
@@ -181,3 +194,64 @@ class AuditLogRepository:
             )
             for r in rows
         ]
+
+
+class PasswordResetTokenRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create_token(self, user_id: int, token_hash: str, expires_at: str) -> PasswordResetToken:
+        now = datetime.now(timezone.utc).isoformat()
+        token_orm = PasswordResetTokenORM(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            used=False,
+            created_at=now
+        )
+        self.session.add(token_orm)
+        self.session.flush()
+        return PasswordResetToken(
+            id=token_orm.id,
+            user_id=token_orm.user_id,
+            token_hash=token_orm.token_hash,
+            expires_at=token_orm.expires_at,
+            used=token_orm.used,
+            created_at=token_orm.created_at
+        )
+
+    def find_active_by_hash(self, token_hash: str) -> Optional[PasswordResetToken]:
+        stmt = sa.select(PasswordResetTokenORM).where(
+            PasswordResetTokenORM.token_hash == token_hash,
+            PasswordResetTokenORM.used == False
+        )
+        token_orm = self.session.execute(stmt).scalars().first()
+        if token_orm:
+            return PasswordResetToken(
+                id=token_orm.id,
+                user_id=token_orm.user_id,
+                token_hash=token_orm.token_hash,
+                expires_at=token_orm.expires_at,
+                used=token_orm.used,
+                created_at=token_orm.created_at
+            )
+        return None
+
+    def mark_as_used(self, token_id: int) -> None:
+        token_orm = self.session.get(PasswordResetTokenORM, token_id)
+        if token_orm:
+            token_orm.used = True
+            self.session.flush()
+
+    def revoke_all_for_user(self, user_id: int) -> None:
+        stmt = (
+            sa.update(PasswordResetTokenORM)
+            .where(
+                PasswordResetTokenORM.user_id == user_id,
+                PasswordResetTokenORM.used == False
+            )
+            .values(used=True)
+        )
+        self.session.execute(stmt)
+        self.session.flush()
+

@@ -150,36 +150,72 @@ pytest -v
 
 ---
 
-## 4. Validación Manual en el Navegador Web
+## 4. Validación Manual en el Navegador Web (Entorno Aislado)
 
-Iniciar el servidor de desarrollo en PowerShell:
+> [!IMPORTANT]
+> **Aislamiento de Bases de Datos**: Para no alterar `taskcontrol.db` ni `taskcontrol_backup.db`, la validación manual debe realizarse sobre una base temporal aislada. Asimismo, la emisión de enlaces en consola requiere activar explícitamente `ENABLE_CONSOLE_PASSWORD_RESET=true`.
+
+Configurar el entorno temporal e iniciar el servidor en PowerShell:
 ```powershell
+# 1. Configurar base temporal aislada y activar emisión de token en consola para pruebas locales
+$env:DATABASE_PATH = "quickstart_temp.db"
+$env:ENABLE_CONSOLE_PASSWORD_RESET = "true"
+
+# 2. Aplicar las migraciones versionadas (001 y 002) sobre la base temporal
+flask --app src.web.app:create_app db upgrade
+
+# 3. Iniciar el servidor de desarrollo
 python -m src.web.app
 ```
 
+> [!NOTE]
+> Al terminar las pruebas manuales, detener el servidor (`Ctrl+C`), restaurar el entorno y remover la base temporal:
+> ```powershell
+> Remove-Item env:DATABASE_PATH
+> Remove-Item env:ENABLE_CONSOLE_PASSWORD_RESET
+> if (Test-Path "quickstart_temp.db") { Remove-Item "quickstart_temp.db" }
+> ```
+
 ### Escenario A: Eliminación Lógica de Tareas (HU-05)
-1. Navegar a `http://localhost:5000/login` e iniciar sesión con `demo@taskcontrol.com` (`password123`).
-2. En el listado de tareas (`/tasks`), ubicar una tarea activa y hacer clic en el botón de eliminar.
-3. Comprobar que aparece el diálogo nativo del navegador (`confirm: "¿Desea eliminar esta tarea?"`).
-4. Al confirmar, la página se recarga, la tarea ya no figura en el listado y se muestra un mensaje flash de éxito.
-5. Inspeccionar la base de datos: la fila tiene `is_deleted = 1` y existe un registro en `audit_logs` con `action = 'delete'`.
+1. Navegar a `http://localhost:5000/register` y registrar un usuario de prueba (ej. `demo@taskcontrol.com` con `password123`).
+2. Crear una o más tareas de prueba en `/tasks` (ej. "Tarea para eliminar").
+3. En el listado de tareas (`/tasks`), ubicar la tarea activa y hacer clic en el botón «Eliminar».
+4. Comprobar que aparece el diálogo nativo de confirmación del navegador (`confirm: "¿Está seguro de que desea eliminar esta tarea?"`).
+5. Al confirmar, la tarea desaparece del listado visible y se muestra un mensaje flash de éxito.
+6. Si se cancela el diálogo, la tarea permanece en el listado y no se ejecuta ninguna petición destructiva.
+7. Intentar acceder por URL directa a `/tasks/<id>/edit`: el sistema responde `404 Not Found`.
 
 ### Escenario B: Reapertura de Tareas Completadas (HU-06)
-1. Filtrar o ubicar una tarea en estado "completada" en `/tasks`.
-2. Hacer clic en el botón "Reabrir".
-3. La tarea pasa de inmediato a estado "pendiente" y se reubica entre las tareas activas.
-4. Inspeccionar la base de datos: el log de auditoría tiene una nueva fila con `action = 'reopen'`, distinguiéndose claramente de `status_change` y `create`.
+1. En `/tasks`, crear una tarea "Tarea de ciclo completo" (inicia en `pendiente`).
+2. Pulsar «Iniciar ▶» (transiciona a `en_progreso`).
+3. Pulsar «Completar ✓» (transiciona a `completada`).
+4. Comprobar que en estado `completada` aparece exclusivamente el botón «Reabrir ↺».
+5. Pulsar «Reabrir ↺»:
+   - La interfaz actualiza de forma inmediata y optimista el estado a `pendiente` con su insignia correspondiente.
+   - En caso de fallo de red/servidor, la interfaz revierte al estado previo y muestra alerta de error.
+6. Verificar que la tarea reabierta permite reanudar su avance normal («Iniciar ▶»).
 
 ### Escenario C: Recuperación Segura de Contraseña (HU-14)
-1. Cerrar sesión (`/logout`) y navegar a la pantalla de login (`http://localhost:5000/login`).
-2. Hacer clic en "¿Olvidaste tu contraseña?" (`http://localhost:5000/forgot-password`).
-3. Ingresar `demo@taskcontrol.com` y enviar el formulario.
-4. Comprobar que en el navegador se muestra el mensaje neutro de confirmación:
-   *"Si la dirección de correo electrónico está registrada en el sistema, se ha enviado un enlace para restablecer la contraseña."*
-5. Repetir la solicitud con un correo inexistente (`ficticio@correo.com`): comprobar que la pantalla muestra exactamente el mismo mensaje neutro sin dar pistas de si la cuenta existe o no.
-6. En la terminal donde corre Flask, observar la línea impresa:
-   `[DEV NOTIFICATION] Enlace de restablecimiento: http://localhost:5000/reset-password/<token>`
-7. Copiar el enlace de la terminal y abrirlo en el navegador.
-8. Ingresar una nueva contraseña (ej. `nuevaClave2026`) y confirmar.
-9. Redirige a `/login` con mensaje de éxito; iniciar sesión con la nueva contraseña.
-10. Intentar volver a abrir el mismo enlace en el navegador: el sistema debe rechazar el acceso indicando que el enlace ya fue utilizado o no es válido.
+1. Cerrar sesión (`/logout`) y navegar a `http://localhost:5000/login`.
+2. Hacer clic en el enlace «¿Olvidó su contraseña?» (`http://localhost:5000/forgot-password`).
+3. Probar con un correo no registrado (ej. `inexistente@correo.com`) y enviar:
+   - Se muestra el mensaje neutro:
+     *"Si la dirección de correo electrónico está registrada en el sistema, se ha enviado un enlace para restablecer la contraseña."*
+   - La terminal del servidor NO imprime ningún enlace.
+4. Ingresar el correo registrado (`demo@taskcontrol.com`) y enviar:
+   - Se muestra exactamente el mismo mensaje neutro de confirmación.
+   - En la terminal del servidor (con `ENABLE_CONSOLE_PASSWORD_RESET=true`) se imprime:
+     ```text
+     =======================================================
+     [DESARROLLO LOCAL - RECUPERACIÓN DE CONTRASEÑA]
+     Para: demo@taskcontrol.com
+     Enlace de restablecimiento (válido por 30 minutos):
+     http://localhost:5000/reset-password/<token>
+     =======================================================
+     ```
+   - Ni el token ni su hash aparecen en la respuesta HTTP visible.
+5. Copiar el enlace de la terminal y abrirlo en el navegador.
+6. Ingresar una nueva contraseña (mínimo 8 caracteres, ej. `nuevaClave2026`) y su confirmación.
+7. Al enviar, redirige a `/login` con confirmación de éxito. Iniciar sesión con la nueva clave.
+8. Intentar reutilizar el enlace del token ya consumido: el sistema rechaza el acceso y redirige a `/login` con alerta de error.
+

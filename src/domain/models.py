@@ -32,3 +32,14 @@ class AuditLog:
     action: str
     details: str
     created_at: str
+
+
+@dataclass
+class PasswordResetToken:
+    id: Optional[int]
+    user_id: int
+    token_hash: str
+    expires_at: str
+    used: bool = False
+    created_at: str = ""
+

@@ -136,17 +136,17 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T034 [P] [US3] Unit tests for password reset token lifecycle and security in `tests/unit/test_user_service.py` (test neutral response for nonexistent email, secure token generation with SHA-256 hash storage, 30-minute expiration enforcement, single-use `used=1` invalidation, proactive revocation of unconsumed tokens upon new request, and rejection of passwords shorter than 8 characters)
-- [ ] T035 [P] [US3] Integration tests for password recovery HTTP endpoints in `tests/integration/test_auth_routes.py` (test `GET /forgot-password` renders 200, `POST /forgot-password` returns 200 with identical neutral message for registered and unregistered emails, `GET /reset-password/<valid_token>` renders 200 form, `GET /reset-password/<expired_or_used_token>` redirects to `/login` with flash error, `POST /reset-password/<token>` updates password and redirects to `/login`, and returns 400 for password mismatch or length < 8)
+- [X] T034 [P] [US3] Unit tests for password reset token lifecycle and security in `tests/unit/test_user_service.py` (test neutral response for nonexistent email, secure token generation with SHA-256 hash storage, 30-minute expiration enforcement, single-use `used=1` invalidation, proactive revocation of unconsumed tokens upon new request, and rejection of passwords shorter than 8 characters)
+- [X] T035 [P] [US3] Integration tests for password recovery HTTP endpoints in `tests/integration/test_auth_routes.py` (test `GET /forgot-password` renders 200, `POST /forgot-password` returns 200 with identical neutral message for registered and unregistered emails, `GET /reset-password/<valid_token>` renders 200 form, `GET /reset-password/<expired_or_used_token>` redirects to `/login` with flash error, `POST /reset-password/<token>` updates password and redirects to `/login`, and returns 400 for password mismatch or length < 8)
 
 ### Implementation for User Story 3
 
-- [ ] T036 [P] [US3] Define `PasswordResetToken` domain entity dataclass in `src/domain/models.py` (`id: Optional[int]`, `user_id: int`, `token_hash: str`, `expires_at: str`, `used: bool = False`, `created_at: str = ""`)
-- [ ] T037 [P] [US3] Implement `PasswordResetTokenRepository` in `src/infrastructure/repositories.py` (`create_token`, `find_active_by_hash`, `mark_as_used`, `revoke_all_for_user`)
-- [ ] T038 [P] [US3] Implement `ConsoleNotificationService` in `src/infrastructure/notifications.py` to print recovery link securely to server terminal during local development without persisting plain tokens to disk
-- [ ] T039 [US3] Implement `UserService.request_password_reset(email)` and `UserService.reset_password(token, new_password, new_password_confirm)` in `src/domain/services.py` with timing-neutral handling for nonexistent emails, SHA-256 token hashing, 30-minute expiration check, single-use consumption in transaction with password update, and min 8 chars validation
-- [ ] T040 [US3] Implement aligned authentication routes `GET /forgot-password`, `POST /forgot-password`, `GET /reset-password/<token>`, and `POST /reset-password/<token>` in `src/web/auth_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/password-recovery-api.json`
-- [ ] T041 [US3] Create Jinja2 templates `src/web/templates/auth/forgot_password.html` and `src/web/templates/auth/reset_password.html` and add "¿Olvidó su contraseña?" recovery link in `src/web/templates/auth/login.html`
+- [X] T036 [P] [US3] Define `PasswordResetToken` domain entity dataclass in `src/domain/models.py` (`id: Optional[int]`, `user_id: int`, `token_hash: str`, `expires_at: str`, `used: bool = False`, `created_at: str = ""`)
+- [X] T037 [P] [US3] Implement `PasswordResetTokenRepository` in `src/infrastructure/repositories.py` (`create_token`, `find_active_by_hash`, `mark_as_used`, `revoke_all_for_user`)
+- [X] T038 [P] [US3] Implement `ConsoleNotificationService` in `src/infrastructure/notifications.py` to print recovery link securely to server terminal during local development without persisting plain tokens to disk
+- [X] T039 [US3] Implement `UserService.request_password_reset(email)` and `UserService.reset_password(token, new_password, new_password_confirm)` in `src/domain/services.py` with timing-neutral handling for nonexistent emails, SHA-256 token hashing, 30-minute expiration check, single-use consumption in transaction with password update, and min 8 chars validation
+- [X] T040 [US3] Implement aligned authentication routes `GET /forgot-password`, `POST /forgot-password`, `GET /reset-password/<token>`, and `POST /reset-password/<token>` in `src/web/auth_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/password-recovery-api.json`
+- [X] T041 [US3] Create Jinja2 templates `src/web/templates/auth/forgot_password.html` and `src/web/templates/auth/reset_password.html` and add "¿Olvidó su contraseña?" recovery link in `src/web/templates/auth/login.html`
 
 **Checkpoint**: All three user stories are functional and independently testable.
 
@@ -156,9 +156,9 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 
 **Purpose**: Full regression testing, quality gates, and end-to-end verification.
 
-- [ ] T042 Run entire automated test suite (`pytest -v --cov=src`) to ensure all 39 Increment 1 tests and all new Increment 2 unit, integration, and migration tests pass cleanly with 100% success
-- [ ] T043 [P] Run manual end-to-end walkthrough following `specs/002-task-lifecycle-access-recovery/quickstart.md` validating soft delete confirmation, reopen completed task, password recovery via console link, and login verification
-- [ ] T044 [P] Verify code quality, PEP 8 styling compliance, and security hygiene (no plain tokens or passwords logged or written to persistent files) across all modified files in `src/` and `tests/`
+- [X] T042 Run entire automated test suite (`pytest -v --cov=src`) to ensure all 39 Increment 1 tests and all new Increment 2 unit, integration, and migration tests pass cleanly with 100% success
+- [X] T043 [P] Run manual end-to-end walkthrough following `specs/002-task-lifecycle-access-recovery/quickstart.md` validating soft delete confirmation, reopen completed task, password recovery via console link, and login verification
+- [X] T044 [P] Verify code quality, PEP 8 styling compliance, and security hygiene (no plain tokens or passwords logged or written to persistent files) across all modified files in `src/` and `tests/`
 
 ---
 

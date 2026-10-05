@@ -85,3 +85,23 @@ def test_reopen_task_rolls_back_when_audit_fails(user_service, task_service, tas
     assert all(log.action != "reopen" for log in logs)
 
 
+def test_reset_password_rolls_back_when_token_consumption_fails(user_service, db_session):
+    """Verify that if token consumption fails during password reset, the user password is not updated and changes roll back."""
+    from src.domain.exceptions import UnauthorizedError
+    user = user_service.register_user("rollback_pwd@example.com", "originalpassword123")
+    token = user_service.request_password_reset("rollback_pwd@example.com")
+
+    with patch.object(user_service.token_repo, "mark_as_used", side_effect=RuntimeError("Simulated token mark_as_used failure")):
+        with pytest.raises(RuntimeError, match="Simulated token mark_as_used failure"):
+            user_service.reset_password(token, "attemptedpassword123", "attemptedpassword123")
+
+    # Verify user password was rolled back and original password still authenticates
+    db_session.expire_all()
+    auth_user = user_service.authenticate_user("rollback_pwd@example.com", "originalpassword123")
+    assert auth_user is not None
+
+    with pytest.raises(UnauthorizedError):
+        user_service.authenticate_user("rollback_pwd@example.com", "attemptedpassword123")
+
+
+

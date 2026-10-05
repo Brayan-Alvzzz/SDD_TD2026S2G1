@@ -21,6 +21,7 @@ def create_app(test_config=None) -> Flask:
         PERMANENT_SESSION_LIFETIME=timedelta(hours=24),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        ENABLE_CONSOLE_PASSWORD_RESET=os.environ.get("ENABLE_CONSOLE_PASSWORD_RESET", "false").lower() in ("true", "1", "yes"),
     )
 
     if test_config is not None:
