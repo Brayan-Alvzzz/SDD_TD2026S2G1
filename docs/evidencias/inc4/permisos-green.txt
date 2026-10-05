@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 6 items
+
+tests/unit/test_permissions.py::test_owner_full_access PASSED            [ 16%]
+tests/unit/test_permissions.py::test_assignee_partial_access PASSED      [ 33%]
+tests/unit/test_permissions.py::test_alien_user_no_access PASSED         [ 50%]
+tests/unit/test_permissions.py::test_past_assignee_no_access PASSED      [ 66%]
+tests/unit/test_permissions.py::test_reassigned_user_no_access PASSED    [ 83%]
+tests/unit/test_permissions.py::test_deleted_task_no_access PASSED       [100%]
+
+============================== 6 passed in 0.01s ===============================

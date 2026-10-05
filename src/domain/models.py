@@ -25,6 +25,7 @@ class Task:
     user_id: int
     title: str
     description: Optional[str] = None
+    assignee_id: Optional[int] = None
     due_date: Optional[str] = None
     status: str = "pendiente"
     priority: str = "media"

@@ -23,11 +23,11 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 - [ ] T005 [F1] Actualizar modelos en `src/domain/models.py` y `src/infrastructure/models.py` (`Task`, `TaskORM`, `Notification`, `NotificationORM`) y restricciones de `AuditLogORM`.
 - [x] T006 [F1] Crear la migración `migrations/versions/<rev>_004_task_collaboration.py` con `assignee_id`, tabla `notifications`, ampliación del `CHECK` de auditoría, y el *pre-flight check* para proteger el downgrade.
 - [ ] T007 [F1] Implementar `NotificationRepository` en `src/infrastructure/repositories.py` para que esté disponible para la transacción del servicio de asignación.
-- [ ] T008 [F2] Implementar `src/domain/permissions.py` y añadir `TaskNotAccessibleError`, `OperationNotPermittedError` en `src/domain/exceptions.py`.
+- [x] T008 [F2] Implementar `src/domain/permissions.py` y añadir `TaskNotAccessibleError`, `OperationNotPermittedError` en `src/domain/exceptions.py`.
 
 ### Checkpoint (GREEN)
 - [ ] T009 [F1] Ejecutar pruebas de migración/repositorio y guardar GREEN en `docs/evidencias/inc4/green-f1.txt`.
-- [ ] T010 [F2] Ejecutar pruebas de permisos y guardar GREEN en `docs/evidencias/inc4/green-f2.txt`.
+- [x] T010 [F2] Ejecutar pruebas de permisos y guardar GREEN en `docs/evidencias/inc4/permisos-green.txt`.
 
 ---
 

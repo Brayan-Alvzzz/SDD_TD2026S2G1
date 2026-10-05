@@ -53,6 +53,14 @@ def test_past_assignee_no_access():
     with pytest.raises(TaskNotAccessibleError):
         authorize(task, user_id=20, operation=Operation.VIEW)
 
+def test_reassigned_user_no_access():
+    """Un usuario pierde acceso si la tarea es reasignada a otro (404)."""
+    task = Task(id=1, user_id=10, assignee_id=30, title="Task", status="pendiente", is_deleted=False)
+    
+    # El usuario 20 era asignado pero fue reasignado al usuario 30.
+    with pytest.raises(TaskNotAccessibleError):
+        authorize(task, user_id=20, operation=Operation.VIEW)
+
 def test_deleted_task_no_access():
     """Nadie, ni propietario ni asignado, tiene acceso a una tarea eliminada."""
     task = Task(id=1, user_id=10, assignee_id=20, title="Task", status="pendiente", is_deleted=True)

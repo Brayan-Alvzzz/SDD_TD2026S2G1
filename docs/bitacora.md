@@ -93,5 +93,16 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
     3. Ajeno: Ningún acceso (404) `TaskNotAccessibleError` a cualquier operación.
     4. Asignado anterior (desasignado): Ningún acceso (404), vuelve a ser ajeno.
     5. Tarea eliminada: Nadie tiene acceso (404), ni propietario ni asignado.
+- Adicionalmente, se integró el escenario para validar la pérdida de acceso de un asignado cuando la tarea es reasignada a otro (`test_reassigned_user_no_access`), elevando a 6 los escenarios totales.
 - **Resultado RED:** Las pruebas fallan por funcionalidad ausente pura (`ImportError` de `TaskNotAccessibleError`, `OperationNotPermittedError` y `authorize` desde `src.domain.permissions`). La salida real se guardó en `docs/evidencias/inc4/permisos-red.txt`.
 - Solo se escribieron las pruebas para verificar el comportamiento descrito; la funcionalidad no está verificada porque la implementación todavía no existe. No se modificó código de producción.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 2 (Permisos GREEN)
+
+- Se completaron las tareas **T005** (parcialmente, solo dominio), **T008** y **T010** según `tasks.md`.
+- **T005 (Parcial):** Se añadió el campo `assignee_id` como `Optional[int] = None` al modelo de dominio `Task` en `src/domain/models.py`, preservando compatibilidad con los usos anteriores.
+- **T008:** Se implementó `src/domain/permissions.py` puro, completamente independiente de Flask/HTTP.
+  - Se introdujeron las excepciones `TaskNotAccessibleError` y `OperationNotPermittedError` en `src/domain/exceptions.py`, ambas derivando de `UnauthorizedError`.
+  - Se definió el enum `Operation` y la función `authorize(task, user_id, operation)` que encapsula la política restrictiva estricta en función de rol y si la tarea ha sido borrada o el asignado cambiado.
+- **T010:** Se comprobó exitosamente que las 6 pruebas de roles y accesos pasaron (100% GREEN), y se registró la salida en `docs/evidencias/inc4/permisos-green.txt`.
+- La regresión completa (167/167 tests aprobados) demostró que introducir el nuevo campo en `Task` no corrompió las funcionalidades preexistentes. Salida en `docs/evidencias/inc4/regresion-permisos.txt`.

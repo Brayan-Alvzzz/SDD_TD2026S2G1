@@ -28,3 +28,13 @@ class ConflictError(DomainError):
 class InvalidStateTransitionError(DomainError):
     """Raised when an invalid task state transition is requested."""
     pass
+
+
+class TaskNotAccessibleError(UnauthorizedError):
+    """Raised when a user attempts to access a task they do not own or are not assigned to (404-like)."""
+    pass
+
+
+class OperationNotPermittedError(UnauthorizedError):
+    """Raised when a user is assigned to a task but attempts an operation they are not allowed to perform (403-like)."""
+    pass

@@ -19,4 +19,4 @@ E   ImportError: cannot import name 'TaskNotAccessibleError' from 'src.domain.ex
 =========================== short test summary info ============================
 ERROR tests/unit/test_permissions.py
 !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-=============================== 1 error in 0.06s ===============================
+=============================== 1 error in 0.05s ===============================
