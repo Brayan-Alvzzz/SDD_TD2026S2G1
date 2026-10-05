@@ -7,11 +7,16 @@ Increment 1 + Increment 2 models:
 - PasswordResetTokenORM: password_reset_tokens table
 """
 import sqlalchemy as sa
+from typing import TYPE_CHECKING, Optional, Any
 from src.infrastructure.database import db
 
 
 class UserORM(db.Model):
     __tablename__ = "users"
+
+    if TYPE_CHECKING:
+        def __init__(self, email: str, password_hash: str, created_at: str, **kwargs: Any) -> None: ...
+
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     email = db.Column(db.String(255, collation="NOCASE"), unique=True, nullable=False)
@@ -29,6 +34,10 @@ class UserORM(db.Model):
 class CategoryORM(db.Model):
     __tablename__ = "categories"
 
+    if TYPE_CHECKING:
+        def __init__(self, user_id: int, name: str, created_at: str, **kwargs: Any) -> None: ...
+
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = db.Column(db.String(50), nullable=False)
@@ -44,6 +53,25 @@ class CategoryORM(db.Model):
 
 class TaskORM(db.Model):
     __tablename__ = "tasks"
+
+    if TYPE_CHECKING:
+        def __init__(
+            self,
+            user_id: int,
+            title: str,
+            created_at: str,
+            updated_at: str,
+            description: Optional[str] = None,
+            due_date: Optional[str] = None,
+            status: Optional[str] = None,
+            priority: Optional[str] = None,
+            category_id: Optional[int] = None,
+            assignee_id: Optional[int] = None,
+            is_deleted: Optional[bool] = None,
+            deleted_at: Optional[str] = None,
+            **kwargs: Any
+        ) -> None: ...
+
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -88,6 +116,10 @@ class TaskORM(db.Model):
 class AuditLogORM(db.Model):
     __tablename__ = "audit_logs"
 
+    if TYPE_CHECKING:
+        def __init__(self, task_id: int, actor_id: int, action: str, details: str, created_at: str, **kwargs: Any) -> None: ...
+
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -110,6 +142,10 @@ class AuditLogORM(db.Model):
 class PasswordResetTokenORM(db.Model):
     __tablename__ = "password_reset_tokens"
 
+    if TYPE_CHECKING:
+        def __init__(self, user_id: int, token_hash: str, expires_at: str, created_at: str, used: Optional[bool] = None, **kwargs: Any) -> None: ...
+
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token_hash = db.Column(db.String(64), nullable=False)
@@ -125,6 +161,21 @@ class PasswordResetTokenORM(db.Model):
 
 class NotificationORM(db.Model):
     __tablename__ = "notifications"
+
+    if TYPE_CHECKING:
+        def __init__(
+            self,
+            recipient_id: int,
+            task_id: int,
+            actor_id: int,
+            type: str,
+            message: str,
+            created_at: str,
+            is_read: Optional[bool] = None,
+            read_at: Optional[str] = None,
+            **kwargs: Any
+        ) -> None: ...
+
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     recipient_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
