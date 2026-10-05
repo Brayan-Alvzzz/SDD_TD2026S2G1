@@ -41,6 +41,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // 5. Update next action button upon success
+        const deleteFormHTML = `
+            <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
+                <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
+                    Eliminar
+                </button>
+            </form>
+        `;
+
         if (nextStatus === "en_progreso") {
             actionsContainer.innerHTML = `
                 <button type="button" class="btn btn-sm btn-success btn-advance-status" 
@@ -48,13 +56,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     Completar ✓
                 </button>
                 <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
+                ${deleteFormHTML}
             `;
             showNotification("Tarea marcada como 'en progreso'", "success");
         } else if (nextStatus === "completada") {
             actionsContainer.innerHTML = `
                 <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
+                ${deleteFormHTML}
             `;
             showNotification("¡Tarea completada con éxito!", "success");
+        }
+    });
+
+    // Wire native browser confirmation for task deletion
+    listContainer.addEventListener("submit", (e) => {
+        const deleteForm = e.target.closest(".delete-task-form");
+        if (deleteForm) {
+            if (!confirm("¿Está seguro de que desea eliminar esta tarea?")) {
+                e.preventDefault();
+            }
         }
     });
 });

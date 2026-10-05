@@ -85,17 +85,17 @@ This task list guides the implementation of Increment 2 for TaskControl (HU-05: 
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T019 [P] [US1] Unit tests for soft delete in `tests/unit/test_task_service.py` (verify `delete_task` sets `is_deleted=True` and `deleted_at`, excludes deleted tasks from `list_tasks()`, raises error on duplicate delete attempt, prevents update/advance on deleted tasks, and creates audit log with `action='delete'`)
-- [ ] T020 [P] [US1] Integration tests for soft delete HTTP endpoints in `tests/integration/test_task_routes.py` (verify `POST /tasks/<id>/delete` redirects to `/tasks` with success flash, `DELETE /api/tasks/<id>` returns 200 JSON with `is_deleted=True`, returns 401 for unauthenticated requests, and returns 404 for nonexistent, already deleted, or alien tasks)
+- [X] T019 [P] [US1] Unit tests for soft delete in `tests/unit/test_task_service.py` (verify `delete_task` sets `is_deleted=True` and `deleted_at`, excludes deleted tasks from `list_tasks()`, raises error on duplicate delete attempt, prevents update/advance on deleted tasks, and creates audit log with `action='delete'`)
+- [X] T020 [P] [US1] Integration tests for soft delete HTTP endpoints in `tests/integration/test_task_routes.py` (verify `POST /tasks/<id>/delete` redirects to `/tasks` with success flash, `DELETE /api/tasks/<id>` returns 200 JSON with `is_deleted=True`, returns 401 for unauthenticated requests, and returns 404 for nonexistent, already deleted, or alien tasks)
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Update domain model `Task` dataclass in `src/domain/models.py` adding `is_deleted: bool = False` and `deleted_at: Optional[str] = None`
-- [ ] T022 [US1] Update `TaskRepository` in `src/infrastructure/repositories.py` to filter `TaskORM.is_deleted == False` by default in `list_by_user()`, implement `soft_delete(task_id, user_id, deleted_at)` on `TaskORM` using the shared session, and update `get_by_id()` to return `is_deleted` and `deleted_at` fields
-- [ ] T023 [US1] Implement `delete_task(task_id, user_id)` in `src/domain/services.py` with ownership check, double-deletion prevention, and audit log recording with `action='delete'` via `AuditLogRepository` in atomic transaction with rollback on failure
-- [ ] T024 [US1] Protect task modification in `TaskService.update_task` and `TaskService.advance_task_status` in `src/domain/services.py` to reject operations on tasks where `is_deleted == True` with `ValidationError`
-- [ ] T025 [US1] Implement HTTP routes `POST /tasks/<id>/delete` and `DELETE /api/tasks/<id>` in `src/web/task_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/task-lifecycle-api.json`
-- [ ] T026 [US1] Update list view template in `src/web/templates/tasks/list.html` to include the "Eliminar" form button and wire native browser confirmation `confirm("¿Está seguro de que desea eliminar esta tarea?")` in `src/web/static/js/tasks.js`
+- [X] T021 [P] [US1] Update domain model `Task` dataclass in `src/domain/models.py` adding `is_deleted: bool = False` and `deleted_at: Optional[str] = None`
+- [X] T022 [US1] Update `TaskRepository` in `src/infrastructure/repositories.py` to filter `TaskORM.is_deleted == False` by default in `list_by_user()`, implement `soft_delete(task_id, user_id, deleted_at)` on `TaskORM` using the shared session, and update `get_by_id()` to return `is_deleted` and `deleted_at` fields
+- [X] T023 [US1] Implement `delete_task(task_id, user_id)` in `src/domain/services.py` with ownership check, double-deletion prevention, and audit log recording with `action='delete'` via `AuditLogRepository` in atomic transaction with rollback on failure
+- [X] T024 [US1] Protect task modification in `TaskService.update_task` and `TaskService.advance_task_status` in `src/domain/services.py` to reject operations on tasks where `is_deleted == True` with `ValidationError`
+- [X] T025 [US1] Implement HTTP routes `POST /tasks/<id>/delete` and `DELETE /api/tasks/<id>` in `src/web/task_routes.py` conforming to `specs/002-task-lifecycle-access-recovery/contracts/task-lifecycle-api.json`
+- [X] T026 [US1] Update list view template in `src/web/templates/tasks/list.html` to include the "Eliminar" form button and wire native browser confirmation `confirm("¿Está seguro de que desea eliminar esta tarea?")` in `src/web/static/js/tasks.js`
 
 **Checkpoint**: User Story 1 fully functional and testable independently. All US1 unit and integration tests pass.
 

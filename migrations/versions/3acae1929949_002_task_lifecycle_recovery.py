@@ -43,15 +43,17 @@ def upgrade():
         batch_op.add_column(sa.Column('deleted_at', sa.String(length=35), nullable=True))
         batch_op.create_index('idx_tasks_user_active', ['user_id', 'is_deleted', 'created_at'], unique=False)
 
-    with op.batch_alter_table(
-        'audit_logs',
-        recreate='always',
-        schema=None,
-        table_args=(
-            sa.CheckConstraint("action IN ('create', 'update', 'status_change', 'delete', 'reopen')", name='chk_audit_logs_action'),
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing_chk_names = {c['name'] for c in insp.get_check_constraints('audit_logs') if c.get('name')}
+
+    with op.batch_alter_table('audit_logs', recreate='always', schema=None) as batch_op:
+        if 'chk_audit_logs_action' in existing_chk_names:
+            batch_op.drop_constraint('chk_audit_logs_action', type_='check')
+        batch_op.create_check_constraint(
+            'chk_audit_logs_action',
+            "action IN ('create', 'update', 'status_change', 'delete', 'reopen')"
         )
-    ) as batch_op:
-        pass
     # ### end Alembic commands ###
 
 

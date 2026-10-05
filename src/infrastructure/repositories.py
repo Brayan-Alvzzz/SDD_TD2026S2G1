@@ -59,6 +59,8 @@ class TaskRepository:
             description=task_orm.description,
             due_date=task_orm.due_date,
             status=task_orm.status,
+            is_deleted=task_orm.is_deleted,
+            deleted_at=task_orm.deleted_at,
             created_at=task_orm.created_at,
             updated_at=task_orm.updated_at
         )
@@ -73,13 +75,17 @@ class TaskRepository:
                 description=task_orm.description,
                 due_date=task_orm.due_date,
                 status=task_orm.status,
+                is_deleted=task_orm.is_deleted,
+                deleted_at=task_orm.deleted_at,
                 created_at=task_orm.created_at,
                 updated_at=task_orm.updated_at
             )
         return None
 
-    def list_by_user(self, user_id: int, status: Optional[str] = None) -> List[Task]:
+    def list_by_user(self, user_id: int, status: Optional[str] = None, include_deleted: bool = False) -> List[Task]:
         stmt = sa.select(TaskORM).where(TaskORM.user_id == user_id)
+        if not include_deleted:
+            stmt = stmt.where(TaskORM.is_deleted == False)
         if status:
             stmt = stmt.where(TaskORM.status == status)
         stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
@@ -92,11 +98,34 @@ class TaskRepository:
                 description=r.description,
                 due_date=r.due_date,
                 status=r.status,
+                is_deleted=r.is_deleted,
+                deleted_at=r.deleted_at,
                 created_at=r.created_at,
                 updated_at=r.updated_at
             )
             for r in rows
         ]
+
+    def soft_delete(self, task_id: int, user_id: int, deleted_at: str) -> Optional[Task]:
+        task_orm = self.session.get(TaskORM, task_id)
+        if not task_orm or task_orm.user_id != user_id:
+            return None
+        task_orm.is_deleted = True
+        task_orm.deleted_at = deleted_at
+        task_orm.updated_at = deleted_at
+        self.session.flush()
+        return Task(
+            id=task_orm.id,
+            user_id=task_orm.user_id,
+            title=task_orm.title,
+            description=task_orm.description,
+            due_date=task_orm.due_date,
+            status=task_orm.status,
+            is_deleted=task_orm.is_deleted,
+            deleted_at=task_orm.deleted_at,
+            created_at=task_orm.created_at,
+            updated_at=task_orm.updated_at
+        )
 
     def update(self, task: Task) -> Task:
         now = datetime.now(timezone.utc).isoformat()
@@ -106,6 +135,8 @@ class TaskRepository:
             task_orm.description = task.description
             task_orm.due_date = task.due_date
             task_orm.status = task.status
+            task_orm.is_deleted = task.is_deleted
+            task_orm.deleted_at = task.deleted_at
             task_orm.updated_at = now
             self.session.flush()
         task.updated_at = now

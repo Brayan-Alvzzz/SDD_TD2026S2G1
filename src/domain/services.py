@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import re
 import json
 from typing import Optional, List
@@ -113,16 +114,44 @@ class TaskService:
             raise ValidationError(f"Filtro de estado inválido: '{status}'.")
         return self.task_repo.list_by_user(user_id, status)
 
-    def get_task(self, task_id: int, user_id: int) -> Task:
+    def get_task(self, task_id: int, user_id: int, include_deleted: bool = False) -> Task:
         task = self.task_repo.get_by_id(task_id)
         if not task:
             raise NotFoundError("Tarea no encontrada.")
         if task.user_id != user_id:
             raise UnauthorizedError("No tiene permiso para acceder a esta tarea.")
+        if not include_deleted and task.is_deleted:
+            raise NotFoundError("Tarea no encontrada.")
         return task
+
+    def delete_task(self, task_id: int, user_id: int) -> Task:
+        task = self.get_task(task_id, user_id, include_deleted=True)
+        if task.is_deleted:
+            raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
+
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            deleted = self.task_repo.soft_delete(task_id=task.id, user_id=user_id, deleted_at=now)
+
+            # Audit log delete event
+            audit_details = json.dumps({"title": task.title, "status": task.status})
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=user_id,
+                action="delete",
+                details=audit_details
+            )
+
+            self._commit()
+            return deleted
+        except Exception:
+            self._rollback()
+            raise
 
     def update_task_status(self, task_id: int, user_id: int, target_status: str) -> Task:
         task = self.get_task(task_id, user_id)
+        if task.is_deleted:
+            raise ValidationError("No se puede cambiar el estado de una tarea eliminada.")
         old_status = task.status
 
         TaskStateMachine.validate_transition(old_status, target_status)
@@ -148,6 +177,8 @@ class TaskService:
 
     def update_task(self, task_id: int, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[str] = None) -> Task:
         task = self.get_task(task_id, user_id)
+        if task.is_deleted:
+            raise ValidationError("No se puede modificar una tarea eliminada.")
 
         if not title or not title.strip():
             raise ValidationError("El título de la tarea es obligatorio y no puede estar vacío.")

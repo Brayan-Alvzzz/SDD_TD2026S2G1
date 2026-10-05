@@ -18,6 +18,8 @@ class Task:
     description: Optional[str] = None
     due_date: Optional[str] = None
     status: str = "pendiente"
+    is_deleted: bool = False
+    deleted_at: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
 

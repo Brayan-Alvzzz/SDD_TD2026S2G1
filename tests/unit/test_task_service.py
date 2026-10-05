@@ -126,3 +126,73 @@ def test_update_task_unauthorized_user(task_service, user_service):
     with pytest.raises(UnauthorizedError):
         task_service.update_task(task.id, user2.id, "Intento de edición")
 
+
+def test_soft_delete_task_success(task_service, user_service, audit_repo):
+    user = user_service.register_user("del_user1@example.com", "password123")
+    task = task_service.create_task(user.id, "Tarea a eliminar", "Descripción")
+
+    deleted_task = task_service.delete_task(task.id, user.id)
+
+    assert deleted_task.is_deleted is True
+    assert deleted_task.deleted_at is not None
+
+    # Verify audit log entry
+    logs = audit_repo.list_by_task(task.id)
+    assert len(logs) == 2
+    assert logs[1].action == "delete"
+    details = json.loads(logs[1].details)
+    assert details["title"] == "Tarea a eliminar"
+
+
+def test_soft_delete_excludes_from_list_tasks(task_service, user_service):
+    user = user_service.register_user("del_user2@example.com", "password123")
+    t1 = task_service.create_task(user.id, "Tarea Activa")
+    t2 = task_service.create_task(user.id, "Tarea Descartada")
+
+    task_service.delete_task(t2.id, user.id)
+
+    active_tasks = task_service.list_tasks(user.id)
+    active_ids = [t.id for t in active_tasks]
+    assert t1.id in active_ids
+    assert t2.id not in active_ids
+
+    # Also test status filtered list
+    filtered = task_service.list_tasks(user.id, status="pendiente")
+    filtered_ids = [t.id for t in filtered]
+    assert t1.id in filtered_ids
+    assert t2.id not in filtered_ids
+
+
+def test_soft_delete_duplicate_attempt_fails(task_service, user_service):
+    user = user_service.register_user("del_user3@example.com", "password123")
+    task = task_service.create_task(user.id, "Tarea Única")
+
+    task_service.delete_task(task.id, user.id)
+
+    # Subsequent deletion must fail
+    with pytest.raises((NotFoundError, ValidationError)):
+        task_service.delete_task(task.id, user.id)
+
+
+def test_soft_delete_unauthorized_alien_task(task_service, user_service):
+    user_owner = user_service.register_user("del_owner@example.com", "password123")
+    user_other = user_service.register_user("del_other@example.com", "password123")
+    task = task_service.create_task(user_owner.id, "Tarea Privada")
+
+    with pytest.raises(UnauthorizedError):
+        task_service.delete_task(task.id, user_other.id)
+
+
+def test_soft_delete_blocks_subsequent_modifications(task_service, user_service):
+    user = user_service.register_user("del_user4@example.com", "password123")
+    task = task_service.create_task(user.id, "Tarea Inalterable")
+
+    task_service.delete_task(task.id, user.id)
+
+    with pytest.raises((ValidationError, NotFoundError)):
+        task_service.update_task(task.id, user.id, "Nuevo Título")
+
+    with pytest.raises((ValidationError, NotFoundError)):
+        task_service.update_task_status(task.id, user.id, "en_progreso")
+
+

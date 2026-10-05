@@ -61,6 +61,11 @@
                         </button>
                     {% endif %}
                     <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
+                    <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form">
+                        <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
+                            Eliminar
+                        </button>
+                    </form>
                 </div>
             </div>
         {% endfor %}

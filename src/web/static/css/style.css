@@ -156,6 +156,14 @@ body {
     background: #15803d;
 }
 
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
 /* Layout */
 .main-content {
     flex: 1;
