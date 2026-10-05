@@ -106,3 +106,15 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - Se definió el enum `Operation` y la función `authorize(task, user_id, operation)` que encapsula la política restrictiva estricta en función de rol y si la tarea ha sido borrada o el asignado cambiado.
 - **T010:** Se comprobó exitosamente que las 6 pruebas de roles y accesos pasaron (100% GREEN), y se registró la salida en `docs/evidencias/inc4/permisos-green.txt`.
 - La regresión completa (167/167 tests aprobados) demostró que introducir el nuevo campo en `Task` no corrompió las funcionalidades preexistentes. Salida en `docs/evidencias/inc4/regresion-permisos.txt`.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 2 (Pruebas RED de Repositorio de Notificaciones)
+
+- Se completó la tarea **T004** según `tasks.md`.
+- **T004:** Se escribieron las pruebas para `NotificationRepository` en `tests/unit/test_notification_repository.py` (usando base de datos temporal integrada con Alembic para validar esquemas reales).
+  - Se definieron pruebas para:
+    1. Inserción base: verifica campos requeridos según `data-model.md`.
+    2. Aislamiento: `list_by_recipient` devuelve solo las notificaciones de ese usuario.
+    3. Vista `available`: La disponibilidad se calcula en tiempo de ejecución (tarea no eliminada, asignado coincide con el destinatario, y es la notificación más reciente para esa tupla tarea-destinatario). Se validó pérdida de disponibilidad por reasignación, desasignación o eliminación.
+    4. Contador de no leídas (`count_unread`).
+- **Resultado RED:** Las pruebas arrojan fallos de funcionalidad ausente puros (`Failed: NotificationRepository not implemented yet` al evaluar la existencia de los modelos de dominio y repositorios). Evidencia almacenada en `docs/evidencias/inc4/red-repo.txt`.
+- No se implementó código productivo, cumpliendo con la directiva TDD estricta.

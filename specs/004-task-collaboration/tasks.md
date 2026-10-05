@@ -17,7 +17,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 ### Tests (RED)
 - [x] T002 [F1] Escribir prueba de integración `tests/integration/test_migrations.py` para la migración 004 (preservación de datos, `assignee_id` NULL, tabla `notifications`, nuevas acciones de auditoría y *pre-flight check* de bloqueo de downgrade sin pérdida de datos). Guardar salida RED en `docs/evidencias/inc4/red-f1.txt`.
 - [x] T003 [F2] Escribir prueba unitaria `tests/unit/test_permissions.py` para la matriz completa (3 roles × 6 operaciones). Guardar salida RED en `docs/evidencias/inc4/permisos-red.txt`.
-- [ ] T004 [F1] Escribir prueba unitaria en `tests/unit/test_notification_repository.py` para verificar la inserción base y la vista lógica `available`. Guardar salida RED en `docs/evidencias/inc4/red-repo.txt`.
+- [x] T004 [F1] Escribir prueba unitaria en `tests/unit/test_notification_repository.py` para verificar la inserción base y la vista lógica `available`. Guardar salida RED en `docs/evidencias/inc4/red-repo.txt`.
 
 ### Implementation
 - [ ] T005 [F1] Actualizar modelos en `src/domain/models.py` y `src/infrastructure/models.py` (`Task`, `TaskORM`, `Notification`, `NotificationORM`) y restricciones de `AuditLogORM`.
