@@ -368,6 +368,14 @@ body {
 .badge-en_progreso { background: #dbeafe; color: #1e40af; }
 .badge-completada { background: #d1fae5; color: #065f46; }
 
+.badge-priority-alta { background: #fee2e2; color: #991b1b; }
+.badge-priority-media { background: #fef3c7; color: #92400e; }
+.badge-priority-baja { background: #f1f5f9; color: #475569; }
+
+.badge-category { background: #e0e7ff; color: #3730a3; }
+.badge-no-category { background: #f1f5f9; color: #64748b; font-weight: normal; }
+.badge-overdue { background: #dc2626; color: #ffffff; }
+
 .task-actions {
     display: flex;
     gap: 0.5rem;

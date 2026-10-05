@@ -13,22 +13,49 @@
         <div class="form-group">
             <label for="title" class="form-label">Título <span style="color: var(--danger)">*</span></label>
             <input type="text" id="title" name="title" class="form-input" required 
-                   maxlength="150" value="{{ title if title is not none else task.title }}" autofocus>
+                   maxlength="150" value="{{ title if title is defined else task.title }}" autofocus>
             <p class="form-help">Obligatorio. Máximo 150 caracteres.</p>
         </div>
 
         <div class="form-group">
             <label for="description" class="form-label">Descripción</label>
             <textarea id="description" name="description" class="form-textarea" rows="4" 
-                      maxlength="1000">{{ description if description is not none else (task.description or '') }}</textarea>
+                      maxlength="1000">{{ description if description is defined else (task.description or '') }}</textarea>
             <p class="form-help">Opcional. Máximo 1,000 caracteres.</p>
         </div>
 
         <div class="form-group">
             <label for="due_date" class="form-label">Fecha Límite</label>
             <input type="date" id="due_date" name="due_date" class="form-input" 
-                   value="{{ due_date if due_date is not none else (task.due_date or '') }}">
+                   value="{{ due_date if due_date is defined else (task.due_date or '') }}">
             <p class="form-help">Opcional.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="priority" class="form-label">Prioridad</label>
+            <select id="priority" name="priority" class="form-select">
+                {% set selected_priority = priority if priority is defined else task.priority %}
+                <option value="alta" {% if selected_priority == 'alta' %}selected{% endif %}>Alta</option>
+                <option value="media" {% if selected_priority == 'media' %}selected{% endif %}>Media</option>
+                <option value="baja" {% if selected_priority == 'baja' %}selected{% endif %}>Baja</option>
+            </select>
+            <p class="form-help">Nivel de prioridad de la tarea.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="category_id" class="form-label">Categoría</label>
+            <select id="category_id" name="category_id" class="form-select">
+                {% set active_cat_id = category_id if category_id is defined else task.category_id %}
+                <option value="" {% if not active_cat_id %}selected{% endif %}>Sin categoría</option>
+                {% if categories %}
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if active_cat_id and active_cat_id|string == cat.id|string %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+            <p class="form-help">Opcional. Máximo una categoría por tarea.</p>
         </div>
 
         <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">

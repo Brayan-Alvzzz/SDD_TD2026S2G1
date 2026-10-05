@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Union
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from src.domain.models import User, Task, AuditLog, PasswordResetToken
-from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
+from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM, CategoryORM
 
 
 class UserRepository:
@@ -45,13 +45,46 @@ class TaskRepository:
     def __init__(self, session: Session):
         self.session = session
 
+    def _to_domain(self, r: TaskORM) -> Task:
+        today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        is_overdue = False
+        if not r.is_deleted and r.status != "completada" and r.due_date and r.due_date.strip():
+            is_overdue = r.due_date.strip() < today_utc
+
+        category_name = None
+        if getattr(r, "category", None) is not None:
+            category_name = r.category.name
+        elif r.category_id is not None:
+            cat_orm = self.session.get(CategoryORM, r.category_id)
+            if cat_orm:
+                category_name = cat_orm.name
+
+        return Task(
+            id=r.id,
+            user_id=r.user_id,
+            title=r.title,
+            description=r.description,
+            due_date=r.due_date,
+            status=r.status,
+            priority=r.priority if r.priority else "media",
+            category_id=r.category_id,
+            category_name=category_name,
+            is_overdue=is_overdue,
+            is_deleted=r.is_deleted,
+            deleted_at=r.deleted_at,
+            created_at=r.created_at,
+            updated_at=r.updated_at
+        )
+
     def create(
         self,
         user_id: int,
         title: str,
         description: Optional[str] = None,
         due_date: Optional[str] = None,
-        status: str = "pendiente"
+        status: str = "pendiente",
+        priority: str = "media",
+        category_id: Optional[int] = None
     ) -> Task:
         now = datetime.now(timezone.utc).isoformat()
         task_orm = TaskORM(
@@ -60,64 +93,65 @@ class TaskRepository:
             description=description.strip() if description else None,
             due_date=due_date,
             status=status,
+            priority=priority or "media",
+            category_id=category_id,
             created_at=now,
             updated_at=now
         )
         self.session.add(task_orm)
         self.session.flush()
-        return Task(
-            id=task_orm.id,
-            user_id=task_orm.user_id,
-            title=task_orm.title,
-            description=task_orm.description,
-            due_date=task_orm.due_date,
-            status=task_orm.status,
-            is_deleted=task_orm.is_deleted,
-            deleted_at=task_orm.deleted_at,
-            created_at=task_orm.created_at,
-            updated_at=task_orm.updated_at
-        )
+        return self._to_domain(task_orm)
 
     def get_by_id(self, task_id: int) -> Optional[Task]:
         task_orm = self.session.get(TaskORM, task_id)
         if task_orm:
-            return Task(
-                id=task_orm.id,
-                user_id=task_orm.user_id,
-                title=task_orm.title,
-                description=task_orm.description,
-                due_date=task_orm.due_date,
-                status=task_orm.status,
-                is_deleted=task_orm.is_deleted,
-                deleted_at=task_orm.deleted_at,
-                created_at=task_orm.created_at,
-                updated_at=task_orm.updated_at
-            )
+            return self._to_domain(task_orm)
         return None
 
-    def list_by_user(self, user_id: int, status: Optional[str] = None, include_deleted: bool = False) -> List[Task]:
+    def list_by_user(
+        self,
+        user_id: int,
+        status: Optional[str] = None,
+        include_deleted: bool = False,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
         stmt = sa.select(TaskORM).where(TaskORM.user_id == user_id)
         if not include_deleted:
             stmt = stmt.where(TaskORM.is_deleted == False)
         if status:
             stmt = stmt.where(TaskORM.status == status)
-        stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
-        rows = self.session.execute(stmt).scalars().all()
-        return [
-            Task(
-                id=r.id,
-                user_id=r.user_id,
-                title=r.title,
-                description=r.description,
-                due_date=r.due_date,
-                status=r.status,
-                is_deleted=r.is_deleted,
-                deleted_at=r.deleted_at,
-                created_at=r.created_at,
-                updated_at=r.updated_at
+
+        if category_id is not None and category_id != "":
+            if str(category_id).lower() == "none":
+                stmt = stmt.where(TaskORM.category_id.is_(None))
+            else:
+                try:
+                    stmt = stmt.where(TaskORM.category_id == int(category_id))
+                except (ValueError, TypeError):
+                    pass
+
+        if sort == "priority_desc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'alta', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'baja', 3),
+                else_=4
             )
-            for r in rows
-        ]
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "priority_asc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'baja', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'alta', 3),
+                else_=4
+            )
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        else:
+            stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
+
+        rows = self.session.execute(stmt).scalars().all()
+        return [self._to_domain(r) for r in rows]
 
     def soft_delete(self, task_id: int, user_id: int, deleted_at: str) -> Optional[Task]:
         task_orm = self.session.get(TaskORM, task_id)
@@ -127,18 +161,7 @@ class TaskRepository:
         task_orm.deleted_at = deleted_at
         task_orm.updated_at = deleted_at
         self.session.flush()
-        return Task(
-            id=task_orm.id,
-            user_id=task_orm.user_id,
-            title=task_orm.title,
-            description=task_orm.description,
-            due_date=task_orm.due_date,
-            status=task_orm.status,
-            is_deleted=task_orm.is_deleted,
-            deleted_at=task_orm.deleted_at,
-            created_at=task_orm.created_at,
-            updated_at=task_orm.updated_at
-        )
+        return self._to_domain(task_orm)
 
     def update(self, task: Task) -> Task:
         now = datetime.now(timezone.utc).isoformat()
@@ -148,10 +171,13 @@ class TaskRepository:
             task_orm.description = task.description
             task_orm.due_date = task.due_date
             task_orm.status = task.status
+            task_orm.priority = task.priority or "media"
+            task_orm.category_id = task.category_id
             task_orm.is_deleted = task.is_deleted
             task_orm.deleted_at = task.deleted_at
             task_orm.updated_at = now
             self.session.flush()
+            return self._to_domain(task_orm)
         task.updated_at = now
         return task
 
@@ -254,4 +280,88 @@ class PasswordResetTokenRepository:
         )
         self.session.execute(stmt)
         self.session.flush()
+
+
+class CategoryRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create(self, user_id: int, name: str) -> Category:
+        now = datetime.now(timezone.utc).isoformat()
+        clean_name = name.strip()
+        cat_orm = CategoryORM(
+            user_id=user_id,
+            name=clean_name,
+            created_at=now
+        )
+        self.session.add(cat_orm)
+        self.session.flush()
+        return Category(
+            id=cat_orm.id,
+            user_id=cat_orm.user_id,
+            name=cat_orm.name,
+            created_at=cat_orm.created_at,
+            task_count=0
+        )
+
+    def list_by_user(self, user_id: int) -> List[Category]:
+        stmt = (
+            sa.select(
+                CategoryORM,
+                sa.func.count(sa.case((TaskORM.is_deleted == False, TaskORM.id), else_=None)).label("task_count")
+            )
+            .outerjoin(TaskORM, TaskORM.category_id == CategoryORM.id)
+            .where(CategoryORM.user_id == user_id)
+            .group_by(CategoryORM.id)
+            .order_by(CategoryORM.created_at.asc(), CategoryORM.id.asc())
+        )
+        rows = self.session.execute(stmt).all()
+        return [
+            Category(
+                id=cat_orm.id,
+                user_id=cat_orm.user_id,
+                name=cat_orm.name,
+                created_at=cat_orm.created_at,
+                task_count=int(cnt or 0)
+            )
+            for cat_orm, cnt in rows
+        ]
+
+    def get_by_id(self, category_id: int) -> Optional[Category]:
+        cat_orm = self.session.get(CategoryORM, category_id)
+        if cat_orm:
+            return Category(
+                id=cat_orm.id,
+                user_id=cat_orm.user_id,
+                name=cat_orm.name,
+                created_at=cat_orm.created_at
+            )
+        return None
+
+    def get_by_user_and_name(self, user_id: int, name: str) -> Optional[Category]:
+        clean_name = name.strip()
+        stmt = sa.select(CategoryORM).where(
+            CategoryORM.user_id == user_id,
+            sa.func.lower(CategoryORM.name) == sa.func.lower(clean_name)
+        )
+        cat_orm = self.session.execute(stmt).scalars().first()
+        if cat_orm:
+            return Category(
+                id=cat_orm.id,
+                user_id=cat_orm.user_id,
+                name=cat_orm.name,
+                created_at=cat_orm.created_at
+            )
+        return None
+
+    def delete(self, category_id: int) -> bool:
+        cat_orm = self.session.get(CategoryORM, category_id)
+        if not cat_orm:
+            return False
+        self.session.delete(cat_orm)
+        self.session.flush()
+        self.session.expire_all()
+        return True
+
+
 

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CategoryManagementAPI",
+  "description": "Contrato de endpoints para gestión de categorías personales (Incremento 3 - HU-08)",
+  "endpoints": [
+    {
+      "path": "/api/categories",
+      "method": "GET",
+      "description": "Lista todas las categorías pertenecientes al usuario autenticado",
+      "responses": {
+        "200": {
+          "description": "Lista de categorías del usuario",
+          "body": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "task_count": { "type": "integer", "description": "Cantidad de tareas activas asociadas a la categoría" },
+                "created_at": { "type": "string", "format": "date-time" }
+              },
+              "required": ["id", "name", "created_at"]
+            }
+          }
+        },
+        "401": { "description": "No autenticado" }
+      }
+    },
+    {
+      "path": "/api/categories",
+      "method": "POST",
+      "description": "Crea una nueva categoría para el usuario autenticado",
+      "requestBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Nombre de la categoría (único para el usuario)"
+          }
+        },
+        "required": ["name"]
+      },
+      "responses": {
+        "201": {
+          "description": "Categoría creada exitosamente",
+          "body": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "created_at": { "type": "string", "format": "date-time" },
+              "message": { "type": "string" }
+            },
+            "required": ["id", "name", "created_at", "message"]
+          }
+        },
+        "400": { "description": "Nombre inválido, vacío o duplicado para el usuario" },
+        "401": { "description": "No autenticado" }
+      }
+    },
+    {
+      "path": "/api/categories/{category_id}",
+      "method": "DELETE",
+      "description": "Elimina una categoría del usuario. Sus tareas NO se eliminan, quedan desvinculadas con category_id = null (ON DELETE SET NULL)",
+      "parameters": {
+        "category_id": { "type": "integer" }
+      },
+      "responses": {
+        "200": {
+          "description": "Categoría eliminada exitosamente y tareas desvinculadas",
+          "body": {
+            "type": "object",
+            "properties": {
+              "success": { "type": "boolean", "example": true },
+              "message": { "type": "string", "example": "Categoría eliminada exitosamente. Las tareas asociadas permanecen activas sin categoría." }
+            },
+            "required": ["success", "message"]
+          }
+        },
+        "401": { "description": "No autenticado" },
+        "403": { "description": "Categoría perteneciente a otro usuario" },
+        "404": { "description": "Categoría no encontrada" }
+      }
+    }
+  ]
+}

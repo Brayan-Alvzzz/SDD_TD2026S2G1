@@ -2,6 +2,28 @@
  * Task interaction handler with optimistic UI updates and rollback
  */
 
+function setOverdueBadge(taskId, isOverdue) {
+    let overdueBadge = document.getElementById(`task-overdue-${taskId}`);
+    if (isOverdue) {
+        if (overdueBadge) {
+            overdueBadge.style.display = "";
+        } else {
+            const dueSpan = document.getElementById(`task-due-${taskId}`);
+            if (dueSpan) {
+                overdueBadge = document.createElement("span");
+                overdueBadge.className = "badge badge-overdue";
+                overdueBadge.id = `task-overdue-${taskId}`;
+                overdueBadge.textContent = "Vencida";
+                dueSpan.insertAdjacentElement("afterend", overdueBadge);
+            }
+        }
+    } else {
+        if (overdueBadge) {
+            overdueBadge.style.display = "none";
+        }
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const listContainer = document.getElementById("task-list-container");
     if (!listContainer) return;
@@ -12,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const taskId = reopenBtn.dataset.taskId;
             const badge = document.getElementById(`task-badge-${taskId}`);
+            const overdueBadge = document.getElementById(`task-overdue-${taskId}`);
             const actionsContainer = reopenBtn.closest(".task-actions");
 
             if (!taskId || !badge || !actionsContainer) return;
@@ -20,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const prevStatusText = badge.textContent;
             const prevBadgeClass = badge.className;
             const prevActionsHTML = actionsContainer.innerHTML;
+            const prevOverdueDisplay = overdueBadge ? overdueBadge.style.display : null;
 
             // 2. Optimistic UI update
             badge.textContent = "pendiente";
@@ -35,8 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 badge.textContent = prevStatusText;
                 badge.className = prevBadgeClass;
                 actionsContainer.innerHTML = prevActionsHTML;
+                if (overdueBadge && prevOverdueDisplay !== null) {
+                    overdueBadge.style.display = prevOverdueDisplay;
+                }
                 showNotification(`Error al reabrir tarea: ${result.error}`, "error");
                 return;
+            }
+
+            // Update overdue badge according to backend calculation
+            if (result.data && typeof result.data.is_overdue !== "undefined") {
+                setOverdueBadge(taskId, result.data.is_overdue);
             }
 
             // 5. Update actions container upon success
@@ -65,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const taskId = btn.dataset.taskId;
         const nextStatus = btn.dataset.nextStatus;
         const badge = document.getElementById(`task-badge-${taskId}`);
+        const overdueBadge = document.getElementById(`task-overdue-${taskId}`);
         const actionsContainer = btn.parentElement;
 
         if (!taskId || !nextStatus || !badge) return;
@@ -73,12 +106,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const prevStatusText = badge.textContent;
         const prevBadgeClass = badge.className;
         const prevActionsHTML = actionsContainer.innerHTML;
+        const prevOverdueDisplay = overdueBadge ? overdueBadge.style.display : null;
 
         // 2. Optimistic UI update
         badge.textContent = nextStatus.replace("_", " ");
         badge.className = `badge badge-${nextStatus}`;
         btn.disabled = true;
         btn.textContent = "Actualizando...";
+
+        // If completing, immediately hide the overdue badge
+        if (nextStatus === "completada" && overdueBadge) {
+            overdueBadge.style.display = "none";
+        }
 
         // 3. Send API request
         const result = await API.patch(`/api/tasks/${taskId}/status`, { status: nextStatus });
@@ -88,8 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
             badge.textContent = prevStatusText;
             badge.className = prevBadgeClass;
             actionsContainer.innerHTML = prevActionsHTML;
+            if (overdueBadge && prevOverdueDisplay !== null) {
+                overdueBadge.style.display = prevOverdueDisplay;
+            }
             showNotification(`Error al actualizar estado: ${result.error}`, "error");
             return;
+        }
+
+        // Update overdue badge according to backend calculation
+        if (result.data && typeof result.data.is_overdue !== "undefined") {
+            setOverdueBadge(taskId, result.data.is_overdue);
         }
 
         // 5. Update next action button upon success
@@ -138,3 +185,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+

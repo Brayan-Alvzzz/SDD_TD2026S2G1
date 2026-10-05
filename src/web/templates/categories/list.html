@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Categorías{% endblock %}
+
+{% block content %}
+<div class="tasks-header">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">Mis Categorías</h1>
+        <p style="color: var(--text-muted); font-size: 0.9375rem;">Organiza tus tareas en proyectos o contextos temáticos</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+    <h2 class="card-title" style="font-size: 1.125rem;">Nueva Categoría</h2>
+    <form action="{{ url_for('categories.create_category') }}" method="POST" style="display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 260px;">
+            <input type="text" name="name" id="name" class="form-input" required maxlength="50"
+                   value="{{ name or '' }}" placeholder="Nombre de la categoría (ej. Trabajo, Personal, Estudio)">
+            <p class="form-help">Máximo 50 caracteres. Debe ser único entre tus categorías.</p>
+        </div>
+        <button type="submit" class="btn btn-primary">+ Crear Categoría</button>
+    </form>
+</div>
+
+{% if not categories %}
+    <div class="empty-state">
+        <div class="empty-icon">📁</div>
+        <h2 class="empty-title">No tienes categorías creadas</h2>
+        <p class="empty-desc">Crea tu primera categoría para agrupar tus tareas relacionadas.</p>
+    </div>
+{% else %}
+    <div class="task-list">
+        {% for cat in categories %}
+            <div class="task-item" id="category-item-{{ cat.id }}">
+                <div class="task-main">
+                    <h3 class="task-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                        📁 {{ cat.name }}
+                    </h3>
+                    <div class="task-meta">
+                        <span>📊 Tareas activas: <strong>{{ cat.task_count }}</strong></span>
+                        <span>🕒 Creada: {{ cat.created_at[:10] }}</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <a href="{{ url_for('tasks.list_tasks_view', category_id=cat.id) }}" class="btn btn-sm btn-outline">
+                        Ver Tareas
+                    </a>
+                    <form method="POST" action="{{ url_for('categories.delete_category_view', id=cat.id) }}" class="inline-form"
+                          onsubmit="return confirm('¿Seguro que deseas eliminar la categoría \'{{ cat.name }}\'? Las tareas asociadas NO se eliminarán, solo quedarán sin categoría.');">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

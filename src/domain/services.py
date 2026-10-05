@@ -3,13 +3,13 @@ import secrets
 import hashlib
 import re
 import json
-from typing import Optional, List, Any
-from src.domain.models import User, Task, AuditLog, PasswordResetToken
+from typing import Optional, List, Any, Union
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
 from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
 from src.domain.state_machine import TaskStateMachine
 from src.infrastructure.security import hash_password, verify_password
 from src.infrastructure.repositories import (
-    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository
+    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository, CategoryRepository
 )
 from src.infrastructure.notifications import ConsoleNotificationService
 
@@ -170,11 +170,38 @@ class UserService:
 
 
 
+_NO_CHANGE = object()
+
+
 class TaskService:
-    def __init__(self, task_repo: TaskRepository, audit_repo: AuditLogRepository, session=None):
+    def __init__(
+        self,
+        task_repo: TaskRepository,
+        audit_repo: AuditLogRepository,
+        category_repo: Optional[CategoryRepository] = None,
+        session=None
+    ):
         self.task_repo = task_repo
         self.audit_repo = audit_repo
         self.session = session or getattr(task_repo, "session", None) or getattr(audit_repo, "session", None)
+        self.category_repo = category_repo or (CategoryRepository(self.session) if self.session is not None else None)
+
+    @staticmethod
+    def calculate_is_overdue(due_date: Optional[str], status: str, is_deleted: bool = False) -> bool:
+        """Dynamic overdue calculation: due_date < today_utc, strictly excluding completed and deleted tasks."""
+        if is_deleted or status == "completada":
+            return False
+        if not due_date or not due_date.strip():
+            return False
+        today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return due_date.strip() < today_utc
+
+    @classmethod
+    def _apply_overdue(cls, task: Optional[Task]) -> Optional[Task]:
+        if task is None:
+            return None
+        task.is_overdue = cls.calculate_is_overdue(task.due_date, task.status, task.is_deleted)
+        return task
 
     def _commit(self):
         if self.session is not None:
@@ -184,7 +211,15 @@ class TaskService:
         if self.session is not None:
             self.session.rollback()
 
-    def create_task(self, user_id: int, title: str, description: Optional[str] = None, due_date: Optional[str] = None) -> Task:
+    def create_task(
+        self,
+        user_id: int,
+        title: str,
+        description: Optional[str] = None,
+        due_date: Optional[str] = None,
+        priority: str = "media",
+        category_id: Optional[int] = None
+    ) -> Task:
         if not title or not title.strip():
             raise ValidationError("El título de la tarea es obligatorio y no puede estar vacío.")
 
@@ -196,17 +231,31 @@ class TaskService:
         if cleaned_description and len(cleaned_description) > 1000:
             raise ValidationError("La descripción de la tarea no puede exceder los 1,000 caracteres.")
 
+        cleaned_priority = (priority or "media").strip().lower() if isinstance(priority, str) else priority
+        if cleaned_priority not in ("alta", "media", "baja"):
+            raise ValidationError(f"Nivel de prioridad inválido: '{priority}'. Valores permitidos: alta, media, baja.")
+
+        if category_id is not None:
+            if self.category_repo is not None:
+                cat = self.category_repo.get_by_id(category_id)
+                if not cat:
+                    raise NotFoundError(f"Categoría con id {category_id} no encontrada.")
+                if cat.user_id != user_id:
+                    raise UnauthorizedError("No tiene permiso para asociar una categoría ajena.")
+
         try:
             task = self.task_repo.create(
                 user_id=user_id,
                 title=cleaned_title,
                 description=cleaned_description,
                 due_date=due_date.strip() if due_date else None,
-                status="pendiente"
+                status="pendiente",
+                priority=cleaned_priority,
+                category_id=category_id
             )
 
             # Audit log creation event
-            audit_details = json.dumps({"title": task.title, "status": task.status})
+            audit_details = json.dumps({"title": task.title, "status": task.status, "priority": task.priority})
             self.audit_repo.create(
                 task_id=task.id,
                 actor_id=user_id,
@@ -215,15 +264,25 @@ class TaskService:
             )
 
             self._commit()
-            return task
+            return self._apply_overdue(task)
         except Exception:
             self._rollback()
             raise
 
-    def list_tasks(self, user_id: int, status: Optional[str] = None) -> List[Task]:
+    def list_tasks(
+        self,
+        user_id: int,
+        status: Optional[str] = None,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
         if status and status not in ("pendiente", "en_progreso", "completada"):
             raise ValidationError(f"Filtro de estado inválido: '{status}'.")
-        return self.task_repo.list_by_user(user_id, status)
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc")
+        if not sort or sort not in valid_sorts:
+            sort = "created_desc"
+        tasks = self.task_repo.list_by_user(user_id=user_id, status=status, sort=sort, category_id=category_id)
+        return [self._apply_overdue(t) for t in tasks]
 
     def get_task(self, task_id: int, user_id: int, include_deleted: bool = False) -> Task:
         task = self.task_repo.get_by_id(task_id)
@@ -233,7 +292,7 @@ class TaskService:
             raise UnauthorizedError("No tiene permiso para acceder a esta tarea.")
         if not include_deleted and task.is_deleted:
             raise NotFoundError("Tarea no encontrada.")
-        return task
+        return self._apply_overdue(task)
 
     def delete_task(self, task_id: int, user_id: int) -> Task:
         task = self.get_task(task_id, user_id, include_deleted=True)
@@ -254,7 +313,7 @@ class TaskService:
             )
 
             self._commit()
-            return deleted
+            return self._apply_overdue(deleted)
         except Exception:
             self._rollback()
             raise
@@ -281,7 +340,7 @@ class TaskService:
             )
 
             self._commit()
-            return updated
+            return self._apply_overdue(updated)
         except Exception:
             self._rollback()
             raise
@@ -311,10 +370,76 @@ class TaskService:
             )
 
             self._commit()
-            return updated
+            return self._apply_overdue(updated)
         except Exception:
             self._rollback()
             raise
+
+    def update_task_priority(self, task_id: int, user_id: int, priority: str) -> Task:
+        cleaned_priority = (priority or "").strip().lower() if isinstance(priority, str) else priority
+        if cleaned_priority not in ("alta", "media", "baja"):
+            raise ValidationError(f"Nivel de prioridad inválido: '{priority}'. Valores permitidos: alta, media, baja.")
+
+        task = self.get_task(task_id, user_id)
+        if task.is_deleted:
+            raise ValidationError("No se puede cambiar la prioridad de una tarea eliminada.")
+
+        old_priority = task.priority
+        if old_priority != cleaned_priority:
+            task.priority = cleaned_priority
+            try:
+                updated = self.task_repo.update(task)
+                audit_details = json.dumps({
+                    "old_priority": old_priority,
+                    "new_priority": cleaned_priority
+                })
+                self.audit_repo.create(
+                    task_id=task.id,
+                    actor_id=user_id,
+                    action="priority_change",
+                    details=audit_details
+                )
+                self._commit()
+                return self._apply_overdue(updated)
+            except Exception:
+                self._rollback()
+                raise
+        return self._apply_overdue(task)
+
+    def update_task_category(self, task_id: int, user_id: int, category_id: Optional[int]) -> Task:
+        task = self.get_task(task_id, user_id)
+        if task.is_deleted:
+            raise ValidationError("No se puede cambiar la categoría de una tarea eliminada.")
+
+        if category_id is not None:
+            if self.category_repo is not None:
+                cat = self.category_repo.get_by_id(category_id)
+                if not cat:
+                    raise NotFoundError(f"Categoría con id {category_id} no encontrada.")
+                if cat.user_id != user_id:
+                    raise UnauthorizedError("No tiene permiso para asociar una categoría ajena.")
+
+        old_category_id = task.category_id
+        if old_category_id != category_id:
+            task.category_id = category_id
+            try:
+                updated = self.task_repo.update(task)
+                audit_details = json.dumps({
+                    "old_category_id": old_category_id,
+                    "new_category_id": category_id
+                })
+                self.audit_repo.create(
+                    task_id=task.id,
+                    actor_id=user_id,
+                    action="category_change",
+                    details=audit_details
+                )
+                self._commit()
+                return self._apply_overdue(updated)
+            except Exception:
+                self._rollback()
+                raise
+        return self._apply_overdue(task)
 
     def update_task(
         self,
@@ -322,7 +447,9 @@ class TaskService:
         user_id: int,
         title: str,
         description: Optional[str] = None,
-        due_date: Optional[str] = None
+        due_date: Optional[str] = None,
+        priority: Optional[str] = None,
+        category_id: Any = _NO_CHANGE
     ) -> Task:
         task = self.get_task(task_id, user_id)
         if task.is_deleted:
@@ -353,6 +480,30 @@ class TaskService:
         task.description = cleaned_description
         task.due_date = cleaned_due_date
 
+        priority_changed = False
+        old_priority = task.priority
+        if priority is not None:
+            cleaned_priority = priority.strip().lower() if isinstance(priority, str) else priority
+            if cleaned_priority not in ("alta", "media", "baja"):
+                raise ValidationError(f"Nivel de prioridad inválido: '{priority}'. Valores permitidos: alta, media, baja.")
+            if cleaned_priority != task.priority:
+                priority_changed = True
+                task.priority = cleaned_priority
+
+        category_changed = False
+        old_category_id = task.category_id
+        if category_id is not _NO_CHANGE:
+            if category_id is not None:
+                if self.category_repo is not None:
+                    cat = self.category_repo.get_by_id(category_id)
+                    if not cat:
+                        raise NotFoundError(f"Categoría con id {category_id} no encontrada.")
+                    if cat.user_id != user_id:
+                        raise UnauthorizedError("No tiene permiso para asociar una categoría ajena.")
+            if task.category_id != category_id:
+                category_changed = True
+                task.category_id = category_id
+
         try:
             updated = self.task_repo.update(task)
 
@@ -364,8 +515,87 @@ class TaskService:
                     details=json.dumps(changes)
                 )
 
+            if priority_changed:
+                self.audit_repo.create(
+                    task_id=task.id,
+                    actor_id=user_id,
+                    action="priority_change",
+                    details=json.dumps({
+                        "old_priority": old_priority,
+                        "new_priority": task.priority
+                    })
+                )
+
+            if category_changed:
+                self.audit_repo.create(
+                    task_id=task.id,
+                    actor_id=user_id,
+                    action="category_change",
+                    details=json.dumps({
+                        "old_category_id": old_category_id,
+                        "new_category_id": task.category_id
+                    })
+                )
+
             self._commit()
-            return updated
+            return self._apply_overdue(updated)
         except Exception:
             self._rollback()
             raise
+
+
+class CategoryService:
+    def __init__(self, category_repo: CategoryRepository, session=None):
+        self.category_repo = category_repo
+        self.session = session or getattr(category_repo, "session", None)
+
+    def _commit(self):
+        if self.session is not None:
+            self.session.commit()
+
+    def _rollback(self):
+        if self.session is not None:
+            self.session.rollback()
+
+    def create_category(self, user_id: int, name: str) -> Category:
+        if not name or not isinstance(name, str) or not name.strip():
+            raise ValidationError("El nombre de la categoría es obligatorio y no puede estar vacío.")
+
+        cleaned_name = name.strip()
+        if len(cleaned_name) > 50:
+            raise ValidationError("El nombre de la categoría no puede exceder los 50 caracteres.")
+
+        existing = self.category_repo.get_by_user_and_name(user_id, cleaned_name)
+        if existing:
+            raise ConflictError(f"Ya posee una categoría con el nombre '{cleaned_name}'.")
+
+        try:
+            cat = self.category_repo.create(user_id, cleaned_name)
+            self._commit()
+            return cat
+        except Exception:
+            self._rollback()
+            raise
+
+    def list_categories(self, user_id: int) -> List[Category]:
+        return self.category_repo.list_by_user(user_id)
+
+    def get_category(self, category_id: int, user_id: int) -> Category:
+        cat = self.category_repo.get_by_id(category_id)
+        if not cat:
+            raise NotFoundError("Categoría no encontrada.")
+        if cat.user_id != user_id:
+            raise UnauthorizedError("No tiene permiso para acceder a esta categoría.")
+        return cat
+
+    def delete_category(self, category_id: int, user_id: int) -> bool:
+        self.get_category(category_id, user_id)
+        try:
+            deleted = self.category_repo.delete(category_id)
+            self._commit()
+            return deleted
+        except Exception:
+            self._rollback()
+            raise
+
+
