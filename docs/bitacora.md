@@ -82,3 +82,16 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - **Resultado:** Ejecución exitosa documentada en `docs/evidencias/inc4/migracion-contrato-green.txt`.
 - **Regresión Final:** Se corrió la suite global tras las correcciones, alcanzando 161/161 sin afectaciones, documentada en `docs/evidencias/inc4/regresion-migracion-corregida.txt`.
 - Esto completa definitiva y exhaustivamente las tareas T002, T006 y el subconjunto migratorio de T009.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 2 (Pruebas RED de Permisos)
+
+- Se completó la tarea **T003** según `tasks.md`.
+- **T003:** Se escribieron las pruebas unitarias para la política de permisos en `tests/unit/test_permissions.py`.
+  - Se probaron 5 escenarios principales cubriendo la matriz:
+    1. Propietario: Acceso total a las 6 operaciones (`VIEW`, `CHANGE_STATUS`, `REOPEN`, `EDIT`, `DELETE`, `MANAGE_ASSIGNMENT`).
+    2. Asignado actual: Acceso solo a `VIEW`, `CHANGE_STATUS`, `REOPEN`. Recibe excepción (403) `OperationNotPermittedError` para el resto.
+    3. Ajeno: Ningún acceso (404) `TaskNotAccessibleError` a cualquier operación.
+    4. Asignado anterior (desasignado): Ningún acceso (404), vuelve a ser ajeno.
+    5. Tarea eliminada: Nadie tiene acceso (404), ni propietario ni asignado.
+- **Resultado RED:** Las pruebas fallan por funcionalidad ausente pura (`ImportError` de `TaskNotAccessibleError`, `OperationNotPermittedError` y `authorize` desde `src.domain.permissions`). La salida real se guardó en `docs/evidencias/inc4/permisos-red.txt`.
+- Solo se escribieron las pruebas para verificar el comportamiento descrito; la funcionalidad no está verificada porque la implementación todavía no existe. No se modificó código de producción.
