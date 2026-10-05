@@ -136,3 +136,196 @@ def test_edit_task_put_api(auth_client):
     assert put_res.get_json()["data"]["title"] == "Tarea PUT Actualizada"
 
 
+def test_soft_delete_web_route_success(auth_client, audit_repo):
+    client, user = auth_client
+    # Create task
+    create_res = client.post("/tasks", data={"title": "Tarea para Borrado Web"})
+    list_res = client.get("/api/tasks")
+    task_id = list_res.get_json()["data"][0]["id"]
+
+    # POST /tasks/<id>/delete
+    del_res = client.post(f"/tasks/{task_id}/delete", follow_redirects=False)
+    assert del_res.status_code == 302
+    assert "/tasks" in del_res.headers["Location"]
+
+    # Verify task disappeared from list view
+    tasks_page = client.get("/tasks")
+    assert "Tarea para Borrado Web".encode("utf-8") not in tasks_page.data
+
+    # Verify task is deleted in audit logs
+    logs = audit_repo.list_by_task(task_id)
+    assert any(log.action == "delete" for log in logs)
+
+
+def test_soft_delete_api_route_success(auth_client):
+    client, user = auth_client
+    create_res = client.post("/tasks", json={"title": "Tarea para DELETE API"})
+    task_id = create_res.get_json()["data"]["id"]
+
+    # DELETE /api/tasks/<id>
+    del_res = client.delete(f"/api/tasks/{task_id}")
+    assert del_res.status_code == 200
+    json_data = del_res.get_json()
+    assert json_data["status"] == "success"
+    assert json_data["data"]["id"] == task_id
+    assert json_data["data"]["is_deleted"] is True
+
+    # Verify subsequent GET /api/tasks does not contain it
+    list_res = client.get("/api/tasks")
+    task_ids = [t["id"] for t in list_res.get_json()["data"]]
+    assert task_id not in task_ids
+
+
+def test_soft_delete_unauthenticated_rejected(client):
+    # Web endpoint requires login -> redirect 302 to /login
+    web_res = client.post("/tasks/1/delete", follow_redirects=False)
+    assert web_res.status_code == 302
+    assert "/login" in web_res.headers["Location"]
+
+    # API endpoint requires login -> 401
+    api_res = client.delete("/api/tasks/1")
+    assert api_res.status_code == 401
+
+
+def test_soft_delete_nonexistent_or_already_deleted_or_alien(auth_client, user_service, task_service):
+    client, user = auth_client
+
+    # 1. Nonexistent task
+    del_res = client.post("/tasks/99999/delete")
+    assert del_res.status_code == 404
+    api_del_res = client.delete("/api/tasks/99999")
+    assert api_del_res.status_code == 404
+
+    # 2. Alien task (belongs to another user)
+    alien_user = user_service.register_user("alien_user@example.com", "password123")
+    alien_task = task_service.create_task(alien_user.id, "Tarea de Otro")
+    alien_web_res = client.post(f"/tasks/{alien_task.id}/delete")
+    assert alien_web_res.status_code == 404
+    alien_api_res = client.delete(f"/api/tasks/{alien_task.id}")
+    assert alien_api_res.status_code == 404
+
+    # 3. Already deleted task
+    own_task = task_service.create_task(user.id, "Tarea Propia a Borrar")
+    client.post(f"/tasks/{own_task.id}/delete")
+
+    dup_web_res = client.post(f"/tasks/{own_task.id}/delete")
+    assert dup_web_res.status_code == 404
+    dup_api_res = client.delete(f"/api/tasks/{own_task.id}")
+    assert dup_api_res.status_code == 404
+
+
+def test_deleted_task_cannot_be_opened_in_edit_view(auth_client, task_service):
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea que sera eliminada")
+    task_service.delete_task(task.id, user.id)
+
+    # Direct GET to /tasks/<id>/edit must return 404
+    get_res = client.get(f"/tasks/{task.id}/edit")
+    assert get_res.status_code == 404
+    assert "Editar Tarea".encode("utf-8") not in get_res.data
+
+    # Direct POST to /tasks/<id>/edit must return 404 and reject modification
+    post_res = client.post(f"/tasks/{task.id}/edit", data={"title": "Intento de Modificacion"})
+    assert post_res.status_code == 404
+
+
+def test_deleted_task_status_change_via_api_returns_controlled_error(auth_client, task_service):
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea para prueba de estado")
+    task_service.delete_task(task.id, user.id)
+
+    # Attempting to change status of deleted task via API
+    res = client.patch(f"/api/tasks/{task.id}/status", json={"status": "en_progreso"})
+    # Must be controlled error (400 or 404), NEVER 500
+    assert res.status_code in (400, 404)
+    assert res.status_code != 500
+    json_data = res.get_json()
+    assert json_data["success"] is False
+    assert "error" in json_data
+
+
+def test_reopen_task_web_route_success(auth_client, task_service, audit_repo):
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea para Reabrir Web")
+    task_service.update_task_status(task.id, user.id, "en_progreso")
+    task_service.update_task_status(task.id, user.id, "completada")
+
+    res = client.post(f"/tasks/{task.id}/reopen", follow_redirects=False)
+    assert res.status_code == 302
+    assert "/tasks" in res.headers["Location"]
+
+    # Verify task status is now 'pendiente'
+    reopened = task_service.get_task(task.id, user.id)
+    assert reopened.status == "pendiente"
+
+    # Verify audit log contains reopen
+    logs = audit_repo.list_by_task(task.id)
+    assert logs[-1].action == "reopen"
+
+
+def test_reopen_task_api_route_success(auth_client, task_service):
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea para Reabrir API")
+    task_service.update_task_status(task.id, user.id, "en_progreso")
+    task_service.update_task_status(task.id, user.id, "completada")
+
+    res = client.post(f"/api/tasks/{task.id}/reopen")
+    assert res.status_code == 200
+    json_data = res.get_json()
+    assert json_data["status"] == "success"
+    assert json_data["data"]["id"] == task.id
+    assert json_data["data"]["status"] == "pendiente"
+
+
+def test_reopen_task_unauthenticated_rejected(client):
+    # Web endpoint requires login -> redirect 302 to /login
+    web_res = client.post("/tasks/1/reopen", follow_redirects=False)
+    assert web_res.status_code == 302
+    assert "/login" in web_res.headers["Location"]
+
+    # API endpoint requires login -> 401
+    api_res = client.post("/api/tasks/1/reopen")
+    assert api_res.status_code == 401
+
+
+def test_reopen_task_non_completed_fails(auth_client, task_service):
+    client, user = auth_client
+    t_pending = task_service.create_task(user.id, "Tarea Pendiente no Reabrible")
+
+    web_res = client.post(f"/tasks/{t_pending.id}/reopen")
+    assert web_res.status_code == 400
+
+    api_res = client.post(f"/api/tasks/{t_pending.id}/reopen")
+    assert api_res.status_code == 400
+    assert api_res.get_json()["status"] == "error"
+
+
+def test_reopen_task_nonexistent_alien_or_deleted_fails(auth_client, user_service, task_service):
+    client, user = auth_client
+
+    # 1. Nonexistent task
+    assert client.post("/tasks/99999/reopen").status_code == 404
+    assert client.post("/api/tasks/99999/reopen").status_code == 404
+
+    # 2. Alien task
+    alien_user = user_service.register_user("alien_reopen@example.com", "password123")
+    alien_task = task_service.create_task(alien_user.id, "Tarea Alien")
+    task_service.update_task_status(alien_task.id, alien_user.id, "en_progreso")
+    task_service.update_task_status(alien_task.id, alien_user.id, "completada")
+
+    assert client.post(f"/tasks/{alien_task.id}/reopen").status_code == 404
+    assert client.post(f"/api/tasks/{alien_task.id}/reopen").status_code == 404
+
+    # 3. Deleted task
+    own_task = task_service.create_task(user.id, "Tarea Borrada no Reabrible")
+    task_service.update_task_status(own_task.id, user.id, "en_progreso")
+    task_service.update_task_status(own_task.id, user.id, "completada")
+    task_service.delete_task(own_task.id, user.id)
+
+    assert client.post(f"/tasks/{own_task.id}/reopen").status_code == 404
+    assert client.post(f"/api/tasks/{own_task.id}/reopen").status_code == 404
+
+
+
+
+

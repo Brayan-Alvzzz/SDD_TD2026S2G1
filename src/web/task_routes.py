@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, g
+    Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, g, abort
 )
 from src.web.app import get_db
 from src.web.auth_routes import login_required
@@ -11,10 +11,10 @@ task_bp = Blueprint("tasks", __name__)
 
 
 def get_task_service() -> TaskService:
-    db = get_db()
-    task_repo = TaskRepository(db)
-    audit_repo = AuditLogRepository(db)
-    return TaskService(task_repo, audit_repo)
+    session = get_db()
+    task_repo = TaskRepository(session)
+    audit_repo = AuditLogRepository(session)
+    return TaskService(task_repo, audit_repo, session=session)
 
 
 @task_bp.route("/tasks", methods=["GET"])
@@ -120,9 +120,8 @@ def edit_task_view(id):
     try:
         task = task_service.get_task(id, user_id)
         return render_template("tasks/edit.html", task=task)
-    except (NotFoundError, UnauthorizedError) as e:
-        flash(str(e), "error")
-        return redirect(url_for("tasks.list_tasks_view"))
+    except (NotFoundError, UnauthorizedError):
+        abort(404)
 
 
 @task_bp.route("/tasks/<int:id>/edit", methods=["POST"])
@@ -148,9 +147,8 @@ def update_task_view(id):
         flash(str(e), "error")
         task = task_service.get_task(id, user_id)
         return render_template("tasks/edit.html", task=task, title=title, description=description, due_date=due_date), 400
-    except (NotFoundError, UnauthorizedError) as e:
-        flash(str(e), "error")
-        return redirect(url_for("tasks.list_tasks_view"))
+    except (NotFoundError, UnauthorizedError):
+        abort(404)
 
 
 @task_bp.route("/api/tasks/<int:id>", methods=["PUT"])
@@ -211,9 +209,88 @@ def update_task_status_api(id):
                 "updated_at": updated.updated_at
             }
         }), 200
-    except InvalidStateTransitionError as e:
+    except (InvalidStateTransitionError, ValidationError) as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except NotFoundError as e:
         return jsonify({"success": False, "error": str(e)}), 404
     except UnauthorizedError as e:
         return jsonify({"success": False, "error": str(e)}), 403
+
+
+@task_bp.route("/tasks/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_task_view(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        task_service.delete_task(id, user_id)
+        flash("Tarea eliminada exitosamente.", "success")
+        return redirect(url_for("tasks.list_tasks_view"))
+    except (NotFoundError, UnauthorizedError):
+        abort(404)
+
+
+@task_bp.route("/api/tasks/<int:id>", methods=["DELETE"])
+@login_required
+def delete_task_api(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        deleted = task_service.delete_task(id, user_id)
+        return jsonify({
+            "status": "success",
+            "message": "Tarea eliminada exitosamente.",
+            "data": {
+                "id": deleted.id,
+                "is_deleted": True
+            }
+        }), 200
+    except (NotFoundError, UnauthorizedError):
+        return jsonify({
+            "status": "error",
+            "message": "Tarea no encontrada o ya eliminada"
+        }), 404
+
+
+@task_bp.route("/tasks/<int:id>/reopen", methods=["POST"])
+@login_required
+def reopen_task_view(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        task_service.reopen_task(id, user_id)
+        flash("Tarea reabierta exitosamente.", "success")
+        return redirect(url_for("tasks.list_tasks_view"))
+    except InvalidStateTransitionError:
+        abort(400)
+    except (NotFoundError, UnauthorizedError):
+        abort(404)
+
+
+@task_bp.route("/api/tasks/<int:id>/reopen", methods=["POST"])
+@login_required
+def reopen_task_api(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        reopened = task_service.reopen_task(id, user_id)
+        return jsonify({
+            "status": "success",
+            "message": "Tarea reabierta exitosamente.",
+            "data": {
+                "id": reopened.id,
+                "status": reopened.status
+            }
+        }), 200
+    except InvalidStateTransitionError as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 400
+    except (NotFoundError, UnauthorizedError):
+        return jsonify({
+            "status": "error",
+            "message": "Tarea no encontrada o no autorizada"
+        }), 404
+
+

@@ -5,15 +5,9 @@ from src.infrastructure.database import get_db_connection, init_db_schema
 
 
 def get_db():
-    """Retrieve or initialize the active database connection for the current request context."""
-    if "db" not in g:
-        if current_app.config.get("DATABASE_CONN"):
-            g.db = current_app.config["DATABASE_CONN"]
-        else:
-            db_path = current_app.config.get("DATABASE_PATH", "taskcontrol.db")
-            g.db = get_db_connection(db_path)
-            init_db_schema(g.db)
-    return g.db
+    """Retrieve the active SQLAlchemy session for the current request context."""
+    from src.infrastructure.database import db
+    return db.session
 
 
 def create_app(test_config=None) -> Flask:
@@ -27,16 +21,40 @@ def create_app(test_config=None) -> Flask:
         PERMANENT_SESSION_LIFETIME=timedelta(hours=24),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        ENABLE_CONSOLE_PASSWORD_RESET=os.environ.get("ENABLE_CONSOLE_PASSWORD_RESET", "false").lower() in ("true", "1", "yes"),
     )
 
     if test_config is not None:
         app.config.update(test_config)
 
+    # Resolve DATABASE_PATH to absolute SQLite URI for SQLAlchemy
+    db_path = app.config.get("DATABASE_PATH", "taskcontrol.db")
+    if db_path == ":memory:":
+        abs_db_path = ":memory:"
+        uri = "sqlite:///:memory:"
+    else:
+        abs_db_path = os.path.abspath(db_path)
+        uri = f"sqlite:///{abs_db_path.replace(os.sep, '/')}"
+
+    app.config.setdefault("SQLALCHEMY_DATABASE_URI", uri)
+    app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+
+    # Startup diagnostic log displaying exact resolved database file path
+    print(f"[DB RESOLUTION] Flask opening database file: {abs_db_path}")
+
+    # Initialize SQLAlchemy & Flask-Migrate extensions
+    from src.infrastructure.database import db, migrate
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    # Import models so Alembic / SQLAlchemy metadata discovers them
+    import src.infrastructure.models  # noqa: F401
+
     @app.teardown_appcontext
     def close_db(error=None):
-        db = g.pop("db", None)
-        if db is not None and not app.config.get("DATABASE_CONN"):
-            db.close()
+        raw_db = g.pop("db", None)
+        if raw_db is not None and hasattr(raw_db, "close"):
+            raw_db.close()
 
     # Context processor for templates
     @app.context_processor

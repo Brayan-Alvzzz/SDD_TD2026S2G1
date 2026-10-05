@@ -2,6 +2,24 @@ import sqlite3
 import os
 from typing import Optional
 
+os.environ.setdefault("DISABLE_SQLALCHEMY_CEXT", "1")
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+db = SQLAlchemy()
+migrate = Migrate()
+
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    """Enforce foreign key constraints on every SQLite connection created by SQLAlchemy."""
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        cursor.close()
+
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
 

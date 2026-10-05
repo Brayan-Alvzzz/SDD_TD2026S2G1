@@ -156,6 +156,22 @@ body {
     background: #15803d;
 }
 
+.btn-secondary {
+    background: #64748b;
+    color: white;
+}
+.btn-secondary:hover {
+    background: #475569;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
 /* Layout */
 .main-content {
     flex: 1;

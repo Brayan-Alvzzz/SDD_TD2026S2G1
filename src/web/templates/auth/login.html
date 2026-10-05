@@ -21,8 +21,13 @@
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Entrar</button>
     </form>
 
-    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--text-muted);">
-        ¿No tienes cuenta todavía? <a href="{{ url_for('auth.register_view') }}" style="color: var(--primary); font-weight: 500;">Regístrate gratis</a>
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>
+            <a href="{{ url_for('auth.forgot_password_view') }}" style="color: var(--primary); font-weight: 500;">¿Olvidó su contraseña?</a>
+        </div>
+        <div>
+            ¿No tienes cuenta todavía? <a href="{{ url_for('auth.register_view') }}" style="color: var(--primary); font-weight: 500;">Regístrate gratis</a>
+        </div>
     </div>
 </div>
 {% endblock %}

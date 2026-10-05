@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskLifecycleAPI",
+  "description": "Contrato de interfaz para eliminación lógica y reapertura de tareas (HU-05 y HU-06)",
+  "version": "2.0.0",
+  "endpoints": {
+    "delete_task_web": {
+      "path": "/tasks/{task_id}/delete",
+      "method": "POST",
+      "description": "Elimina lógicamente una tarea propia desde la interfaz web (previa confirmación en navegador)",
+      "headers": {
+        "Cookie": "session=..."
+      },
+      "responses": {
+        "302": {
+          "description": "Redirección a /tasks con mensaje flash de confirmación"
+        },
+        "401": {
+          "description": "Usuario no autenticado; redirige a /login"
+        },
+        "404": {
+          "description": "Tarea no encontrada o no pertenece al usuario autenticado o ya fue eliminada"
+        }
+      }
+    },
+    "delete_task_api": {
+      "path": "/api/tasks/{task_id}",
+      "method": "DELETE",
+      "description": "Eliminación lógica de una tarea por vía REST",
+      "headers": {
+        "Cookie": "session=..."
+      },
+      "responses": {
+        "200": {
+          "description": "Tarea eliminada lógicamente con éxito",
+          "body": {
+            "type": "object",
+            "required": ["status", "message", "data"],
+            "properties": {
+              "status": { "type": "string", "enum": ["success"] },
+              "message": { "type": "string" },
+              "data": {
+                "type": "object",
+                "required": ["id", "is_deleted"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "is_deleted": { "type": "boolean", "enum": [true] }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "No autorizado (sesión inválida o ausente)",
+          "body": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["error"] },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "404": {
+          "description": "Tarea no encontrada o ya eliminada",
+          "body": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["error"] },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "reopen_task_web": {
+      "path": "/tasks/{task_id}/reopen",
+      "method": "POST",
+      "description": "Reabre una tarea completada propia devolviéndola al estado pendiente",
+      "headers": {
+        "Cookie": "session=..."
+      },
+      "responses": {
+        "302": {
+          "description": "Redirección a /tasks con mensaje flash de éxito"
+        },
+        "400": {
+          "description": "La tarea no está en estado 'completada'"
+        },
+        "401": {
+          "description": "No autenticado"
+        },
+        "404": {
+          "description": "Tarea no encontrada o no pertenece al usuario"
+        }
+      }
+    },
+    "reopen_task_api": {
+      "path": "/api/tasks/{task_id}/reopen",
+      "method": "POST",
+      "description": "Reapertura de una tarea completada vía REST",
+      "headers": {
+        "Cookie": "session=..."
+      },
+      "responses": {
+        "200": {
+          "description": "Tarea reabierta exitosamente",
+          "body": {
+            "type": "object",
+            "required": ["status", "message", "data"],
+            "properties": {
+              "status": { "type": "string", "enum": ["success"] },
+              "message": { "type": "string" },
+              "data": {
+                "type": "object",
+                "required": ["id", "status"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "status": { "type": "string", "enum": ["pendiente"] }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Transición inválida (la tarea no estaba completada)",
+          "body": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["error"] },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "404": {
+          "description": "Tarea no encontrada o no autorizada",
+          "body": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["error"] },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

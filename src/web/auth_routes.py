@@ -1,9 +1,12 @@
+import hashlib
+from datetime import datetime, timezone
 from functools import wraps
 from flask import (
     Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 )
 from src.web.app import get_db
-from src.infrastructure.repositories import UserRepository
+from src.infrastructure.repositories import UserRepository, PasswordResetTokenRepository
+from src.infrastructure.notifications import ConsoleNotificationService
 from src.domain.services import UserService
 from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError
 
@@ -11,8 +14,15 @@ auth_bp = Blueprint("auth", __name__)
 
 
 def get_user_service() -> UserService:
-    repo = UserRepository(get_db())
-    return UserService(repo)
+    from flask import current_app, has_app_context
+    session = get_db()
+    repo = UserRepository(session)
+    token_repo = PasswordResetTokenRepository(session)
+    console_enabled = current_app.config.get("ENABLE_CONSOLE_PASSWORD_RESET", False) if has_app_context() else False
+    notification_service = ConsoleNotificationService(enabled=console_enabled) if console_enabled else None
+    return UserService(repo, token_repo=token_repo, notification_service=notification_service, session=session)
+
+
 
 
 def login_required(f):
@@ -120,3 +130,88 @@ def logout():
         return jsonify({"success": True, "message": "Sesión cerrada exitosamente"}), 200
     flash("Has cerrado sesión exitosamente.", "info")
     return redirect(url_for("auth.login_view"))
+
+
+@auth_bp.route("/forgot-password", methods=["GET"])
+def forgot_password_view():
+    if "user_id" in session:
+        return redirect(url_for("tasks.list_tasks_view"))
+    return render_template("auth/forgot_password.html")
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    is_json_req = request.is_json
+    data = request.get_json() if is_json_req else request.form
+    email = (data.get("email") or "").strip()
+
+    user_service = get_user_service()
+    neutral_message = (
+        "Si la dirección de correo electrónico está registrada en el sistema, "
+        "se ha enviado un enlace para restablecer la contraseña."
+    )
+
+    try:
+        user_service.request_password_reset(email, base_url=request.host_url.rstrip("/"))
+        if is_json_req:
+            return jsonify({"status": "success", "message": neutral_message}), 200
+        flash(neutral_message, "info")
+        return render_template("auth/forgot_password.html"), 200
+    except ValidationError as e:
+        if is_json_req:
+            return jsonify({"status": "error", "message": str(e)}), 400
+        flash(str(e), "error")
+        return render_template("auth/forgot_password.html", email=email), 400
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET"])
+def reset_password_view(token):
+    if "user_id" in session:
+        return redirect(url_for("tasks.list_tasks_view"))
+
+    user_service = get_user_service()
+    token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+    token_obj = user_service.token_repo.find_active_by_hash(token_hash) if user_service.token_repo else None
+
+    if not token_obj:
+        flash("El enlace de restablecimiento es inválido o ha expirado.", "error")
+        return redirect(url_for("auth.login_view"))
+
+    try:
+        token_expires = datetime.fromisoformat(token_obj.expires_at)
+        if token_expires.tzinfo is None:
+            token_expires = token_expires.replace(tzinfo=timezone.utc)
+        if token_expires < datetime.now(timezone.utc):
+            flash("El enlace de restablecimiento es inválido o ha expirado.", "error")
+            return redirect(url_for("auth.login_view"))
+    except Exception:
+        flash("El enlace de restablecimiento es inválido o ha expirado.", "error")
+        return redirect(url_for("auth.login_view"))
+
+    return render_template("auth/reset_password.html", token=token)
+
+
+@auth_bp.route("/reset-password/<token>", methods=["POST"])
+def reset_password(token):
+    is_json_req = request.is_json
+    data = request.get_json() if is_json_req else request.form
+
+    password = data.get("password", "")
+    password_confirm = data.get("password_confirm", "")
+
+    user_service = get_user_service()
+    try:
+        user_service.reset_password(token, password, password_confirm)
+        success_message = "Contraseña actualizada exitosamente. Ya puede iniciar sesión."
+        if is_json_req:
+            return jsonify({"status": "success", "message": success_message}), 200
+        flash(success_message, "success")
+        return redirect(url_for("auth.login_view"))
+    except ValidationError as e:
+        if is_json_req:
+            return jsonify({"status": "error", "message": str(e)}), 400
+        flash(str(e), "error")
+        if "inválido" in str(e).lower() or "expirado" in str(e).lower():
+            return redirect(url_for("auth.login_view"))
+        return render_template("auth/reset_password.html", token=token), 400
+

@@ -29,3 +29,13 @@ class TaskStateMachine:
             raise InvalidStateTransitionError(
                 f"Transición no permitida de '{current_status}' a '{target_status}'."
             )
+
+    @staticmethod
+    def validate_reopen(current_status: str) -> str:
+        """Validate that a task can be reopened. Only 'completada' can be reopened, moving to 'pendiente'."""
+        if current_status != "completada":
+            raise InvalidStateTransitionError(
+                "Solo las tareas completadas pueden ser reabiertas."
+            )
+        return "pendiente"
+

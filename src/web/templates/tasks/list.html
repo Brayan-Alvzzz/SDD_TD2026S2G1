@@ -59,8 +59,19 @@
                                 data-task-id="{{ task.id }}" data-next-status="completada">
                             Completar ✓
                         </button>
+                    {% elif task.status == 'completada' %}
+                        <form method="POST" action="{{ url_for('tasks.reopen_task_view', id=task.id) }}" class="reopen-task-form inline-form">
+                            <button type="submit" class="btn btn-sm btn-secondary btn-reopen-task" data-task-id="{{ task.id }}">
+                                Reabrir ↺
+                            </button>
+                        </form>
                     {% endif %}
                     <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
+                    <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form">
+                        <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
+                            Eliminar
+                        </button>
+                    </form>
                 </div>
             </div>
         {% endfor %}

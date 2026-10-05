@@ -62,6 +62,36 @@ const API = {
                 error: "Error de conexión con el servidor. Se canceló la operación."
             };
         }
+    },
+
+    async post(url, data = {}) {
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json().catch(() => ({
+                status: "error",
+                error: "Respuesta inválida del servidor"
+            }));
+
+            if (!response.ok || result.status === "error" || result.success === false) {
+                const errorMsg = result.message || result.error || `Error ${response.status}: Operación fallida`;
+                return { success: false, error: errorMsg, status: response.status };
+            }
+
+            return { success: true, data: result.data, message: result.message };
+        } catch (err) {
+            return {
+                success: false,
+                error: "Error de conexión con el servidor. Se canceló la operación."
+            };
+        }
     }
 };
 
