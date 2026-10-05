@@ -52,3 +52,14 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **C1 (Dependencias):** Se adelantó la creación y prueba de `NotificationRepository` a la Fase 2 (Fundacional) para que esté disponible antes de implementar el servicio de asignación en la Fase 3, resolviendo la dependencia cruzada en la transacción atómica. La tarea duplicada en US2 fue eliminada.
 - **C2 (Alcance MVP):** Se corrigió la sugerencia de MVP en `tasks.md`, aclarando que ninguna entrega del Incremento 4 se considera completa sin las historias HU-10 y HU-11 integradas; las etapas intermedias son hitos de desarrollo progresivos, no entregables funcionales finales.
 - **C3 (Dependencia temporal):** Se explicitó en la Fase 5 que la inyección del contador de notificaciones no leídas en el procesador de contexto de Flask (`app.py`) requiere estrictamente que el repositorio de notificaciones esté finalizado.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 1 y 2 (Pruebas RED)
+
+- Se completaron las tareas **T001** y **T002** según `tasks.md`.
+- **T001:** Se tomó como base el resultado previo de 156 pruebas exitosas en `docs/evidencias/base/pytest-corregido.txt` sin requerir re-ejecución, puesto que no hubo cambios en el código de producción.
+- **T002:** Se escribió la prueba de integración `test_migration_004_task_collaboration` en `tests/integration/test_migrations.py`.
+  - Configura una base temporal, migra hasta la revisión 003, e inserta datos sintéticos de usuarios y tareas.
+  - Simula la ejecución hasta `head` y verifica: existencia de `assignee_id` (NULL por defecto), creación de tabla `notifications`, y validación del nuevo `CHECK` de auditoría (`assign`, `unassign`, `reassign`).
+  - También incluye la comprobación de error (`Exception`) en downgrade si hay asignaciones activas.
+- **Resultado RED:** La ejecución intencionalmente falló en el primer assert que busca la columna `assignee_id` en `tasks`, debido a que la migración real aún no ha sido implementada. La evidencia RED se guardó en `docs/evidencias/inc4/fundacional-red.txt`.
+- No se introdujeron fallos artificiales; el fallo `assert 'assignee_id' in task_cols` es producto genuino de la funcionalidad ausente (TDD puro). No se modificó el código de producción.

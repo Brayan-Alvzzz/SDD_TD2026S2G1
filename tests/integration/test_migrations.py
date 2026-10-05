@@ -278,3 +278,91 @@ def test_migration_003_audit_logs_check_constraint_allows_new_actions(tmp_path):
         conn.commit()
 
     conn.close()
+
+
+def test_migration_004_task_collaboration(tmp_path):
+    """Test that migration 004 adds assignee_id to tasks, creates notifications table,
+    allows new audit actions, and implements a pre-flight check for downgrade."""
+    test_db = str(tmp_path / "migration_004.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+    migrations_dir = os.path.abspath("migrations")
+    rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+    assert rev_003, "Revision 003 must exist"
+
+    with app.app_context():
+        # Upgrade up to 003 first
+        upgrade(directory=migrations_dir, revision=rev_003)
+
+    # Insert fixture data at revision 003 schema
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+        ("collab_owner@example.com", "hash", "2026-10-05T10:00:00Z"),
+    )
+    owner_id = cur.lastrowid
+    cur.execute(
+        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+        ("collab_assignee@example.com", "hash", "2026-10-05T10:00:00Z"),
+    )
+    assignee_id = cur.lastrowid
+
+    cur.execute(
+        "INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (owner_id, "Collab Task", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"),
+    )
+    task_id = cur.lastrowid
+    conn.commit()
+
+    tasks_before = cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+
+    # Upgrade to head (which should be 004 eventually)
+    with app.app_context():
+        upgrade(directory=migrations_dir)
+
+    # Verify schema changes
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+
+    # 1. assignee_id added to tasks and defaults to NULL, existing data preserved
+    assert cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == tasks_before
+    task_cols = {row[1] for row in cur.execute("PRAGMA table_info(tasks)").fetchall()}
+    assert "assignee_id" in task_cols
+    assignees = cur.execute("SELECT assignee_id FROM tasks").fetchall()
+    for (a_id,) in assignees:
+        assert a_id is None
+
+    # 2. notifications table created
+    tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert "notifications" in tables
+    notif_cols = {row[1] for row in cur.execute("PRAGMA table_info(notifications)").fetchall()}
+    assert {"id", "user_id", "task_id", "type", "message", "is_read", "created_at"}.issubset(notif_cols)
+
+    # 3. New audit actions (assign, unassign, reassign) are allowed
+    new_actions = ["assign", "unassign", "reassign"]
+    for action in new_actions:
+        cur.execute(
+            "INSERT INTO audit_logs (task_id, actor_id, action, details, created_at) VALUES (?, ?, ?, ?, ?)",
+            (task_id, owner_id, action, f'{{"action": "{action}"}}', "2026-10-05T10:10:00Z"),
+        )
+    conn.commit()
+    logs_count = cur.execute("SELECT COUNT(*) FROM audit_logs WHERE task_id = ?", (task_id,)).fetchone()[0]
+    assert logs_count == len(new_actions)
+
+    # 4. Pre-flight check on downgrade: if active collaboration data exists, downgrade fails
+    # Let's assign the task so we have collaboration data
+    # In SQLite without foreign keys enabled by default this might just work,
+    # but we don't have assignee_id yet because we are in RED state.
+    # Wait, in RED state, the schema is still 003, so `UPDATE tasks SET assignee_id = ?` will fail!
+    # That's perfect, the test itself will fail at step 1 because 'assignee_id' not in task_cols.
+    
+    # We will just write the test logic assuming GREEN state eventually
+    cur.execute("UPDATE tasks SET assignee_id = ? WHERE id = ?", (assignee_id, task_id))
+    conn.commit()
+    conn.close()
+
+    from flask_migrate import downgrade
+    with app.app_context():
+        # Downgrading to 003 should fail gracefully due to pre-flight check
+        with pytest.raises(Exception):
+            downgrade(directory=migrations_dir, revision=rev_003)

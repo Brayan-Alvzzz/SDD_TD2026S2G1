@@ -6,7 +6,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 
 **Purpose**: Verificación de la base existente antes de comenzar.
 
-- [ ] T001 Verificar que las 156 pruebas base pasan correctamente (`docs/evidencias/base/pytest-corregido.txt`).
+- [x] T001 Verificar que las 156 pruebas base pasan correctamente (`docs/evidencias/base/pytest-corregido.txt`).
 
 ---
 
@@ -15,7 +15,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 **Purpose**: Infraestructura central necesaria para las historias de usuario (Migración 004, Repositorio de Notificaciones y Matriz de permisos).
 
 ### Tests (RED)
-- [ ] T002 [F1] Escribir prueba de integración `tests/integration/test_migrations.py` para la migración 004 (preservación de datos, `assignee_id` NULL, tabla `notifications`, nuevas acciones de auditoría y *pre-flight check* de bloqueo de downgrade sin pérdida de datos). Guardar salida RED en `docs/evidencias/inc4/red-f1.txt`.
+- [x] T002 [F1] Escribir prueba de integración `tests/integration/test_migrations.py` para la migración 004 (preservación de datos, `assignee_id` NULL, tabla `notifications`, nuevas acciones de auditoría y *pre-flight check* de bloqueo de downgrade sin pérdida de datos). Guardar salida RED en `docs/evidencias/inc4/red-f1.txt`.
 - [ ] T003 [F2] Escribir prueba unitaria `tests/unit/test_permissions.py` para la matriz completa (3 roles × 6 operaciones). Guardar salida RED en `docs/evidencias/inc4/red-f2.txt`.
 - [ ] T004 [F1] Escribir prueba unitaria en `tests/unit/test_notification_repository.py` para verificar la inserción base y la vista lógica `available`. Guardar salida RED en `docs/evidencias/inc4/red-repo.txt`.
 
