@@ -11,6 +11,15 @@ class User:
 
 
 @dataclass
+class Category:
+    id: Optional[int]
+    user_id: int
+    name: str
+    created_at: str = ""
+    task_count: int = 0
+
+
+@dataclass
 class Task:
     id: Optional[int]
     user_id: int
@@ -18,6 +27,10 @@ class Task:
     description: Optional[str] = None
     due_date: Optional[str] = None
     status: str = "pendiente"
+    priority: str = "media"
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    is_overdue: bool = False
     is_deleted: bool = False
     deleted_at: Optional[str] = None
     created_at: str = ""

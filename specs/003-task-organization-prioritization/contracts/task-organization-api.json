@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskOrganizationAPI",
+  "description": "Contrato de endpoints para listado extendido, ordenamiento por prioridad, filtrado por categoría y actualización de prioridad/categoría en tareas (Incremento 3)",
+  "endpoints": [
+    {
+      "path": "/api/tasks",
+      "method": "GET",
+      "description": "Obtiene el listado de tareas del usuario autenticado con soporte para filtros combinados de estado y categoría, y ordenamiento por prioridad",
+      "queryParams": {
+        "status": {
+          "type": "string",
+          "enum": ["todas", "pendiente", "en_progreso", "completada"],
+          "default": "todas"
+        },
+        "category_id": {
+          "type": "string",
+          "description": "ID numérico de la categoría, o 'none' para tareas sin categoría, o 'all'/vacío para no filtrar por categoría",
+          "default": ""
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["created_desc", "priority_desc", "priority_asc"],
+          "default": "created_desc",
+          "description": "Criterio de ordenación. Por defecto ('created_desc') conserva el orden cronológico descendente por fecha de creación. Únicamente al elegir 'priority_desc' ordena por prioridad alta -> media -> baja ('priority_asc' ordena baja -> media -> alta)."
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Lista de tareas activas filtradas y ordenadas",
+          "body": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "title": { "type": "string" },
+                "description": { "type": ["string", "null"] },
+                "due_date": { "type": ["string", "null"], "format": "date", "example": "2026-10-15" },
+                "priority": { "type": "string", "enum": ["alta", "media", "baja"], "default": "media" },
+                "category_id": { "type": ["integer", "null"] },
+                "category_name": { "type": ["string", "null"] },
+                "status": { "type": "string", "enum": ["pendiente", "en_progreso", "completada"] },
+                "is_overdue": { "type": "boolean", "description": "Calculado exclusivamente en el backend comparando due_date < fecha_actual_utc" },
+                "created_at": { "type": "string", "format": "date-time" },
+                "updated_at": { "type": "string", "format": "date-time" }
+              },
+              "required": ["id", "title", "priority", "status", "is_overdue", "created_at"]
+            }
+          }
+        },
+        "401": {
+          "description": "Usuario no autenticado"
+        }
+      }
+    },
+    {
+      "path": "/api/tasks/{task_id}/priority",
+      "method": "PATCH",
+      "description": "Actualiza el nivel de prioridad de una tarea propia",
+      "parameters": {
+        "task_id": { "type": "integer" }
+      },
+      "requestBody": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["alta", "media", "baja"]
+          }
+        },
+        "required": ["priority"]
+      },
+      "responses": {
+        "200": {
+          "description": "Prioridad actualizada exitosamente",
+          "body": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "priority": { "type": "string", "enum": ["alta", "media", "baja"] },
+              "message": { "type": "string" }
+            },
+            "required": ["id", "priority", "message"]
+          }
+        },
+        "400": { "description": "Prioridad inválida" },
+        "401": { "description": "No autenticado" },
+        "403": { "description": "Tarea perteneciente a otro usuario" },
+        "404": { "description": "Tarea no encontrada o eliminada" }
+      }
+    },
+    {
+      "path": "/api/tasks/{task_id}/category",
+      "method": "PATCH",
+      "description": "Asigna o desvincula la categoría de una tarea propia",
+      "parameters": {
+        "task_id": { "type": "integer" }
+      },
+      "requestBody": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": ["integer", "null"],
+            "description": "ID de una categoría propia, o null para desvincular"
+          }
+        },
+        "required": ["category_id"]
+      },
+      "responses": {
+        "200": {
+          "description": "Categoría asignada o desvinculada exitosamente",
+          "body": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "category_id": { "type": ["integer", "null"] },
+              "category_name": { "type": ["string", "null"] },
+              "message": { "type": "string" }
+            },
+            "required": ["id", "message"]
+          }
+        },
+        "400": { "description": "Categoría inválida o no existente" },
+        "401": { "description": "No autenticado" },
+        "403": { "description": "Tarea o categoría perteneciente a otro usuario" },
+        "404": { "description": "Tarea no encontrada o eliminada" }
+      }
+    }
+  ]
+}

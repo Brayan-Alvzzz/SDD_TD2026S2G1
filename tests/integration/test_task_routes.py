@@ -326,6 +326,384 @@ def test_reopen_task_nonexistent_alien_or_deleted_fails(auth_client, user_servic
     assert client.post(f"/api/tasks/{own_task.id}/reopen").status_code == 404
 
 
+# ============================================================================
+# HU-07: Prioridad de Tareas y Ordenamiento (Integration Tests)
+# ============================================================================
+
+def test_create_task_with_priority_web_and_api(auth_client):
+    """Creating a task via web form with explicit priority persists and renders badge."""
+    client, user = auth_client
+    res = client.post("/tasks", data={
+        "title": "Tarea Alta Prioridad",
+        "description": "Detalles urgentes",
+        "priority": "alta",
+    }, follow_redirects=True)
+
+    assert res.status_code == 200
+    assert "Tarea Alta Prioridad".encode("utf-8") in res.data
+    assert "alta".encode("utf-8") in res.data
+
+
+def test_edit_task_post_updates_priority(auth_client, task_service):
+    """POST /tasks/<id>/edit updates task priority correctly."""
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea a Modificar Prioridad", priority="media")
+
+    res = client.post(f"/tasks/{task.id}/edit", data={
+        "title": "Tarea con Prioridad Cambiada",
+        "priority": "baja",
+    }, follow_redirects=True)
+
+    assert res.status_code == 200
+    updated = task_service.get_task(task.id, user.id)
+    assert updated.priority == "baja"
+
+
+def test_patch_api_task_priority_success_and_validations(auth_client, task_service):
+    """PATCH /api/tasks/<id>/priority updates priority and rejects invalid values."""
+    client, user = auth_client
+    task = task_service.create_task(user.id, "Tarea API Priority", priority="media")
+
+    # Success case
+    patch_res = client.patch(
+        f"/api/tasks/{task.id}/priority",
+        json={"priority": "alta"}
+    )
+    assert patch_res.status_code == 200
+    data = patch_res.get_json()
+    assert data["status"] == "success"
+    assert data["task"]["priority"] == "alta"
+
+    # Validation failure: invalid priority value
+    invalid_res = client.patch(
+        f"/api/tasks/{task.id}/priority",
+        json={"priority": "urgente"}
+    )
+    assert invalid_res.status_code == 400
+    assert invalid_res.get_json()["status"] == "error"
+
+
+def test_patch_api_task_priority_unauthorized_and_alien(auth_client, user_service, task_service, app):
+    """PATCH /api/tasks/<id>/priority enforces authentication and ownership."""
+    auth_c, owner = auth_client
+    task = task_service.create_task(owner.id, "Tarea Privada")
+
+    # 1. Unauthenticated request
+    unauth_client = app.test_client()
+    unauth_res = unauth_client.patch(f"/api/tasks/{task.id}/priority", json={"priority": "alta"})
+    assert unauth_res.status_code in (401, 302)
+
+    # 2. Alien user request
+    alien_user = user_service.register_user("alien_priority@example.com", "password123")
+    alien_client = app.test_client()
+    with alien_client.session_transaction() as sess:
+        sess["user_id"] = alien_user.id
+        sess["user_email"] = alien_user.email
+
+    alien_res = alien_client.patch(f"/api/tasks/{task.id}/priority", json={"priority": "alta"})
+    assert alien_res.status_code in (403, 404)
+
+
+def test_task_list_sort_by_priority_web_and_api(auth_client, task_service):
+    """Task listing supports sort=priority_desc and sort=priority_asc, defaulting to created_desc."""
+    client, user = auth_client
+    t_baja = task_service.create_task(user.id, "Tarea Nivel Baja", priority="baja")
+    t_media = task_service.create_task(user.id, "Tarea Nivel Media", priority="media")
+    t_alta = task_service.create_task(user.id, "Tarea Nivel Alta", priority="alta")
+
+    # API - Default sort (created_at DESC)
+    default_api = client.get("/api/tasks")
+    assert default_api.status_code == 200
+    items_default = default_api.get_json()["tasks"]
+    assert [t["id"] for t in items_default] == [t_alta.id, t_media.id, t_baja.id]
+
+    # API - Priority DESC (alta -> media -> baja)
+    prio_desc_api = client.get("/api/tasks?sort=priority_desc")
+    assert prio_desc_api.status_code == 200
+    items_desc = prio_desc_api.get_json()["tasks"]
+    assert [t["priority"] for t in items_desc] == ["alta", "media", "baja"]
+    assert [t["id"] for t in items_desc] == [t_alta.id, t_media.id, t_baja.id]
+
+    # API - Priority ASC (baja -> media -> alta)
+    prio_asc_api = client.get("/api/tasks?sort=priority_asc")
+    assert prio_asc_api.status_code == 200
+    items_asc = prio_asc_api.get_json()["tasks"]
+    assert [t["priority"] for t in items_asc] == ["baja", "media", "alta"]
+    assert [t["id"] for t in items_asc] == [t_baja.id, t_media.id, t_alta.id]
+
+
+def test_task_list_sort_by_priority_combined_with_status_filter(auth_client, task_service):
+    """Priority sorting combines with status filters without interference."""
+    client, user = auth_client
+    t1 = task_service.create_task(user.id, "Pendiente Baja", priority="baja")
+    t2 = task_service.create_task(user.id, "Pendiente Alta", priority="alta")
+    t3 = task_service.create_task(user.id, "En Progreso Alta", priority="alta")
+    task_service.update_task_status(t3.id, user.id, "en_progreso")
+
+    res = client.get("/api/tasks?status=pendiente&sort=priority_desc")
+    assert res.status_code == 200
+    tasks = res.get_json()["tasks"]
+    assert len(tasks) == 2
+    assert tasks[0]["id"] == t2.id
+    assert tasks[0]["priority"] == "alta"
+    assert tasks[1]["id"] == t1.id
+    assert tasks[1]["priority"] == "baja"
+
+
+# ==============================================================================
+# Phase 5: Indicación de Tareas Vencidas (HU-09) - T027 Integration Tests
+# ==============================================================================
+
+def test_api_tasks_contract_includes_is_overdue(auth_client, task_service):
+    """GET /api/tasks includes boolean is_overdue field matching date logic."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    tomorrow_utc = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    t_past = task_service.create_task(user.id, "API Pasada", due_date=yesterday_utc)
+    t_today = task_service.create_task(user.id, "API Hoy", due_date=today_utc)
+    t_future = task_service.create_task(user.id, "API Futura", due_date=tomorrow_utc)
+
+    res = client.get("/api/tasks")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+
+    tasks_by_id = {t["id"]: t for t in data["tasks"]}
+    assert isinstance(tasks_by_id[t_past.id]["is_overdue"], bool)
+    assert tasks_by_id[t_past.id]["is_overdue"] is True
+    assert tasks_by_id[t_today.id]["is_overdue"] is False
+    assert tasks_by_id[t_future.id]["is_overdue"] is False
+
+
+def test_tasks_list_html_renders_overdue_badge(auth_client, task_service):
+    """GET /tasks renders badge-overdue for tasks with past due_date."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    task_service.create_task(user.id, "Tarea Atrasada", due_date=yesterday_utc)
+
+    res = client.get("/tasks")
+    assert res.status_code == 200
+    assert "badge badge-overdue".encode("utf-8") in res.data
+    assert "Vencida".encode("utf-8") in res.data
+
+
+def test_tasks_list_html_does_not_render_overdue_badge_for_today_or_future(auth_client, task_service):
+    """GET /tasks does NOT render overdue badge for tasks due today, future, or without date."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tomorrow_utc = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    task_service.create_task(user.id, "Tarea de Hoy", due_date=today_utc)
+    task_service.create_task(user.id, "Tarea de Mañana", due_date=tomorrow_utc)
+    task_service.create_task(user.id, "Tarea Sin Fecha")
+
+    res = client.get("/tasks")
+    assert res.status_code == 200
+    assert "badge-overdue".encode("utf-8") not in res.data
+    assert "Vencida".encode("utf-8") not in res.data
+
+
+def test_completed_past_due_task_removes_overdue_badge_in_view_and_api(auth_client, task_service):
+    """Completing a past-due task immediately removes the overdue badge and sets is_overdue=False."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    task = task_service.create_task(user.id, "Tarea a Completar", due_date=yesterday_utc)
+
+    # Initially overdue
+    res_initial = client.get("/tasks")
+    assert "badge-overdue".encode("utf-8") in res_initial.data
+
+    # Complete it via API
+    patch_res = client.patch(f"/api/tasks/{task.id}/status", json={"status": "en_progreso"})
+    assert patch_res.status_code == 200
+    patch_res2 = client.patch(f"/api/tasks/{task.id}/status", json={"status": "completada"})
+    assert patch_res2.status_code == 200
+
+    # API check
+    api_res = client.get("/api/tasks?status=completada")
+    assert api_res.status_code == 200
+    completed_task_data = api_res.get_json()["tasks"][0]
+    assert completed_task_data["id"] == task.id
+    assert completed_task_data["is_overdue"] is False
+
+    # HTML check
+    html_res = client.get("/tasks?status=completada")
+    assert html_res.status_code == 200
+    assert "badge-overdue".encode("utf-8") not in html_res.data
+
+
+def test_reopened_past_due_task_restores_overdue_badge(auth_client, task_service):
+    """Reopening a completed task with a past due_date restores the overdue badge."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    task = task_service.create_task(user.id, "Tarea para Ciclo Completo", due_date=yesterday_utc)
+
+    # Complete it
+    client.patch(f"/api/tasks/{task.id}/status", json={"status": "en_progreso"})
+    client.patch(f"/api/tasks/{task.id}/status", json={"status": "completada"})
+
+    # Reopen it
+    reopen_res = client.post(f"/api/tasks/{task.id}/reopen")
+    assert reopen_res.status_code == 200
+
+    # Should be overdue again in API
+    api_res = client.get("/api/tasks")
+    tasks = api_res.get_json()["tasks"]
+    reopened_api = next(t for t in tasks if t["id"] == task.id)
+    assert reopened_api["status"] == "pendiente"
+    assert reopened_api["is_overdue"] is True
+
+    # Should have badge in HTML
+    html_res = client.get("/tasks")
+    assert "badge-overdue".encode("utf-8") in html_res.data
+    assert "Vencida".encode("utf-8") in html_res.data
+
+
+# ==============================================================================
+# Regression: Edit Form Preloading and Category Assignment Preservation
+# ==============================================================================
+
+def test_get_edit_task_view_preloads_all_fields_and_preserves_post_errors(auth_client, task_service, category_service):
+    """GET /tasks/<id>/edit preloads current title, description, due_date, priority, category.
+    POST failure preserves user-entered values."""
+    client, user = auth_client
+    cat = category_service.create_category(user.id, "Infraestructura")
+    task = task_service.create_task(
+        user_id=user.id,
+        title="Tarea Prellenada",
+        description="Nota descriptiva preexistente",
+        due_date="2026-11-20",
+        priority="alta",
+        category_id=cat.id
+    )
+
+    # 1. GET edit form: must preload all fields from existing task
+    res = client.get(f"/tasks/{task.id}/edit")
+    assert res.status_code == 200
+    html = res.data.decode("utf-8")
+    assert 'value="Tarea Prellenada"' in html
+    assert "Nota descriptiva preexistente" in html
+    assert 'value="2026-11-20"' in html
+    assert '<option value="alta" selected>' in html
+    assert f'<option value="{cat.id}" selected>' in html
+
+    # 2. POST with validation error: must preserve submitted values
+    post_err = client.post(f"/tasks/{task.id}/edit", data={
+        "title": "   ",  # Invalid empty title
+        "description": "Texto editado en borrador",
+        "due_date": "2026-12-15",
+        "priority": "baja",
+        "category_id": str(cat.id)
+    }, follow_redirects=True)
+    assert post_err.status_code == 400
+    html_err = post_err.data.decode("utf-8")
+    assert "obligatorio" in html_err
+    assert "Texto editado en borrador" in html_err
+    assert 'value="2026-12-15"' in html_err
+    assert '<option value="baja" selected>' in html_err
+
+
+def test_assign_category_preserves_title_description_and_due_date(auth_client, task_service, category_service):
+    """Assigning or changing a category does not wipe title, description, or due_date."""
+    client, user = auth_client
+    cat = category_service.create_category(user.id, "Desarrollo")
+    task = task_service.create_task(
+        user_id=user.id,
+        title="Tarea No Borrable",
+        description="Esta descripción debe persistir intacta",
+        due_date="2026-11-18",
+        priority="alta"
+    )
+
+    # 1. Assign category via API PATCH
+    patch_res = client.patch(f"/api/tasks/{task.id}/category", json={"category_id": cat.id})
+    assert patch_res.status_code == 200
+    fetched_api = task_service.get_task(task.id, user.id)
+    assert fetched_api.category_id == cat.id
+    assert fetched_api.title == "Tarea No Borrable"
+    assert fetched_api.description == "Esta descripción debe persistir intacta"
+    assert fetched_api.due_date == "2026-11-18"
+    assert fetched_api.priority == "alta"
+
+    # 2. Assign category via Web Edit Form submitting existing preloaded data
+    cat2 = category_service.create_category(user.id, "Testing")
+    post_res = client.post(f"/tasks/{task.id}/edit", data={
+        "title": fetched_api.title,
+        "description": fetched_api.description,
+        "due_date": fetched_api.due_date,
+        "priority": fetched_api.priority,
+        "category_id": str(cat2.id)
+    }, follow_redirects=True)
+    assert post_res.status_code == 200
+
+    fetched_web = task_service.get_task(task.id, user.id)
+    assert fetched_web.category_id == cat2.id
+    assert fetched_web.title == "Tarea No Borrable"
+    assert fetched_web.description == "Esta descripción debe persistir intacta"
+    assert fetched_web.due_date == "2026-11-18"
+    assert fetched_web.priority == "alta"
+
+
+def test_task_status_and_reopen_api_contract_for_dynamic_overdue_ui(auth_client, task_service):
+    """PATCH /api/tasks/<id>/status and POST /api/tasks/<id>/reopen return is_overdue
+    to dynamically toggle the overdue badge in client-side optimistic UI."""
+    from datetime import datetime, timedelta, timezone
+    client, user = auth_client
+
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    tomorrow_utc = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    task_past = task_service.create_task(user.id, "Past Task", due_date=yesterday_utc)
+    task_future = task_service.create_task(user.id, "Future Task", due_date=tomorrow_utc)
+
+    # Verify HTML includes target IDs for dynamic badge manipulation
+    html_res = client.get("/tasks")
+    assert f'id="task-due-{task_past.id}"' in html_res.data.decode("utf-8")
+    assert f'id="task-overdue-{task_past.id}"' in html_res.data.decode("utf-8")
+
+    # 1. Advance past task to 'en_progreso' -> still overdue
+    res_prog = client.patch(f"/api/tasks/{task_past.id}/status", json={"status": "en_progreso"})
+    assert res_prog.status_code == 200
+    assert res_prog.get_json()["data"]["status"] == "en_progreso"
+    assert res_prog.get_json()["data"]["is_overdue"] is True
+
+    # 2. Advance past task to 'completada' -> immediately NOT overdue
+    res_comp = client.patch(f"/api/tasks/{task_past.id}/status", json={"status": "completada"})
+    assert res_comp.status_code == 200
+    assert res_comp.get_json()["data"]["status"] == "completada"
+    assert res_comp.get_json()["data"]["is_overdue"] is False
+
+    # 3. Reopen past task -> immediately overdue again
+    res_reopen = client.post(f"/api/tasks/{task_past.id}/reopen")
+    assert res_reopen.status_code == 200
+    assert res_reopen.get_json()["data"]["status"] == "pendiente"
+    assert res_reopen.get_json()["data"]["is_overdue"] is True
+
+    # 4. Check future task: completing and reopening never sets is_overdue
+    client.patch(f"/api/tasks/{task_future.id}/status", json={"status": "en_progreso"})
+    res_fut_comp = client.patch(f"/api/tasks/{task_future.id}/status", json={"status": "completada"})
+    assert res_fut_comp.get_json()["data"]["is_overdue"] is False
+
+    res_fut_reopen = client.post(f"/api/tasks/{task_future.id}/reopen")
+    assert res_fut_reopen.get_json()["data"]["is_overdue"] is False
+
+
+
+
+
+
 
 
 

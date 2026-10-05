@@ -8,20 +8,58 @@
         <h1 style="font-size: 1.75rem; font-weight: 700;">Mis Tareas</h1>
         <p style="color: var(--text-muted); font-size: 0.9375rem;">Administra tus actividades en curso con control de estados y auditoría</p>
     </div>
-    <div class="filter-tabs">
-        <a href="{{ url_for('tasks.list_tasks_view') }}" class="filter-tab {% if not current_filter %}active{% endif %}">Todas</a>
-        <a href="{{ url_for('tasks.list_tasks_view', status='pendiente') }}" class="filter-tab {% if current_filter == 'pendiente' %}active{% endif %}">Pendientes</a>
-        <a href="{{ url_for('tasks.list_tasks_view', status='en_progreso') }}" class="filter-tab {% if current_filter == 'en_progreso' %}active{% endif %}">En Progreso</a>
-        <a href="{{ url_for('tasks.list_tasks_view', status='completada') }}" class="filter-tab {% if current_filter == 'completada' %}active{% endif %}">Completadas</a>
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <form method="GET" action="{{ url_for('tasks.list_tasks_view') }}" class="inline-form" id="category-filter-form">
+            {% if current_filter %}
+                <input type="hidden" name="status" value="{{ current_filter }}">
+            {% endif %}
+            {% if current_sort %}
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+            {% endif %}
+            <label for="category-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Categoría:</label>
+            <select name="category_id" id="category-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
+                <option value="" {% if not current_category %}selected{% endif %}>Todas las categorías</option>
+                <option value="none" {% if current_category == 'none' %}selected{% endif %}>Sin categoría</option>
+                {% if categories %}
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if current_category and current_category|string == cat.id|string %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+        </form>
+
+        <form method="GET" action="{{ url_for('tasks.list_tasks_view') }}" class="inline-form" id="sort-filter-form">
+            {% if current_filter %}
+                <input type="hidden" name="status" value="{{ current_filter }}">
+            {% endif %}
+            {% if current_category %}
+                <input type="hidden" name="category_id" value="{{ current_category }}">
+            {% endif %}
+            <label for="sort-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Ordenar por:</label>
+            <select name="sort" id="sort-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
+                <option value="created_desc" {% if current_sort == 'created_desc' or not current_sort %}selected{% endif %}>Fecha de creación (más recientes)</option>
+                <option value="priority_desc" {% if current_sort == 'priority_desc' %}selected{% endif %}>Prioridad (alta a baja)</option>
+                <option value="priority_asc" {% if current_sort == 'priority_asc' %}selected{% endif %}>Prioridad (baja a alta)</option>
+            </select>
+        </form>
+
+        <div class="filter-tabs">
+            <a href="{{ url_for('tasks.list_tasks_view', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if not current_filter %}active{% endif %}">Todas</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='pendiente', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'pendiente' %}active{% endif %}">Pendientes</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='en_progreso', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'en_progreso' %}active{% endif %}">En Progreso</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='completada', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'completada' %}active{% endif %}">Completadas</a>
+        </div>
     </div>
 </div>
 
 {% if not tasks %}
     <div class="empty-state">
         <div class="empty-icon">📝</div>
-        {% if current_filter %}
-            <h2 class="empty-title">No hay tareas con estado "{{ current_filter }}"</h2>
-            <p class="empty-desc">No se encontraron tareas coincidentes con este filtro.</p>
+        {% if current_filter or current_category %}
+            <h2 class="empty-title">No hay tareas con los filtros seleccionados</h2>
+            <p class="empty-desc">No se encontraron tareas coincidentes.</p>
             <a href="{{ url_for('tasks.list_tasks_view') }}" class="btn btn-outline">Ver todas las tareas</a>
         {% else %}
             <h2 class="empty-title">No tienes tareas registradas</h2>
@@ -42,8 +80,19 @@
                         <span class="badge badge-{{ task.status }}" id="task-badge-{{ task.id }}">
                             {{ task.status | replace('_', ' ') }}
                         </span>
+                        <span class="badge badge-priority-{{ task.priority }}" id="task-priority-{{ task.id }}" title="Prioridad de la tarea">
+                            Prioridad: {{ task.priority }}
+                        </span>
+                        {% if task.category_id %}
+                            <span class="badge badge-category" id="task-category-{{ task.id }}" title="Categoría: {{ task.category_name or '' }}">
+                                📁 {{ task.category_name or 'Categoría' }}
+                            </span>
+                        {% endif %}
                         {% if task.due_date %}
-                            <span title="Fecha límite">📅 Vence: {{ task.due_date }}</span>
+                            <span id="task-due-{{ task.id }}" title="Fecha límite">📅 Vence: {{ task.due_date }}</span>
+                            {% if task.is_overdue %}
+                                <span class="badge badge-overdue" id="task-overdue-{{ task.id }}">Vencida</span>
+                            {% endif %}
                         {% endif %}
                         <span title="Creada el">🕒 Creada: {{ task.created_at[:10] }}</span>
                     </div>

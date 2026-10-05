@@ -27,6 +27,31 @@
             <p class="form-help">Opcional.</p>
         </div>
 
+        <div class="form-group">
+            <label for="priority" class="form-label">Prioridad</label>
+            <select id="priority" name="priority" class="form-select">
+                <option value="alta" {% if priority == 'alta' %}selected{% endif %}>Alta</option>
+                <option value="media" {% if not priority or priority == 'media' %}selected{% endif %}>Media</option>
+                <option value="baja" {% if priority == 'baja' %}selected{% endif %}>Baja</option>
+            </select>
+            <p class="form-help">Nivel de prioridad (por defecto: Media).</p>
+        </div>
+
+        <div class="form-group">
+            <label for="category_id" class="form-label">Categoría</label>
+            <select id="category_id" name="category_id" class="form-select">
+                <option value="">Sin categoría</option>
+                {% if categories %}
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if category_id and category_id|int == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+            <p class="form-help">Opcional. Máximo una categoría por tarea.</p>
+        </div>
+
         <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
             <a href="{{ url_for('tasks.list_tasks_view') }}" class="btn btn-outline">Cancelar</a>
             <button type="submit" class="btn btn-primary">Guardar Tarea</button>

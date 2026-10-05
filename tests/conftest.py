@@ -3,9 +3,10 @@ os.environ.setdefault("DISABLE_SQLALCHEMY_CEXT", "1")
 import pytest
 from flask_migrate import upgrade
 from src.infrastructure.database import db
-from src.infrastructure.repositories import UserRepository, TaskRepository, AuditLogRepository
-from src.domain.services import UserService, TaskService
+from src.infrastructure.repositories import UserRepository, TaskRepository, AuditLogRepository, CategoryRepository
+from src.domain.services import UserService, TaskService, CategoryService
 from src.web.app import create_app
+
 
 
 @pytest.fixture
@@ -84,6 +85,17 @@ def user_service(user_repo, db_session):
 @pytest.fixture
 def task_service(task_repo, audit_repo, db_session):
     return TaskService(task_repo, audit_repo, session=db_session)
+
+
+@pytest.fixture
+def category_repo(db_session):
+    return CategoryRepository(db_session)
+
+
+@pytest.fixture
+def category_service(category_repo, db_session):
+    return CategoryService(category_repo, session=db_session)
+
 
 
 @pytest.fixture

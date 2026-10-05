@@ -75,9 +75,11 @@ def create_app(test_config=None) -> Flask:
     # Register Blueprints
     from src.web.auth_routes import auth_bp
     from src.web.task_routes import task_bp
+    from src.web.category_routes import category_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(task_bp)
+    app.register_blueprint(category_bp)
 
     @app.route("/")
     def index():

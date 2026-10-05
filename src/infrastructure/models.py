@@ -26,6 +26,22 @@ class UserORM(db.Model):
     )
 
 
+class CategoryORM(db.Model):
+    __tablename__ = "categories"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.String(35), nullable=False)
+
+    user = db.relationship("UserORM", backref=db.backref("categories", cascade="all, delete-orphan", passive_deletes=True))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "name", name="uq_categories_user_name"),
+        db.Index("idx_categories_user_id", "user_id"),
+    )
+
+
 class TaskORM(db.Model):
     __tablename__ = "tasks"
 
@@ -40,19 +56,30 @@ class TaskORM(db.Model):
         default="pendiente",
         server_default="pendiente",
     )
+    priority = db.Column(
+        db.String(10),
+        nullable=False,
+        default="media",
+        server_default="media",
+    )
+    category_id = db.Column(db.Integer, db.ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     is_deleted = db.Column(db.Boolean, nullable=False, default=False, server_default=sa.text("0"))
     deleted_at = db.Column(db.String(35), nullable=True)
     created_at = db.Column(db.String(35), nullable=False)
     updated_at = db.Column(db.String(35), nullable=False)
 
+    category = db.relationship("CategoryORM", backref=db.backref("tasks", passive_deletes=True))
     audit_logs = db.relationship("AuditLogORM", backref="task", cascade="all, delete-orphan", passive_deletes=True)
 
     __table_args__ = (
         db.CheckConstraint("status IN ('pendiente', 'en_progreso', 'completada')", name="chk_tasks_status"),
+        db.CheckConstraint("priority IN ('alta', 'media', 'baja')", name="chk_tasks_priority"),
         db.Index("idx_tasks_user_id", "user_id"),
         db.Index("idx_tasks_user_status", "user_id", "status"),
         db.Index("idx_tasks_user_created", "user_id", "created_at"),
         db.Index("idx_tasks_user_active", "user_id", "is_deleted", "created_at"),
+        db.Index("idx_tasks_user_priority", "user_id", "priority"),
+        db.Index("idx_tasks_user_category", "user_id", "category_id"),
     )
 
 
@@ -70,7 +97,7 @@ class AuditLogORM(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "action IN ('create', 'update', 'status_change', 'delete', 'reopen')",
+            "action IN ('create', 'update', 'status_change', 'delete', 'reopen', 'priority_change', 'category_change')",
             name="chk_audit_logs_action"
         ),
         db.Index("idx_audit_logs_task", "task_id"),
