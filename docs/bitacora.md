@@ -63,3 +63,22 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - También incluye la comprobación de error (`Exception`) en downgrade si hay asignaciones activas.
 - **Resultado RED:** La ejecución intencionalmente falló en el primer assert que busca la columna `assignee_id` en `tasks`, debido a que la migración real aún no ha sido implementada. La evidencia RED se guardó en `docs/evidencias/inc4/fundacional-red.txt`.
 - No se introdujeron fallos artificiales; el fallo `assert 'assignee_id' in task_cols` es producto genuino de la funcionalidad ausente (TDD puro). No se modificó el código de producción.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 2 (Migración GREEN - Incompleta)
+
+- Se separaron las comprobaciones de T002 en 5 pruebas independientes dentro de `test_migrations.py`.
+- Se implementó la tarea **T006**: creación de la migración en `migrations/versions/4cee1aa5ad3f_004_task_collaboration.py`.
+- Las pruebas pasaron a GREEN, sin embargo, una revisión posterior indicó **cobertura incompleta** (incumplimientos frente a `data-model.md`).
+
+## 2026-10-05 — Corrección TDD de Migración 004 (Contrato Completo)
+
+- **Corrección de Pruebas (RED):** Se actualizaron las 5 pruebas de integración para ser exhaustivas frente a `data-model.md`.
+  - Se verificaron las columnas correctas en `notifications` (`recipient_id`, `actor_id`, `read_at`).
+  - Se validaron longitudes y la restricción `CHECK` sobre `type`.
+  - Se exigió la existencia de los 3 índices de rendimiento (`idx_tasks_assignee`, `idx_notifications_recipient`, `idx_notifications_task_recipient`).
+  - Se validó que el downgrade bloqueado mantenga la versión de Alembic intacta y que el downgrade permitido revierta el CHECK y elimine índices/tablas.
+  - **Resultado:** Fallo real documentado en `docs/evidencias/inc4/migracion-contrato-red.txt`.
+- **Corrección de Implementación (GREEN):** Se reescribió `upgrade()` en `migrations/versions/4cee1aa5ad3f_004_task_collaboration.py` para construir el esquema idéntico a `data-model.md`. Se ajustó el `downgrade()` para limpiar correctamente los índices de `tasks`.
+  - **Resultado:** Ejecución exitosa documentada en `docs/evidencias/inc4/migracion-contrato-green.txt`.
+- **Regresión Final:** Se corrió la suite global tras las correcciones, alcanzando 161/161 sin afectaciones, documentada en `docs/evidencias/inc4/regresion-migracion-corregida.txt`.
+- Esto completa definitiva y exhaustivamente las tareas T002, T006 y el subconjunto migratorio de T009.

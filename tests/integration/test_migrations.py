@@ -280,89 +280,185 @@ def test_migration_003_audit_logs_check_constraint_allows_new_actions(tmp_path):
     conn.close()
 
 
-def test_migration_004_task_collaboration(tmp_path):
-    """Test that migration 004 adds assignee_id to tasks, creates notifications table,
-    allows new audit actions, and implements a pre-flight check for downgrade."""
-    test_db = str(tmp_path / "migration_004.db")
+def test_migration_004_schema_and_data(tmp_path):
+    """Test migration 004 adds assignee_id to tasks, creates notifications table, and allows new audit actions."""
+    test_db = str(tmp_path / "migration_004_schema.db")
     app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
     migrations_dir = os.path.abspath("migrations")
     rev_003 = get_rev_id(migrations_dir, "003_task_organization")
-    assert rev_003, "Revision 003 must exist"
 
     with app.app_context():
-        # Upgrade up to 003 first
         upgrade(directory=migrations_dir, revision=rev_003)
 
-    # Insert fixture data at revision 003 schema
     conn = sqlite3.connect(test_db)
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
-        ("collab_owner@example.com", "hash", "2026-10-05T10:00:00Z"),
-    )
-    owner_id = cur.lastrowid
-    cur.execute(
-        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
-        ("collab_assignee@example.com", "hash", "2026-10-05T10:00:00Z"),
-    )
-    assignee_id = cur.lastrowid
-
-    cur.execute(
-        "INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (owner_id, "Collab Task", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"),
-    )
-    task_id = cur.lastrowid
+    cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+    u_id = cur.lastrowid
+    cur.execute("INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
+    t_id = cur.lastrowid
     conn.commit()
-
     tasks_before = cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
 
-    # Upgrade to head (which should be 004 eventually)
     with app.app_context():
         upgrade(directory=migrations_dir)
 
-    # Verify schema changes
     conn = sqlite3.connect(test_db)
     cur = conn.cursor()
-
-    # 1. assignee_id added to tasks and defaults to NULL, existing data preserved
     assert cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == tasks_before
     task_cols = {row[1] for row in cur.execute("PRAGMA table_info(tasks)").fetchall()}
     assert "assignee_id" in task_cols
-    assignees = cur.execute("SELECT assignee_id FROM tasks").fetchall()
-    for (a_id,) in assignees:
+    for (a_id,) in cur.execute("SELECT assignee_id FROM tasks").fetchall():
         assert a_id is None
 
-    # 2. notifications table created
+    indexes = {row[1] for row in cur.execute("SELECT type, name FROM sqlite_master WHERE type='index' AND tbl_name='tasks'").fetchall()}
+    assert "idx_tasks_assignee" in indexes
+
     tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     assert "notifications" in tables
-    notif_cols = {row[1] for row in cur.execute("PRAGMA table_info(notifications)").fetchall()}
-    assert {"id", "user_id", "task_id", "type", "message", "is_read", "created_at"}.issubset(notif_cols)
+    notif_cols = {row[1]: row[2] for row in cur.execute("PRAGMA table_info(notifications)").fetchall()}
+    expected_cols = {"id", "recipient_id", "task_id", "actor_id", "type", "message", "is_read", "read_at", "created_at"}
+    assert expected_cols.issubset(notif_cols.keys())
+    assert "VARCHAR(20)" in notif_cols["type"].upper()
+    assert "VARCHAR(255)" in notif_cols["message"].upper()
 
-    # 3. New audit actions (assign, unassign, reassign) are allowed
-    new_actions = ["assign", "unassign", "reassign"]
-    for action in new_actions:
-        cur.execute(
-            "INSERT INTO audit_logs (task_id, actor_id, action, details, created_at) VALUES (?, ?, ?, ?, ?)",
-            (task_id, owner_id, action, f'{{"action": "{action}"}}', "2026-10-05T10:10:00Z"),
-        )
+    notif_indexes = {row[1] for row in cur.execute("SELECT type, name FROM sqlite_master WHERE type='index' AND tbl_name='notifications'").fetchall()}
+    assert "idx_notifications_recipient" in notif_indexes
+    assert "idx_notifications_task_recipient" in notif_indexes
+
+    notif_sql = cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='notifications'").fetchone()[0]
+    assert "chk_notifications_type" in notif_sql
+    assert "type IN ('task_assigned')" in notif_sql
+
+    for action in ["assign", "unassign", "reassign"]:
+        cur.execute("INSERT INTO audit_logs (task_id, actor_id, action, details, created_at) VALUES (?, ?, ?, ?, ?)", (t_id, u_id, action, "{}", "2026-10-05T10:10:00Z"))
     conn.commit()
-    logs_count = cur.execute("SELECT COUNT(*) FROM audit_logs WHERE task_id = ?", (task_id,)).fetchone()[0]
-    assert logs_count == len(new_actions)
+    logs_count = cur.execute("SELECT COUNT(*) FROM audit_logs WHERE task_id = ?", (t_id,)).fetchone()[0]
+    assert logs_count == 3
+    conn.close()
 
-    # 4. Pre-flight check on downgrade: if active collaboration data exists, downgrade fails
-    # Let's assign the task so we have collaboration data
-    # In SQLite without foreign keys enabled by default this might just work,
-    # but we don't have assignee_id yet because we are in RED state.
-    # Wait, in RED state, the schema is still 003, so `UPDATE tasks SET assignee_id = ?` will fail!
-    # That's perfect, the test itself will fail at step 1 because 'assignee_id' not in task_cols.
+
+def test_migration_004_downgrade_allowed(tmp_path):
+    """Test downgrade is allowed if no collaboration data exists."""
+    test_db = str(tmp_path / "migration_004_down_ok.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+    migrations_dir = os.path.abspath("migrations")
+    rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+
+    with app.app_context():
+        upgrade(directory=migrations_dir)
+        # Downgrade should succeed since no tasks are assigned, no notifications, no new audit actions
+        from flask_migrate import downgrade
+        downgrade(directory=migrations_dir, revision=rev_003)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    task_cols = {row[1] for row in cur.execute("PRAGMA table_info(tasks)").fetchall()}
+    assert "assignee_id" not in task_cols
     
-    # We will just write the test logic assuming GREEN state eventually
-    cur.execute("UPDATE tasks SET assignee_id = ? WHERE id = ?", (assignee_id, task_id))
+    tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert "notifications" not in tables
+    
+    audit_sql = cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='audit_logs'").fetchone()[0]
+    assert "assign" not in audit_sql
+    conn.close()
+
+
+def test_migration_004_downgrade_blocked_assignment(tmp_path):
+    """Test downgrade is blocked when there are tasks with assignee_id."""
+    test_db = str(tmp_path / "migration_004_down_assign.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+    migrations_dir = os.path.abspath("migrations")
+    rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+
+    with app.app_context():
+        upgrade(directory=migrations_dir)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+    u_id = cur.lastrowid
+    cur.execute("INSERT INTO tasks (user_id, assignee_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (u_id, u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
     conn.commit()
     conn.close()
 
     from flask_migrate import downgrade
     with app.app_context():
-        # Downgrading to 003 should fail gracefully due to pre-flight check
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="Downgrade destructivo bloqueado"):
             downgrade(directory=migrations_dir, revision=rev_003)
+
+    # Check schema and data intact
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    assert "assignee_id" in {row[1] for row in cur.execute("PRAGMA table_info(tasks)").fetchall()}
+    assert cur.execute("SELECT assignee_id FROM tasks").fetchone()[0] == u_id
+    rev = cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    assert rev == "4cee1aa5ad3f"
+    conn.close()
+
+
+def test_migration_004_downgrade_blocked_notification(tmp_path):
+    """Test downgrade is blocked when there are notifications."""
+    test_db = str(tmp_path / "migration_004_down_notif.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+    migrations_dir = os.path.abspath("migrations")
+    rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+
+    with app.app_context():
+        upgrade(directory=migrations_dir)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+    u_id = cur.lastrowid
+    cur.execute("INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
+    t_id = cur.lastrowid
+    cur.execute("INSERT INTO notifications (recipient_id, task_id, actor_id, type, message, created_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, t_id, u_id, "task_assigned", "msg", "2026-10-05T10:05:00Z"))
+    conn.commit()
+    conn.close()
+
+    from flask_migrate import downgrade
+    with app.app_context():
+        with pytest.raises(Exception, match="Downgrade destructivo bloqueado"):
+            downgrade(directory=migrations_dir, revision=rev_003)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert "notifications" in tables
+    assert cur.execute("SELECT COUNT(*) FROM notifications").fetchone()[0] == 1
+    rev = cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    assert rev == "4cee1aa5ad3f"
+    conn.close()
+
+
+def test_migration_004_downgrade_blocked_audit(tmp_path):
+    """Test downgrade is blocked when there are new audit logs (assign, reassign, unassign)."""
+    test_db = str(tmp_path / "migration_004_down_audit.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+    migrations_dir = os.path.abspath("migrations")
+    rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+
+    with app.app_context():
+        upgrade(directory=migrations_dir)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+    u_id = cur.lastrowid
+    cur.execute("INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
+    t_id = cur.lastrowid
+    cur.execute("INSERT INTO audit_logs (task_id, actor_id, action, details, created_at) VALUES (?, ?, ?, ?, ?)", (t_id, u_id, "assign", "{}", "2026-10-05T10:10:00Z"))
+    conn.commit()
+    conn.close()
+
+    from flask_migrate import downgrade
+    with app.app_context():
+        with pytest.raises(Exception, match="Downgrade destructivo bloqueado"):
+            downgrade(directory=migrations_dir, revision=rev_003)
+
+    conn = sqlite3.connect(test_db)
+    cur = conn.cursor()
+    assert cur.execute("SELECT action FROM audit_logs").fetchone()[0] == "assign"
+    rev = cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    assert rev == "4cee1aa5ad3f"
+    conn.close()

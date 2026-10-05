@@ -1,0 +1,101 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 9 items / 4 deselected / 5 selected
+
+tests/integration/test_migrations.py::test_migration_004_schema_and_data FAILED [ 20%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_allowed PASSED [ 40%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_assignment PASSED [ 60%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_notification FAILED [ 80%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_audit PASSED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_migration_004_schema_and_data ______________________
+
+tmp_path = PosixPath('/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-10/test_migration_004_schema_and_0')
+
+    def test_migration_004_schema_and_data(tmp_path):
+        """Test migration 004 adds assignee_id to tasks, creates notifications table, and allows new audit actions."""
+        test_db = str(tmp_path / "migration_004_schema.db")
+        app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+        migrations_dir = os.path.abspath("migrations")
+        rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+    
+        with app.app_context():
+            upgrade(directory=migrations_dir, revision=rev_003)
+    
+        conn = sqlite3.connect(test_db)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+        u_id = cur.lastrowid
+        cur.execute("INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
+        t_id = cur.lastrowid
+        conn.commit()
+        tasks_before = cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+    
+        with app.app_context():
+            upgrade(directory=migrations_dir)
+    
+        conn = sqlite3.connect(test_db)
+        cur = conn.cursor()
+        assert cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == tasks_before
+        task_cols = {row[1] for row in cur.execute("PRAGMA table_info(tasks)").fetchall()}
+        assert "assignee_id" in task_cols
+        for (a_id,) in cur.execute("SELECT assignee_id FROM tasks").fetchall():
+            assert a_id is None
+    
+        indexes = {row[1] for row in cur.execute("SELECT type, name FROM sqlite_master WHERE type='index' AND tbl_name='tasks'").fetchall()}
+>       assert "idx_tasks_assignee" in indexes
+E       AssertionError: assert 'idx_tasks_assignee' in {'idx_tasks_user_active', 'idx_tasks_user_category', 'idx_tasks_user_created', 'idx_tasks_user_id', 'idx_tasks_user_priority', 'idx_tasks_user_status'}
+
+tests/integration/test_migrations.py:314: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-10/test_migration_004_schema_and_0/migration_004_schema.db
+----------------------------- Captured stderr call -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+______________ test_migration_004_downgrade_blocked_notification _______________
+
+tmp_path = PosixPath('/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-10/test_migration_004_downgrade_b1')
+
+    def test_migration_004_downgrade_blocked_notification(tmp_path):
+        """Test downgrade is blocked when there are notifications."""
+        test_db = str(tmp_path / "migration_004_down_notif.db")
+        app = create_app({"TESTING": True, "DATABASE_PATH": test_db})
+        migrations_dir = os.path.abspath("migrations")
+        rev_003 = get_rev_id(migrations_dir, "003_task_organization")
+    
+        with app.app_context():
+            upgrade(directory=migrations_dir)
+    
+        conn = sqlite3.connect(test_db)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", ("u1@example.com", "h", "2026-10-05T10:00:00Z"))
+        u_id = cur.lastrowid
+        cur.execute("INSERT INTO tasks (user_id, title, priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, "T1", "alta", "pendiente", "2026-10-05T10:05:00Z", "2026-10-05T10:05:00Z"))
+        t_id = cur.lastrowid
+>       cur.execute("INSERT INTO notifications (recipient_id, task_id, actor_id, type, message, created_at) VALUES (?, ?, ?, ?, ?, ?)", (u_id, t_id, u_id, "task_assigned", "msg", "2026-10-05T10:05:00Z"))
+E       sqlite3.OperationalError: table notifications has no column named recipient_id
+
+tests/integration/test_migrations.py:415: OperationalError
+----------------------------- Captured stdout call -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-10/test_migration_004_downgrade_b1/migration_004_down_notif.db
+----------------------------- Captured stderr call -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+FAILED tests/integration/test_migrations.py::test_migration_004_schema_and_data
+FAILED tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_notification
+================== 2 failed, 3 passed, 4 deselected in 0.33s ===================

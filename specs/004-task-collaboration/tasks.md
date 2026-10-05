@@ -21,7 +21,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 
 ### Implementation
 - [ ] T005 [F1] Actualizar modelos en `src/domain/models.py` y `src/infrastructure/models.py` (`Task`, `TaskORM`, `Notification`, `NotificationORM`) y restricciones de `AuditLogORM`.
-- [ ] T006 [F1] Crear la migración `migrations/versions/<rev>_004_task_collaboration.py` con `assignee_id`, tabla `notifications`, ampliación del `CHECK` de auditoría, y el *pre-flight check* para proteger el downgrade.
+- [x] T006 [F1] Crear la migración `migrations/versions/<rev>_004_task_collaboration.py` con `assignee_id`, tabla `notifications`, ampliación del `CHECK` de auditoría, y el *pre-flight check* para proteger el downgrade.
 - [ ] T007 [F1] Implementar `NotificationRepository` en `src/infrastructure/repositories.py` para que esté disponible para la transacción del servicio de asignación.
 - [ ] T008 [F2] Implementar `src/domain/permissions.py` y añadir `TaskNotAccessibleError`, `OperationNotPermittedError` en `src/domain/exceptions.py`.
 

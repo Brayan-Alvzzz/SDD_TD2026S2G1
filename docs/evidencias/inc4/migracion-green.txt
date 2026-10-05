@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 9 items / 4 deselected / 5 selected
+
+tests/integration/test_migrations.py::test_migration_004_schema_and_data PASSED [ 20%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_allowed PASSED [ 40%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_assignment PASSED [ 60%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_notification PASSED [ 80%]
+tests/integration/test_migrations.py::test_migration_004_downgrade_blocked_audit PASSED [100%]
+
+======================= 5 passed, 4 deselected in 0.36s ========================
