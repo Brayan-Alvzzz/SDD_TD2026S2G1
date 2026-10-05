@@ -144,3 +144,20 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Resultado (GREEN):**
   - Las pruebas de repositorio pasaron y se guardaron en `docs/evidencias/inc4/repositorio-green-corregido.txt`.
   - La suite de regresión completa ejecutada directamente confirmó el éxito total: **174 passed**. Evidencia almacenada en `docs/evidencias/inc4/regresion-repositorio-corregida.txt`.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 3 (Pruebas RED Servicio US1)
+
+- Se completaron las tareas **T012** y parcialmente la **T011** (enfocada exclusivamente en el servicio de colaboración).
+- **Pruebas Escritas:**
+  - `tests/unit/test_collaboration_service.py`: cubre validaciones de asignación, reasignación, desasignación, idempotencia, rechazo de autoasignación/usuario inexistente, protección de concurrencia mediante mocking de retorno, rechazo sobre tareas eliminadas y autorizaciones exclusivas del propietario.
+  - `tests/integration/test_collaboration_rollback.py`: verifica la atomicidad de la transacción (Assignment + Audit + Notification), garantizando que un fallo en la base de datos para auditoría o notificación revierta sin cambios parciales la tarea y demás registros.
+- **Resultado RED:** Las pruebas detectaron satisfactoriamente la funcionalidad ausente (falla de importación por `CollaborationService` no implementado), con Exit Code 2.
+- **Evidencia Real:** La salida producida por pytest se guardó en `docs/evidencias/inc4/red-us1.txt`. No se usaron atajos ni enmascaramiento de errores (`|| true`).
+- Se respetó la orden de detenerse sin implementar todavía el servicio de dominio, rutas, interfaz o listado.
+
+## 2026-10-05 — Diagnóstico y Corrección: Tipado de Constructores ORM (Pyrefly)
+
+- **Diagnóstico:** Pyrefly (vía Pyright) emitía múltiples errores `reportCallIssue` (e.g., `No parameter named "email"`) al instanciar modelos ORM en `src/infrastructure/repositories.py` (ej. `UserORM(email=...)`). Esto ocurre porque la clase base `db.Model` de Flask-SQLAlchemy recibe `**kwargs` dinámicamente en tiempo de ejecución, pero el analizador estático no puede inferir los tipos ni la existencia de esos parámetros a partir de `db.Column` en la versión actual de Python/SQLAlchemy utilizada sin `Mapped`.
+- **Ajuste Aplicado:** Se agregaron declaraciones `def __init__(self, ...): ...` explícitas para cada modelo en `src/infrastructure/models.py`. Para no interferir con la magia en tiempo de ejecución de SQLAlchemy ni alterar el código en producción de forma destructiva, estas declaraciones se colocaron exclusivamente dentro de bloques `if TYPE_CHECKING:`. Esto informa al analizador sobre los parámetros esperados (kwargs válidos) sin que Python evalúe esos constructores al levantar la aplicación.
+- **Validación Pyrefly:** Al ejecutar `npx pyright src/infrastructure/repositories.py`, los diagnósticos desaparecieron completamente (0 errors).
+- **Regresión:** Se ejecutó la suite completa excluyendo temporalmente las pruebas RED (aún no implementadas) de US1. El resultado fue exitoso: **174 passed**. La salida real se guardó en `docs/evidencias/inc4/regresion-tipado-orm.txt`.

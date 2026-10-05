@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 0 items / 2 errors
+
+==================================== ERRORS ====================================
+__________ ERROR collecting tests/unit/test_collaboration_service.py ___________
+ImportError while importing test module '/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/unit/test_collaboration_service.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_collaboration_service.py:4: in <module>
+    from src.domain.services import CollaborationService
+E   ImportError: cannot import name 'CollaborationService' from 'src.domain.services' (/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/src/domain/services.py)
+______ ERROR collecting tests/integration/test_collaboration_rollback.py _______
+ImportError while importing test module '/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_collaboration_rollback.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/test_collaboration_rollback.py:3: in <module>
+    from src.domain.services import CollaborationService
+E   ImportError: cannot import name 'CollaborationService' from 'src.domain.services' (/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/src/domain/services.py)
+=========================== short test summary info ============================
+ERROR tests/unit/test_collaboration_service.py
+ERROR tests/integration/test_collaboration_rollback.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 2 errors in 0.07s ===============================
