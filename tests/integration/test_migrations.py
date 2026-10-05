@@ -78,52 +78,77 @@ def test_clean_database_upgrade_from_scratch(tmp_path):
 
 
 def test_migration_preserves_existing_data(tmp_path):
-    """Test that upgrading to head on a temporary copy preserves all data with dynamic count comparison."""
-    original_db = "taskcontrol_backup.db" if os.path.exists("taskcontrol_backup.db") else "taskcontrol.db"
-    assert os.path.exists(original_db), "Database source must exist to run this test"
-
-    copy_db = str(tmp_path / "taskcontrol_copy.db")
-    shutil.copy2(original_db, copy_db)
-
-    # Read pre-migration dynamic counts
-    conn = sqlite3.connect(copy_db)
-    cur = conn.cursor()
-    users_before = cur.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    tasks_before = cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
-    logs_before = cur.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
-    conn.close()
-
-    assert users_before > 0
-    assert tasks_before > 0
-    assert logs_before > 0
-
-    app = create_app({"TESTING": True, "DATABASE_PATH": copy_db})
+    """Upgrading a temporary revision-001 database to head preserves all data and fills new fields."""
+    db_path = str(tmp_path / "taskcontrol_v001.db")
+    app = create_app({"TESTING": True, "DATABASE_PATH": db_path})
     migrations_dir = os.path.abspath("migrations")
-
-    # If unstamped (e.g. from pre-Alembic backup), stamp at 001 first
-    conn = sqlite3.connect(copy_db)
-    has_alembic = conn.cursor().execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'"
-    ).fetchone()
-    conn.close()
+    rev_001 = get_rev_id(migrations_dir, "001_initial_schema")
+    assert rev_001, "Revision 001 must exist"
 
     with app.app_context():
-        if not has_alembic:
-            rev_001 = get_rev_id(migrations_dir, "001_initial_schema")
-            stamp(directory=migrations_dir, revision=rev_001)
-        # Upgrade to head (includes revision 003)
+        upgrade(directory=migrations_dir, revision=rev_001)
+
+    # Seed sample data using the revision 001 schema
+    users = [
+        ("alice@example.com", "hash_alice", "2026-10-01T08:00:00Z"),
+        ("bob@example.com", "hash_bob", "2026-10-01T09:00:00Z"),
+    ]
+    tasks = [
+        (1, "Task A", "Desc A", "2026-10-10", "pendiente", "2026-10-01T10:00:00Z", "2026-10-01T10:00:00Z"),
+        (1, "Task B", None, None, "en_progreso", "2026-10-01T11:00:00Z", "2026-10-01T11:30:00Z"),
+        (2, "Task C", "Desc C", "2026-10-12", "completada", "2026-10-01T12:00:00Z", "2026-10-01T12:45:00Z"),
+    ]
+    logs = [
+        (1, 1, "create", '{"title": "Task A"}', "2026-10-01T10:00:00Z"),
+        (2, 1, "status_change", '{"from": "pendiente", "to": "en_progreso"}', "2026-10-01T11:30:00Z"),
+        (3, 2, "update", '{"title": "Task C"}', "2026-10-01T12:45:00Z"),
+    ]
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.executemany(
+        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)", users
+    )
+    cur.executemany(
+        "INSERT INTO tasks (user_id, title, description, due_date, status, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        tasks,
+    )
+    cur.executemany(
+        "INSERT INTO audit_logs (task_id, actor_id, action, details, created_at) VALUES (?, ?, ?, ?, ?)",
+        logs,
+    )
+    conn.commit()
+    users_before = cur.execute("SELECT * FROM users ORDER BY id").fetchall()
+    tasks_before = cur.execute(
+        "SELECT id, user_id, title, description, due_date, status, created_at, updated_at FROM tasks ORDER BY id"
+    ).fetchall()
+    logs_before = cur.execute("SELECT * FROM audit_logs ORDER BY id").fetchall()
+    conn.close()
+
+    assert len(users_before) == 2
+    assert len(tasks_before) == 3
+    assert len(logs_before) == 3
+
+    # Upgrade to head
+    with app.app_context():
         upgrade(directory=migrations_dir)
 
-    # Verify post-migration preservation with dynamic counts
-    conn = sqlite3.connect(copy_db)
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    assert cur.execute("SELECT COUNT(*) FROM users").fetchone()[0] == users_before
-    assert cur.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == tasks_before
-    assert cur.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0] == logs_before
+    assert cur.execute("SELECT * FROM users ORDER BY id").fetchall() == users_before
+    assert cur.execute(
+        "SELECT id, user_id, title, description, due_date, status, created_at, updated_at FROM tasks ORDER BY id"
+    ).fetchall() == tasks_before
+    assert cur.execute("SELECT * FROM audit_logs ORDER BY id").fetchall() == logs_before
 
-    # Verify default values for pre-existing tasks: priority='media', category_id=NULL
-    tasks = cur.execute("SELECT id, is_deleted, priority, category_id FROM tasks").fetchall()
-    for task_id, is_deleted, priority, category_id in tasks:
+    # New fields get expected defaults: is_deleted=0, deleted_at=NULL, priority='media', category_id=NULL
+    new_fields = cur.execute(
+        "SELECT is_deleted, deleted_at, priority, category_id FROM tasks ORDER BY id"
+    ).fetchall()
+    assert len(new_fields) == len(tasks_before)
+    for is_deleted, deleted_at, priority, category_id in new_fields:
+        assert is_deleted == 0
+        assert deleted_at is None
         assert priority == "media"
         assert category_id is None
 
