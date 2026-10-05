@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskCollaborationAPI",
+  "description": "Contrato de endpoints de colaboración (Incremento 4): asignación, listado con roles, detalle de lectura y notificaciones internas. Éxito: {success:true,data}. Error: {success:false,error}. El actor siempre proviene de la sesión y el destinatario se valida desde el input; user_id/actor_id/recipient_id enviados en el cuerpo se ignoran.",
+  "conventions": {
+    "auth": "Sesión obligatoria; sin sesión responde 401 (JSON) o redirección a login (HTML)",
+    "errorBody": { "success": false, "error": "string" },
+    "statusSemantics": {
+      "400": "Validación (correo inválido/inexistente, autoasignación, rol inválido)",
+      "401": "Sin sesión",
+      "403": "Asignado vigente sin permiso para la operación",
+      "404": "Ajeno, tarea inexistente o eliminada, notificación ajena o inexistente",
+      "409": "Conflicto concurrente de asignación"
+    }
+  },
+  "definitions": {
+    "UserRef": {
+      "type": ["object", "null"],
+      "properties": { "id": { "type": "integer" }, "email": { "type": "string" } },
+      "required": ["id", "email"]
+    },
+    "TaskView": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "due_date": { "type": ["string", "null"] },
+        "status": { "enum": ["pendiente", "en_progreso", "completada"] },
+        "priority": { "enum": ["alta", "media", "baja"] },
+        "category_id": { "type": ["integer", "null"], "description": "Solo informativo para el asignado" },
+        "category_name": { "type": ["string", "null"] },
+        "is_overdue": { "type": "boolean" },
+        "viewer_role": { "enum": ["owner", "assignee"] },
+        "owner": { "$ref": "#/definitions/UserRef" },
+        "assignee": { "$ref": "#/definitions/UserRef" },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "can_edit": { "type": "boolean" },
+            "can_delete": { "type": "boolean" },
+            "can_manage_assignment": { "type": "boolean" },
+            "can_change_status": { "type": "boolean" },
+            "can_reopen": { "type": "boolean" }
+          },
+          "description": "Informativa para la interfaz; el backend vuelve a autorizar cada operación"
+        },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "title", "status", "priority", "is_overdue", "viewer_role", "owner", "assignee", "permissions"]
+    },
+    "NotificationView": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "type": { "enum": ["task_assigned"] },
+        "message": { "type": "string", "description": "Texto fijo guardado al crear (fecha y correo de quien asignó); sin título actual" },
+        "is_read": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "available": { "type": "boolean", "description": "true solo si la tarea no está eliminada, el destinatario es el asignado vigente y es su notificación más reciente para esa tarea" },
+        "task": {
+          "type": ["object", "null"],
+          "description": "null cuando available=false (sin título ni datos vivos)",
+          "properties": {
+            "id": { "type": "integer" },
+            "title": { "type": "string" },
+            "status": { "type": "string" },
+            "url": { "type": "string", "description": "/tasks/<id>; la autorización se revalida al abrirlo" }
+          }
+        }
+      },
+      "required": ["id", "type", "message", "is_read", "created_at", "available", "task"]
+    }
+  },
+  "endpoints": [
+    {
+      "path": "/api/tasks/{id}/assignee",
+      "method": "PUT",
+      "description": "Asigna o reasigna la tarea a un usuario existente. Solo propietario. Atómico con auditoría y notificación.",
+      "requestBody": {
+        "type": "object",
+        "properties": { "assignee_email": { "type": "string", "maxLength": 255 } },
+        "required": ["assignee_email"]
+      },
+      "responses": {
+        "200": {
+          "description": "changed=false si ya era el asignado (sin auditoría ni notificación)",
+          "body": {
+            "success": true,
+            "data": {
+              "task_id": "integer",
+              "assignee": "UserRef",
+              "changed": "boolean",
+              "action": "assign | reassign | none"
+            }
+          }
+        },
+        "400": "assignee_email vacío o con formato inválido; usuario inexistente; autoasignación",
+        "401": "Sin sesión",
+        "403": "El solicitante es asignado vigente (no propietario)",
+        "404": "Tarea inexistente, eliminada o ajena",
+        "409": "La asignación cambió concurrentemente; reintentar"
+      },
+      "sideEffects": {
+        "auditLog": "assign o reassign: actor_id=propietario, details={old_assignee_id,new_assignee_id}, created_at ISO 8601 UTC",
+        "notification": "Una notificación task_assigned no leída para el nuevo asignado",
+        "atomicity": "Si falla cualquiera de las tres escrituras no queda ninguna"
+      }
+    },
+    {
+      "path": "/api/tasks/{id}/assignee",
+      "method": "DELETE",
+      "description": "Desasigna la tarea. Solo propietario. Sin notificación. Idempotente.",
+      "responses": {
+        "200": { "body": { "success": true, "data": { "task_id": "integer", "assignee": null, "changed": "boolean", "action": "unassign | none" } } },
+        "401": "Sin sesión",
+        "403": "Asignado vigente (no propietario)",
+        "404": "Tarea inexistente, eliminada o ajena"
+      },
+      "sideEffects": { "auditLog": "unassign solo si había asignado" }
+    },
+    {
+      "path": "/api/tasks/{id}",
+      "method": "GET",
+      "description": "Detalle de solo lectura para propietario o asignado vigente. No consulta notificaciones.",
+      "responses": {
+        "200": { "body": { "success": true, "data": "TaskView" } },
+        "401": "Sin sesión",
+        "404": "Ajeno, inexistente, eliminada, o asignado que ya perdió acceso (incluso con notificación antigua)"
+      }
+    },
+    {
+      "path": "/api/tasks",
+      "method": "GET",
+      "description": "Listado único de tareas activas visibles (propias y asignadas), una fila por tarea.",
+      "queryParams": {
+        "role": { "enum": ["all", "owned", "assigned_to_me", "delegated"], "default": "all", "description": "owned=propias; assigned_to_me=asignadas a mí; delegated=propias con asignado" },
+        "status": { "enum": ["todas", "pendiente", "en_progreso", "completada"], "default": "todas" },
+        "sort": { "enum": ["created_desc", "priority_desc", "priority_asc"], "default": "created_desc" },
+        "category_id": { "type": "string", "description": "Solo filtra tareas propias (las categorías son personales)" }
+      },
+      "responses": {
+        "200": { "body": { "success": true, "data": ["TaskView (campos de Incremento 3 conservados)"], "tasks": "alias de data (compatibilidad)" } },
+        "400": "role, status o sort inválido"
+      }
+    },
+    {
+      "path": "/api/tasks/{id}/status",
+      "method": "PATCH",
+      "description": "Contrato existente. Ahora admite al asignado vigente además del propietario; actor de auditoría = quien invoca.",
+      "responses": { "200": "sin cambios de forma", "403": "No aplica al asignado (permitido)", "404": "Ajeno o eliminada" }
+    },
+    {
+      "path": "/api/tasks/{id}/reopen",
+      "method": "POST",
+      "description": "Contrato existente. Ahora admite al asignado vigente; actor de auditoría = quien invoca.",
+      "responses": { "200": "sin cambios de forma", "404": "Ajeno o eliminada" }
+    },
+    {
+      "path": "/api/tasks/{id}",
+      "method": "PUT | DELETE",
+      "description": "Contratos existentes. Sin cambios de forma; ahora el asignado vigente recibe 403 y el ajeno 404.",
+      "responses": { "403": "Asignado vigente", "404": "Ajeno o eliminada" }
+    },
+    {
+      "path": "/api/notifications",
+      "method": "GET",
+      "description": "Notificaciones propias: no leídas primero, luego más recientes; máximo 50.",
+      "responses": {
+        "200": { "body": { "success": true, "data": { "unread_count": "integer", "notifications": ["NotificationView"] } } },
+        "401": "Sin sesión"
+      }
+    },
+    {
+      "path": "/api/notifications/{id}/read",
+      "method": "POST",
+      "description": "Marca como leída una notificación propia. Idempotente. No otorga ni requiere acceso a la tarea.",
+      "responses": {
+        "200": { "body": { "success": true, "data": { "id": "integer", "is_read": true, "unread_count": "integer" } } },
+        "401": "Sin sesión",
+        "404": "Inexistente o de otro usuario (sin distinguir)"
+      }
+    }
+  ],
+  "htmlRoutes": [
+    { "path": "/tasks", "method": "GET", "description": "Listado único con filtro role, insignias de rol y asignado" },
+    { "path": "/tasks/{id}", "method": "GET", "description": "Detalle de solo lectura (propietario o asignado vigente); 404 en otro caso" },
+    { "path": "/notifications", "method": "GET", "description": "Lista de notificaciones; las no disponibles se muestran como 'ya no disponible' sin enlace" },
+    { "path": "/notifications/{id}/read", "method": "POST", "description": "Marca leída y redirige" }
+  ]
+}
