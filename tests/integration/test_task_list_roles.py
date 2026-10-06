@@ -78,7 +78,8 @@ def test_list_all_tasks_owner(client, users_and_tasks):
     assert users_and_tasks["t3"].id in ids
     assert users_and_tasks["t4"].id not in ids
     assert users_and_tasks["t5"].id not in ids
-    assert len(ids) == 3
+    assert users_and_tasks["t6"].id in ids
+    assert len(ids) == 4
 
     # Check response fields for t2
     t2_data = next(t for t in data if t["id"] == users_and_tasks["t2"].id)
@@ -94,7 +95,7 @@ def test_list_role_filters(client, users_and_tasks):
     resp = client.get("/api/tasks?role=owned")
     assert resp.status_code == 200
     ids = {t["id"] for t in resp.json["data"]}
-    assert ids == {users_and_tasks["t1"].id, users_and_tasks["t2"].id}
+    assert ids == {users_and_tasks["t1"].id, users_and_tasks["t2"].id, users_and_tasks["t6"].id}
 
     # role=assigned_to_me
     resp = client.get("/api/tasks?role=assigned_to_me")
@@ -127,7 +128,7 @@ def test_list_combination_filters(client, users_and_tasks):
     resp = client.get("/api/tasks?role=all&sort=priority_desc")
     data = resp.json["data"]
     priorities = [t["priority"] for t in data]
-    assert priorities == ["alta", "media", "baja"] # t1, t2, t3
+    assert priorities == ["alta", "alta", "media", "baja"] # t1, t6, t2, t3
 
 def test_assignee_visibility(client, users_and_tasks, db_session, user_repo, task_repo):
     assignee = users_and_tasks["assignee"]

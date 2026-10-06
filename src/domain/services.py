@@ -285,6 +285,34 @@ class TaskService:
         tasks = self.task_repo.list_by_user(user_id=user_id, status=status, sort=sort, category_id=category_id)
         return [self._apply_overdue(t) for t in tasks]
 
+    def list_tasks_visible(
+        self,
+        user_id: int,
+        role: str = "all",
+        status: Optional[str] = None,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
+        valid_roles = ("all", "owned", "assigned_to_me", "delegated")
+        if role not in valid_roles:
+            raise ValidationError(f"Filtro de rol inválido: '{role}'.")
+        if status and status not in ("todas", "pendiente", "en_progreso", "completada"):
+            raise ValidationError(f"Filtro de estado inválido: '{status}'.")
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc")
+        if not sort or sort not in valid_sorts:
+            raise ValidationError(f"Filtro de ordenamiento inválido: '{sort}'.")
+            
+        real_status = status if status != "todas" else None
+            
+        tasks = self.task_repo.list_visible(
+            user_id=user_id,
+            role=role,
+            status=real_status,
+            sort=sort,
+            category_id=category_id
+        )
+        return [self._apply_overdue(t) for t in tasks]
+
     def get_task(self, task_id: int, user_id: int, include_deleted: bool = False) -> Task:
         task = self.task_repo.get_by_id(task_id)
         if not task:

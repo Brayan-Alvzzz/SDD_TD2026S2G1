@@ -99,6 +99,7 @@ class TaskORM(db.Model):
 
     category = db.relationship("CategoryORM", backref=db.backref("tasks", passive_deletes=True))
     audit_logs = db.relationship("AuditLogORM", backref="task", cascade="all, delete-orphan", passive_deletes=True)
+    assignee = db.relationship("UserORM", foreign_keys=[assignee_id])
 
     __table_args__ = (
         db.CheckConstraint("status IN ('pendiente', 'en_progreso', 'completada')", name="chk_tasks_status"),

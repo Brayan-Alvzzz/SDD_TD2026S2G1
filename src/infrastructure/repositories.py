@@ -59,6 +59,14 @@ class TaskRepository:
             if cat_orm:
                 category_name = cat_orm.name
 
+        owner_email = None
+        if getattr(r, "user", None) is not None:
+            owner_email = r.user.email
+
+        assignee_email = None
+        if getattr(r, "assignee", None) is not None:
+            assignee_email = r.assignee.email
+
         return Task(
             id=r.id,
             user_id=r.user_id,
@@ -70,6 +78,8 @@ class TaskRepository:
             category_id=r.category_id,
             category_name=category_name,
             assignee_id=r.assignee_id,
+            owner_email=owner_email,
+            assignee_email=assignee_email,
             is_overdue=is_overdue,
             is_deleted=r.is_deleted,
             deleted_at=r.deleted_at,
@@ -152,6 +162,65 @@ class TaskRepository:
             stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
 
         rows = self.session.execute(stmt).scalars().all()
+        return [self._to_domain(r) for r in rows]
+
+    def list_visible(
+        self,
+        user_id: int,
+        role: str = "all",
+        status: Optional[str] = None,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
+        from sqlalchemy.orm import joinedload
+        
+        stmt = sa.select(TaskORM).options(
+            joinedload(TaskORM.category),
+            joinedload(TaskORM.user),
+            joinedload(TaskORM.assignee)
+        ).where(TaskORM.is_deleted == False)
+
+        if role == "owned":
+            stmt = stmt.where(TaskORM.user_id == user_id)
+        elif role == "assigned_to_me":
+            stmt = stmt.where(TaskORM.assignee_id == user_id)
+        elif role == "delegated":
+            stmt = stmt.where(sa.and_(TaskORM.user_id == user_id, TaskORM.assignee_id.is_not(None)))
+        else: # "all"
+            stmt = stmt.where(sa.or_(TaskORM.user_id == user_id, TaskORM.assignee_id == user_id))
+
+        if status:
+            stmt = stmt.where(TaskORM.status == status)
+
+        if category_id is not None and category_id != "":
+            if str(category_id).lower() == "none":
+                stmt = stmt.where(TaskORM.category_id.is_(None))
+            else:
+                try:
+                    stmt = stmt.where(TaskORM.category_id == int(category_id))
+                except (ValueError, TypeError):
+                    pass
+
+        if sort == "priority_desc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'alta', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'baja', 3),
+                else_=4
+            )
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "priority_asc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'baja', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'alta', 3),
+                else_=4
+            )
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        else:
+            stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
+
+        rows = self.session.execute(stmt).scalars().unique().all()
         return [self._to_domain(r) for r in rows]
 
     def soft_delete(self, task_id: int, user_id: int, deleted_at: str) -> Optional[Task]:

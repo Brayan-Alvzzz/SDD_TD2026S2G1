@@ -214,3 +214,27 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La suite de rutas de asignación (`test_assignment_routes.py`) se ejecutó exitosamente obteniendo Exit Code 0, guardándose en `docs/evidencias/inc4/rutas-asignacion-green.txt`.
   - La suite completa de regresión se ejecutó de manera exitosa conservando su integridad con Exit Code 0 (199 tests pasados), guardándose el resultado en `docs/evidencias/inc4/regresion-rutas-asignacion.txt`.
 - Se marcó como completada la tarea T016 en `tasks.md`. No se implementaron aún filtros de listado, atributos visuales HTML o interacción de UI (tareas T017, T018, etc. permanecen pendientes).
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Pruebas RED para Listado Compartido
+
+- **Preparación de Pruebas (T013):**
+  - Se creó el archivo `tests/integration/test_task_list_roles.py`.
+  - Se implementó el fixture `users_and_tasks` que prepara usuarios (propietario, asignado, ajeno) y tareas representativas de todas las casuísticas: propia no asignada, propia asignada, ajena no asignada, ajena asignada a sí mismo, y propia eliminada. Todo se confirmó en la base de datos previo a las peticiones utilizando `CollaborationService` para la inyección de asignaciones.
+  - Se estructuraron pruebas para verificar que `GET /api/tasks` retorne combinadamente tareas propias y tareas asignadas (filtrando eliminadas y ajenas), maneje los valores de `role` (`all`, `owned`, `assigned_to_me`, `delegated`), combine con estado y sort, inyecte `viewer_role`, `owner` y `assignee`, y maneje la pérdida de visibilidad tras una desasignación.
+- **Resultado RED:**
+  - Al ejecutar `pytest tests/integration/test_task_list_roles.py`, los 5 tests de integración construidos fallaron (Exit Code 1) por AssertionErrors.
+  - El endpoint `/api/tasks` actual (en producción) solo retorna las tareas que pertenecen al usuario (el dueño) e ignora por completo a los asignados y el parámetro `role`, por lo que las aserciones sobre tareas visibles no poseídas o las listas compartidas fallaron contundentemente.
+- Se marcó como completada la tarea T013 en `tasks.md`. Las tareas de implementación asociadas (T017 y T018) permanecerán pendientes hasta la siguiente fase GREEN.
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Implementación GREEN para Listado Compartido
+
+- **Implementación Mínima (T017, T018_parcial):**
+  - Se modificó `src/infrastructure/models.py` para agregar la relación `assignee` en `TaskORM` apuntando a `UserORM` mediante `assignee_id`.
+  - Se implementó `TaskRepository.list_visible` utilizando `joinedload` de `category`, `user` (owner), y `assignee` para evitar consultas N+1 y cargar todo en una sola transacción. Este método aplica filtros complejos en SQL directo y resuelve tareas propias, asignadas y delegadas según el rol seleccionado.
+  - Se modificó `TaskRepository._to_domain` para que popule `owner_email` y `assignee_email` basándose en las relaciones pre-cargadas.
+  - Se agregó `TaskService.list_tasks_visible` delegando la validación del filtro `role` a la lógica de negocio y aplicando el repositorio.
+  - Se conectó `GET /api/tasks` invocando `list_tasks_visible`, inyectando la información de estructura y diccionarios anidados de `owner`, `assignee` y `permissions` junto a `viewer_role`, cumpliendo estrictamente con `task-collaboration-api.json`.
+- **Resultados de la Verificación GREEN:**
+  - La suite de `test_task_list_roles.py` pasó exitosamente sus 7 tests, documentado en `docs/evidencias/inc4/green-list.txt` (Exit Code 0).
+  - La suite completa de regresión se ejecutó guardando evidencia en `docs/evidencias/inc4/regresion-listado.txt` finalizando íntegramente con Exit Code 0 (206 tests pasados), lo que confirma que las modificaciones en ORM, repositorios y servicios fueron retrocompatibles.
+- Actualización de tareas: Se marcaron como completadas las tareas T017 y T020. T018 quedó parcialmente completada en `tasks.md` (API terminada, plantilla HTML pendiente de inyección visual).

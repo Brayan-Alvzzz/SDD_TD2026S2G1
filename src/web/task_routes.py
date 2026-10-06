@@ -71,14 +71,16 @@ def list_tasks_view():
 @login_required
 def list_tasks_api():
     user_id = session["user_id"]
-    status_filter = request.args.get("status")
+    role_filter = request.args.get("role", "all")
+    status_filter = request.args.get("status", "todas")
     sort = request.args.get("sort", "created_desc")
     category_filter = request.args.get("category_id")
     task_service = get_task_service()
 
     try:
-        tasks = task_service.list_tasks(
+        tasks = task_service.list_tasks_visible(
             user_id,
+            role=role_filter,
             status=status_filter,
             sort=sort,
             category_id=category_filter
@@ -94,6 +96,16 @@ def list_tasks_api():
                 "category_id": t.category_id,
                 "category_name": t.category_name,
                 "is_overdue": t.is_overdue,
+                "viewer_role": "owner" if t.user_id == user_id else "assignee",
+                "owner": {"id": t.user_id, "email": t.owner_email} if t.owner_email else {"id": t.user_id, "email": ""},
+                "assignee": {"id": t.assignee_id, "email": t.assignee_email} if t.assignee_id and t.assignee_email else None,
+                "permissions": {
+                    "can_edit": t.user_id == user_id,
+                    "can_delete": t.user_id == user_id,
+                    "can_manage_assignment": t.user_id == user_id,
+                    "can_change_status": True,
+                    "can_reopen": True
+                },
                 "created_at": t.created_at,
                 "updated_at": t.updated_at
             }
