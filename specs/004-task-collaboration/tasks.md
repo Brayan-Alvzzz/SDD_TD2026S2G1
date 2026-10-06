@@ -78,7 +78,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 **Requirements**: FR-017 al FR-021, SC-005, SC-008.
 
 ### Tests (RED)
-- [ ] T026 [US2] Escribir pruebas en `tests/integration/test_notification_routes.py` (idempotencia de lectura, acceso denegado a ajenas, y disponibilidad derivada). Guardar RED en `docs/evidencias/inc4/red-us2.txt`.
+- [x] T026 [US2] Escribir pruebas en `tests/integration/test_notification_routes.py` (idempotencia de lectura, acceso denegado a ajenas, y disponibilidad derivada). Guardar RED en `docs/evidencias/inc4/red-us2.txt`.
 
 ### Implementation
 - [ ] T027 [P] [US2] Actualizar el procesador de contexto en `src/web/app.py` para inyectar el contador de no leídas en la barra superior (requiere que el `NotificationRepository` de la Fase 2 esté terminado).

@@ -257,3 +257,19 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La suite especializada `test_task_access_roles.py` pasó sus 9 pruebas de manera inmaculada. Salida guardada en `docs/evidencias/inc4/green-us3.txt`.
   - La suite completa de regresión (215 tests en total) logró la ejecución sin fallas (Exit Code 0), confirmando una vez más que toda la lógica de backend permanece completamente resiliente. Salida guardada en `docs/evidencias/inc4/regresion-us3.txt`.
 - **Artefactos:** Se completaron parcialmente las historias de US3 para backend (T021, T022, T023, T025), dejando solo pendiente la vista HTML (T024).
+
+## 2026-10-05 — Implementación Incremento 4: Fase 5 (RED Notificaciones Internas - US2)
+
+- **Comprobación de Autorización (Desviación T022):**
+  - Se confirmó en `src/domain/services.py` que todos los usos de `TaskService.get_task` por parte de los métodos de edición (actualizar estado, reabrir, editar, cambiar prioridad/categoría, borrar) inyectan explícitamente `operation=Operation.EDIT`, `Operation.DELETE`, `Operation.CHANGE_STATUS` u `Operation.REOPEN`.
+  - Ningún método expone `Operation.VIEW` por accidente para realizar mutaciones. Esto es una desviación de la idea original de implementar un método `_load_for` separado, decidiéndose consolidar el parámetro de `operation` en el `get_task` ya existente para reutilización eficiente sin duplicar flujos de error.
+
+- **Pruebas de Notificaciones (T026 - RED):**
+  - Se implementaron 7 escenarios de integración para rutas de notificaciones en `tests/integration/test_notification_routes.py`.
+  - Las pruebas emplean `CollaborationService` para generar asignaciones reales a través de base de datos en `users_and_notifications`.
+  - Se validaron requisitos clave: exclusividad por sesión autenticada (401 si no hay sesión), idempotencia al marcar como leída, protección frente a suplantación manipulando campos `recipient_id` o `user_id` en el cuerpo JSON, inmutabilidad tras intentar acceder a una ajena o inexistente (404), correcta enumeración y persistencia en historial (el número de `unread_count` difiere del `data` list total), actualización derivada de la vista transitoria `available` al reasignarse o borrarse la tarea, y mantenimiento íntegro de notificaciones en base de datos.
+
+- **Resultado RED:**
+  - Como era esperado al no existir todavía el registro de rutas o endpoints reales para notificaciones, pytest devolvió 7 `AssertionError` puros (principalmente recibiendo un 404 general en lugar del 200, 403 o la respuesta JSON correcta esperada).
+  - La salida se ha guardado en `docs/evidencias/inc4/red-us2.txt` con código de salida 1.
+  - Se ha marcado como finalizada la tarea de pruebas `T026` y se ha congelado el avance hacia las implementaciones de los controladores para respetar el flujo TDD estricto.
