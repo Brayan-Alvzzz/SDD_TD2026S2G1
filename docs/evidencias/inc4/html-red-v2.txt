@@ -1,0 +1,225 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 7 items
+
+tests/integration/test_collaboration_html.py FFFFFFF                     [100%]
+
+=================================== FAILURES ===================================
+__________________ test_html_list_includes_roles_and_escaping __________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:03.600119+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:03.610249+00:00', updated_at='2026-10-06T02:09:03.610249+00:00'), ...}
+
+    def test_html_list_includes_roles_and_escaping(client, users_and_tasks):
+        owner = users_and_tasks["owner"]
+        t1 = users_and_tasks["t1"]
+        _login(client, owner)
+    
+        resp = client.get("/tasks")
+        assert resp.status_code == 200
+        html = resp.data.decode("utf-8")
+    
+        # Escapado
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+    
+        soup = BeautifulSoup(html, "html.parser")
+    
+        # Verificamos que el listado incluye las tareas
+        # Filtros de rol
+>       assert soup.find("select", {"name": "role"}) is not None
+E       assert None is not None
+E        +  where None = find('select', {'name': 'role'})
+E        +    where find = <!DOCTYPE html>\n\n<html lang="es">\n<head>\n<meta charset="utf-8"/>\n<meta content="width=device-width, initial-scale=1.0"...\n</div>\n</footer>\n<script src="/static/js/api.js"></script>\n<script src="/static/js/tasks.js"></script>\n</body>\n</html>.find
+
+tests/integration/test_collaboration_html.py:69: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_list_includes_roles_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+____________________ test_html_list_controls_only_for_owner ____________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:03.728511+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:03.729870+00:00', updated_at='2026-10-06T02:09:03.729870+00:00'), ...}
+
+    def test_html_list_controls_only_for_owner(client, users_and_tasks):
+        owner = users_and_tasks["owner"]
+        t2 = users_and_tasks["t2"] # propia asignada
+        t3 = users_and_tasks["t3"] # ajena asignada a mi
+    
+        _login(client, owner)
+        resp = client.get("/tasks")
+        soup = BeautifulSoup(resp.data.decode("utf-8"), "html.parser")
+    
+        row2 = soup.find("tr", {"data-task-id": str(t2.id)})
+        row3 = soup.find("tr", {"data-task-id": str(t3.id)})
+    
+        # Botones de editar, eliminar, administrar asignaciones solo en row2
+        # Comprobamos enlaces a editar
+>       edit_btn2 = row2.find("a", href=f"/tasks/{t2.id}/edit")
+                    ^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'find'
+
+tests/integration/test_collaboration_html.py:97: AttributeError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_list_controls_only_f0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_____________________ test_html_detail_access_and_denials ______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:03.810716+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:03.811864+00:00', updated_at='2026-10-06T02:09:03.811864+00:00'), ...}
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a1d74d0>
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10a5ca210>
+
+    def test_html_detail_access_and_denials(client, users_and_tasks, db_session, user_repo):
+        owner = users_and_tasks["owner"]
+        assignee = users_and_tasks["assignee"]
+        stranger = users_and_tasks["stranger"]
+        t1 = users_and_tasks["t1"]
+        t2 = users_and_tasks["t2"] # Tarea de owner asignada a assignee
+        t4 = users_and_tasks["t4"] # eliminada
+    
+        # Acceso permitido para propietario
+        _login(client, owner)
+        resp = client.get(f"/tasks/{t1.id}")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_collaboration_html.py:114: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_detail_access_and_de0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________ test_html_assign_form_validates_backend_auth _________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:03.873878+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:03.874966+00:00', updated_at='2026-10-06T02:09:03.874966+00:00'), ...}
+
+    def test_html_assign_form_validates_backend_auth(client, users_and_tasks):
+        assignee = users_and_tasks["assignee"]
+        stranger = users_and_tasks["stranger"]
+        t2 = users_and_tasks["t2"] # De owner asignada a assignee
+    
+        _login(client, assignee)
+        # Intento de reasignar
+        resp = client.post(f"/tasks/{t2.id}/assignee", data={"assignee_email": stranger.email})
+>       assert resp.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_collaboration_html.py:153: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_assign_form_validate0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_____________________ test_html_notifications_list_and_nav _____________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:03.969296+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:03.970728+00:00', updated_at='2026-10-06T02:09:03.970728+00:00'), ...}
+
+    def test_html_notifications_list_and_nav(client, users_and_tasks):
+        owner = users_and_tasks["owner"]
+        assignee = users_and_tasks["assignee"]
+    
+        _login(client, assignee)
+        resp = client.get("/notifications")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_collaboration_html.py:161: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_notifications_list_a0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+___________________ test_html_notification_unavailable_state ___________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_tasks = {'owner': User(id=1, email='owner_html@example.com', password_hash='hash', created_at='2026-10-06T02:09:04.050769+00:0...e, deleted_at=None, created_at='2026-10-06T02:09:04.052529+00:00', updated_at='2026-10-06T02:09:04.052529+00:00'), ...}
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a1d74d0>
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10af8dd90>
+
+    def test_html_notification_unavailable_state(client, users_and_tasks, db_session, user_repo):
+        owner = users_and_tasks["owner"]
+        assignee = users_and_tasks["assignee"]
+        t2 = users_and_tasks["t2"]
+    
+        # Desasignar
+        repo = TaskRepository(db_session)
+        collab = CollaborationService(repo, user_repo, AuditLogRepository(db_session), NotificationRepository(db_session), session=db_session)
+        collab.unassign_task(t2.id, owner.id)
+    
+        _login(client, assignee)
+        resp = client.get("/notifications")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_collaboration_html.py:195: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_notification_unavail0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+__________________________ test_html_requires_session __________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+
+    def test_html_requires_session(client):
+        resp = client.get("/tasks/1")
+>       assert resp.status_code == 302
+E       assert 404 == 302
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_collaboration_html.py:203: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-62/test_html_requires_session0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+FAILED tests/integration/test_collaboration_html.py::test_html_list_includes_roles_and_escaping
+FAILED tests/integration/test_collaboration_html.py::test_html_list_controls_only_for_owner
+FAILED tests/integration/test_collaboration_html.py::test_html_detail_access_and_denials
+FAILED tests/integration/test_collaboration_html.py::test_html_assign_form_validates_backend_auth
+FAILED tests/integration/test_collaboration_html.py::test_html_notifications_list_and_nav
+FAILED tests/integration/test_collaboration_html.py::test_html_notification_unavailable_state
+FAILED tests/integration/test_collaboration_html.py::test_html_requires_session
+============================== 7 failed in 0.67s ===============================

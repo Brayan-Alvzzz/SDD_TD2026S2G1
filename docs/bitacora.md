@@ -286,3 +286,21 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - Las 7 pruebas de integración para las notificaciones pasaron exitosamente. La evidencia se guardó en `docs/evidencias/inc4/green-us2.txt` (Exit Code 0).
   - La regresión global se ejecutó exitosamente validando todas las 222 pruebas del proyecto. La evidencia está en `docs/evidencias/inc4/regresion-notificaciones.txt` (Exit Code 0).
   - Se registró la finalización de T027 y T030, y T028 como parcial (API terminada, rutas HTML pendientes). No se implementó la plantilla de notificaciones.
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Pruebas RED para Rutas HTML
+
+- **Pruebas de HTML y Plantillas (RED):**
+  - Se creó el archivo `tests/integration/test_collaboration_html.py`.
+  - Se escribieron pruebas para verificar el comportamiento de las plantillas y rutas HTML relacionadas a tareas y notificaciones:
+    - Inclusión de tareas propias y asignadas en el listado, junto a la presencia de la propiedad `data-viewer-role`.
+    - Restricciones en los controles visuales de edición/eliminación (solo visibles para propietarios).
+    - Acceso de solo lectura al detalle (`GET /tasks/<id>`) para propietario y asignado; 404 para ajenos o eliminadas.
+    - Validación de autorización en el endpoint POST del formulario de asignación (`/tasks/<id>/assign`).
+    - Renderización de notificaciones del usuario y de `unread_count` en la navegación de `GET /notifications`.
+    - Comportamiento ante notificaciones "ya no disponibles" sin revelar título/enlace de tareas prohibidas.
+    - Redirección al login en rutas HTML sin sesión (`/tasks/<id>/detail`, `/notifications`).
+- **Resultados de las pruebas RED:**
+  - Tras resolver incompatibilidades previas con la dependencia `beautifulsoup4` (instalada en el entorno .venv de pruebas) y ajustes con `user_repo`, las pruebas fallaron con éxito devolviendo `AssertionError` y `404 NOT FOUND` (Exit Code 1).
+  - La falla es previsible, puesto que no existen aún las rutas GET ni las plantillas HTML (T018, T024, T028, T029 se mantienen pendientes).
+  - Las evidencias correspondientes se guardaron en `docs/evidencias/inc4/html-red.txt`.
+- No se implementó funcionalidad ni se modificó el código de producción.
