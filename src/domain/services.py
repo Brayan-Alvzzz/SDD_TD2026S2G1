@@ -5,7 +5,7 @@ import re
 import json
 from typing import Optional, List, Any, Union
 from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
-from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
+from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError, TaskNotAccessibleError
 from src.domain.state_machine import TaskStateMachine
 from src.domain.permissions import authorize, Operation
 from src.infrastructure.security import hash_password, verify_password

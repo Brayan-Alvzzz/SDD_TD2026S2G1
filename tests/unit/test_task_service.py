@@ -639,3 +639,12 @@ def test_overdue_update_due_date_toggles_flag(task_service, user_service):
 
 
 
+
+
+def test_delete_deleted_task_by_stranger_raises_not_accessible(task_service, user_service):
+    owner = user_service.register_user("owner_del2@example.com", "password123")
+    stranger = user_service.register_user("stranger_del2@example.com", "password123")
+    task = task_service.create_task(owner.id, "Tarea")
+    task_service.delete_task(task.id, owner.id)
+    with pytest.raises(TaskNotAccessibleError):
+        task_service.delete_task(task.id, stranger.id)

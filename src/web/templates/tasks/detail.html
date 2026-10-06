@@ -89,7 +89,10 @@
                         </form>
                     {% endif %}
                     
-                    <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" style="margin-top: {% if task.assignee_id %}1rem{% else %}0{% endif %};">
+                    <style>
+                        .mt-1rem { margin-top: 1rem; }
+                    </style>
+                    <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" class="{% if task.assignee_id %}mt-1rem{% endif %}">
                         <label for="assignee_email" style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">
                             {% if task.assignee_id %}Reasignar a:{% else %}Asignar a:{% endif %}
                         </label>
