@@ -623,7 +623,7 @@ class CollaborationService:
         if self.session is not None:
             self.session.rollback()
 
-    def assign_task(self, task_id: int, actor_id: int, assignee_email: str) -> None:
+    def assign_task(self, task_id: int, actor_id: int, assignee_email: str):
         task = self.task_repo.get_by_id(task_id)
         if not task:
             raise NotFoundError("Tarea no encontrada.")
@@ -642,7 +642,7 @@ class CollaborationService:
             raise ValidationError("El propietario no puede auto-asignarse la tarea.")
 
         if task.assignee_id == assignee.id:
-            return  # Idempotent
+            return False, "none", assignee
 
         old_assignee_id = task.assignee_id
         action = "reassign" if old_assignee_id is not None else "assign"
@@ -672,11 +672,12 @@ class CollaborationService:
             )
 
             self._commit()
+            return True, action, assignee
         except Exception:
             self._rollback()
             raise
 
-    def unassign_task(self, task_id: int, actor_id: int) -> None:
+    def unassign_task(self, task_id: int, actor_id: int):
         task = self.task_repo.get_by_id(task_id)
         if not task:
             raise NotFoundError("Tarea no encontrada.")
@@ -684,7 +685,7 @@ class CollaborationService:
         authorize(task, actor_id, Operation.MANAGE_ASSIGNMENT)
 
         if task.assignee_id is None:
-            return  # Idempotent
+            return False, "none", None
 
         old_assignee_id = task.assignee_id
 
@@ -701,6 +702,7 @@ class CollaborationService:
             )
 
             self._commit()
+            return True, "unassign", None
         except Exception:
             self._rollback()
             raise

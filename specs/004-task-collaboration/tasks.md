@@ -44,7 +44,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 ### Implementation
 - [x] T014 [P] [US1] Implementar en `src/infrastructure/repositories.py` la actualización condicional (CAS) de `assignee_id` con validación de concurrencia (409) (FR-016).
 - [x] T015 [US1] Implementar `CollaborationService.assign_task` y `unassign_task` en `src/domain/services.py` asegurando la validación del destinatario y la transacción única (requiere `NotificationRepository` de la Fase 2).
-- [ ] T016 [US1] Implementar endpoints PUT y DELETE `/api/tasks/<id>/assignee` en `src/web/task_routes.py` según el contrato JSON (FR-022).
+- [x] T016 [US1] Implementar endpoints PUT y DELETE `/api/tasks/<id>/assignee` en `src/web/task_routes.py` según el contrato JSON (FR-022).
 - [ ] T017 [US1] Implementar `TaskRepository.list_visible` en `src/infrastructure/repositories.py` (una sola consulta, sin N+1, filtro de roles).
 - [ ] T018 [US1] Actualizar `GET /api/tasks` en `src/web/task_routes.py` y la plantilla `src/web/templates/tasks/list.html` con las insignias y filtros correspondientes.
 

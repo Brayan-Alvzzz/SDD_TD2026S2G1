@@ -199,3 +199,18 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Resultado RED:**
   - Al ejecutar la suite de integración de rutas, las pruebas arrojaron fallo (Exit Code 1), al no estar aún implementado el código de los endpoints correspondientes en `src/web/task_routes.py`. La salida fue guardada exitosamente en `docs/evidencias/inc4/rutas-asignacion-red.txt`.
 - No se avanzó en la implementación de rutas (T016), listado, permisos adicionales, HTML ni JS.
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Desarrollo GREEN para Rutas de Asignación
+
+- **Revisión del Contrato y Ajustes:**
+  - Se modificó la firma y retorno de `assign_task` y `unassign_task` en `CollaborationService` para que devuelvan la tupla `(changed, action, assignee)`, permitiendo responder a los requerimientos de la API (idempotencia y detalles de modificación) sin realizar lecturas adicionales fuera de la transacción.
+  - Se detectó que el contrato `task-collaboration-api.json` omitía el error 409 (Conflicto) para el método DELETE, por lo que se actualizó el contrato para reflejar explícitamente el 409.
+- **Implementación de Endpoints:**
+  - Se implementaron los endpoints `PUT` y `DELETE` para `/api/tasks/<id>/assignee` en `src/web/task_routes.py`.
+  - Se mapearon correctamente las excepciones de dominio a códigos HTTP: `ValidationError` (400), `UnauthorizedError` (403), `NotFoundError` (404), `TaskNotAccessibleError` (404), `OperationNotPermittedError` (403), `ConflictError` (409).
+  - Se corrigió el orden de los bloques `except` en todos los endpoints aplicables de `task_routes.py` para asegurar que las excepciones derivadas de `UnauthorizedError` (`TaskNotAccessibleError`, `OperationNotPermittedError`) sean capturadas antes de su clase base, garantizando los códigos 404 y 403 adecuados.
+  - El actor se extrae estrictamente desde `session["user_id"]` para prevenir suplantaciones, delegando toda lógica compleja al servicio y sin invocar `db_session.commit()` manualmente.
+- **Resultados de Pruebas (GREEN):**
+  - La suite de rutas de asignación (`test_assignment_routes.py`) se ejecutó exitosamente obteniendo Exit Code 0, guardándose en `docs/evidencias/inc4/rutas-asignacion-green.txt`.
+  - La suite completa de regresión se ejecutó de manera exitosa conservando su integridad con Exit Code 0 (199 tests pasados), guardándose el resultado en `docs/evidencias/inc4/regresion-rutas-asignacion.txt`.
+- Se marcó como completada la tarea T016 en `tasks.md`. No se implementaron aún filtros de listado, atributos visuales HTML o interacción de UI (tareas T017, T018, etc. permanecen pendientes).

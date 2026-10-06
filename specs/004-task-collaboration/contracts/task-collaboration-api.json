@@ -116,7 +116,8 @@
         "200": { "body": { "success": true, "data": { "task_id": "integer", "assignee": null, "changed": "boolean", "action": "unassign | none" } } },
         "401": "Sin sesión",
         "403": "Asignado vigente (no propietario)",
-        "404": "Tarea inexistente, eliminada o ajena"
+        "404": "Tarea inexistente, eliminada o ajena",
+        "409": "La asignación cambió concurrentemente; reintentar"
       },
       "sideEffects": { "auditLog": "unassign solo si había asignado" }
     },

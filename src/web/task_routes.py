@@ -3,9 +3,9 @@ from flask import (
 )
 from src.web.app import get_db
 from src.web.auth_routes import login_required
-from src.infrastructure.repositories import TaskRepository, AuditLogRepository, CategoryRepository
-from src.domain.services import TaskService, CategoryService, _NO_CHANGE
-from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError, InvalidStateTransitionError
+from src.infrastructure.repositories import TaskRepository, AuditLogRepository, CategoryRepository, UserRepository, NotificationRepository
+from src.domain.services import TaskService, CategoryService, _NO_CHANGE, CollaborationService
+from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError, InvalidStateTransitionError, TaskNotAccessibleError, OperationNotPermittedError, ConflictError
 
 task_bp = Blueprint("tasks", __name__)
 
@@ -22,6 +22,15 @@ def get_category_service() -> CategoryService:
     session = get_db()
     repo = CategoryRepository(session)
     return CategoryService(repo, session=session)
+
+
+def get_collaboration_service() -> CollaborationService:
+    session = get_db()
+    task_repo = TaskRepository(session)
+    user_repo = UserRepository(session)
+    audit_repo = AuditLogRepository(session)
+    notification_repo = NotificationRepository(session)
+    return CollaborationService(task_repo, user_repo, audit_repo, notification_repo, session=session)
 
 
 @task_bp.route("/tasks", methods=["GET"])
@@ -460,3 +469,65 @@ def reopen_task_api(id):
         }), 404
 
 
+@task_bp.route("/api/tasks/<int:id>/assignee", methods=["PUT"])
+@login_required
+def update_task_assignee_api(id):
+    user_id = session["user_id"]
+    data = request.get_json() or {}
+    assignee_email = data.get("assignee_email")
+
+    if not assignee_email:
+        return jsonify({"success": False, "error": "El correo del asignado es obligatorio."}), 400
+
+    collab_service = get_collaboration_service()
+    try:
+        changed, action, assignee = collab_service.assign_task(id, user_id, assignee_email)
+        return jsonify({
+            "success": True,
+            "data": {
+                "task_id": id,
+                "assignee": {"id": assignee.id, "email": assignee.email} if assignee else None,
+                "changed": changed,
+                "action": action
+            }
+        }), 200
+    except ValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except NotFoundError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
+    except UnauthorizedError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
+    except ConflictError as e:
+        return jsonify({"success": False, "error": str(e)}), 409
+
+
+@task_bp.route("/api/tasks/<int:id>/assignee", methods=["DELETE"])
+@login_required
+def delete_task_assignee_api(id):
+    user_id = session["user_id"]
+    collab_service = get_collaboration_service()
+    try:
+        changed, action, _ = collab_service.unassign_task(id, user_id)
+        return jsonify({
+            "success": True,
+            "data": {
+                "task_id": id,
+                "assignee": None,
+                "changed": changed,
+                "action": action
+            }
+        }), 200
+    except NotFoundError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
+    except UnauthorizedError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
+    except ConflictError as e:
+        return jsonify({"success": False, "error": str(e)}), 409
