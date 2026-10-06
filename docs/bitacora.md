@@ -238,3 +238,22 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La suite de `test_task_list_roles.py` pasó exitosamente sus 7 tests, documentado en `docs/evidencias/inc4/green-list.txt` (Exit Code 0).
   - La suite completa de regresión se ejecutó guardando evidencia en `docs/evidencias/inc4/regresion-listado.txt` finalizando íntegramente con Exit Code 0 (206 tests pasados), lo que confirma que las modificaciones en ORM, repositorios y servicios fueron retrocompatibles.
 - Actualización de tareas: Se marcaron como completadas las tareas T017 y T020. T018 quedó parcialmente completada en `tasks.md` (API terminada, plantilla HTML pendiente de inyección visual).
+
+## 2026-10-05 — Implementación Incremento 4: Fase 4 (RED y GREEN de Acceso por Operación - US3)
+
+- **Pruebas de Acceso (T021 - RED):**
+  - Se creó el archivo `tests/integration/test_task_access_roles.py`.
+  - Se definieron pruebas rigurosas validando cada una de las operaciones expuestas a través de las rutas (`GET /api/tasks/<id>`, `PATCH /api/tasks/<id>/status`, `PUT /api/tasks/<id>/assignee`, etc.) para el propietario, el asignado, usuarios ajenos (strangers) y usuarios desasignados.
+  - Se validó el aislamiento de la manipulación de los campos del body en los PATCH/PUT para asegurar que no se engañe al servicio enviando el `actor_id` del propietario cuando la sesión es de un asignado.
+  - Las pruebas inicialmente fallaron (Exit Code 1) porque los endpoints no contemplaban las nuevas excepciones o la delegación estricta al `authorize` ni el nuevo endpoint `GET /api/tasks/<id>`.
+
+- **Implementación (T022, T023 - GREEN):**
+  - Se actualizó `TaskService.get_task` y `TaskService.delete_task`, `update_task_status`, `reopen_task`, `update_task_priority`, `update_task_category`, `update_task` para requerir el parámetro opcional `operation: Operation` y así usar internamente `authorize(task, user_id, operation)` de `src.domain.permissions.py`.
+  - Se expuso la ruta `GET /api/tasks/<int:id>` en `src/web/task_routes.py` para consultar el detalle de una tarea permitiendo acceso autorizado por rol de forma segura, retornando estructuras como `viewer_role`.
+  - Se capturaron centralizadamente las excepciones de seguridad (`TaskNotAccessibleError` como 404 y `OperationNotPermittedError` como 403) en todos los bloques `except` pertinentes de `task_routes.py`.
+  - Se ajustaron las aserciones de excepciones esperadas en las pruebas unitarias previas `tests/unit/test_task_service.py` (`test_soft_delete_blocks_subsequent_modifications`, `test_update_task_priority_deleted_task_fails`) agregando explícitamente `TaskNotAccessibleError`, puesto que un task eliminado ahora retorna 404 siempre y antes del `ValidationError` original.
+
+- **Resultado GREEN:**
+  - La suite especializada `test_task_access_roles.py` pasó sus 9 pruebas de manera inmaculada. Salida guardada en `docs/evidencias/inc4/green-us3.txt`.
+  - La suite completa de regresión (215 tests en total) logró la ejecución sin fallas (Exit Code 0), confirmando una vez más que toda la lógica de backend permanece completamente resiliente. Salida guardada en `docs/evidencias/inc4/regresion-us3.txt`.
+- **Artefactos:** Se completaron parcialmente las historias de US3 para backend (T021, T022, T023, T025), dejando solo pendiente la vista HTML (T024).

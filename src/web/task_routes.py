@@ -121,6 +121,42 @@ def list_tasks_api():
         return jsonify({"status": "error", "success": False, "error": str(e)}), 400
 
 
+@task_bp.route("/api/tasks/<int:id>", methods=["GET"])
+@login_required
+def get_task_api(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        t = task_service.get_task(id, user_id)
+        return jsonify({
+            "status": "success",
+            "success": True,
+            "data": {
+                "id": t.id,
+                "title": t.title,
+                "description": t.description,
+                "due_date": t.due_date,
+                "status": t.status,
+                "priority": t.priority,
+                "category_id": t.category_id,
+                "category_name": t.category_name,
+                "is_overdue": t.is_overdue,
+                "viewer_role": "owner" if t.user_id == user_id else "assignee",
+                "owner": {"id": t.user_id, "email": t.owner_email} if t.owner_email else {"id": t.user_id, "email": ""},
+                "assignee": {"id": t.assignee_id, "email": t.assignee_email} if t.assignee_id and t.assignee_email else None,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at
+            }
+        }), 200
+    except NotFoundError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except UnauthorizedError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 403
+
+
+
 @task_bp.route("/tasks/create", methods=["GET"])
 @login_required
 def create_task_view():
@@ -306,6 +342,10 @@ def update_task_api(id):
         return jsonify({"status": "error", "success": False, "error": str(e)}), 400
     except NotFoundError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 403
     except UnauthorizedError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 403
 
@@ -334,6 +374,10 @@ def update_task_category_api(id):
         return jsonify({"status": "error", "success": False, "error": str(e)}), 400
     except NotFoundError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 403
     except UnauthorizedError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 403
 
@@ -369,6 +413,10 @@ def update_task_priority_api(id):
         return jsonify({"status": "error", "success": False, "error": str(e)}), 400
     except NotFoundError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"status": "error", "success": False, "error": str(e)}), 403
     except UnauthorizedError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 403
 
@@ -399,6 +447,10 @@ def update_task_status_api(id):
         return jsonify({"success": False, "error": str(e)}), 400
     except NotFoundError as e:
         return jsonify({"success": False, "error": str(e)}), 404
+    except TaskNotAccessibleError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except OperationNotPermittedError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
     except UnauthorizedError as e:
         return jsonify({"success": False, "error": str(e)}), 403
 
@@ -431,11 +483,16 @@ def delete_task_api(id):
                 "is_deleted": True
             }
         }), 200
-    except (NotFoundError, UnauthorizedError):
+    except (NotFoundError, TaskNotAccessibleError):
         return jsonify({
             "status": "error",
             "message": "Tarea no encontrada o ya eliminada"
         }), 404
+    except (UnauthorizedError, OperationNotPermittedError):
+        return jsonify({
+            "status": "error",
+            "message": "No tiene permiso para eliminar la tarea"
+        }), 403
 
 
 @task_bp.route("/tasks/<int:id>/reopen", methods=["POST"])
@@ -474,11 +531,16 @@ def reopen_task_api(id):
             "status": "error",
             "message": str(e)
         }), 400
-    except (NotFoundError, UnauthorizedError):
+    except (NotFoundError, TaskNotAccessibleError):
         return jsonify({
             "status": "error",
             "message": "Tarea no encontrada o no autorizada"
         }), 404
+    except (UnauthorizedError, OperationNotPermittedError):
+        return jsonify({
+            "status": "error",
+            "message": "No tiene permiso para reabrir la tarea"
+        }), 403
 
 
 @task_bp.route("/api/tasks/<int:id>/assignee", methods=["PUT"])

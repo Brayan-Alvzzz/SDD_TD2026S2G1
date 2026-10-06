@@ -1,7 +1,7 @@
 import pytest
 import json
 from datetime import datetime, timedelta, timezone
-from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError, InvalidStateTransitionError
+from src.domain.exceptions import ValidationError, NotFoundError, UnauthorizedError, InvalidStateTransitionError, TaskNotAccessibleError
 
 
 def test_create_task_success(task_service, user_service):
@@ -190,10 +190,10 @@ def test_soft_delete_blocks_subsequent_modifications(task_service, user_service)
 
     task_service.delete_task(task.id, user.id)
 
-    with pytest.raises((ValidationError, NotFoundError)):
+    with pytest.raises((ValidationError, NotFoundError, TaskNotAccessibleError)):
         task_service.update_task(task.id, user.id, "Nuevo Título")
 
-    with pytest.raises((ValidationError, NotFoundError)):
+    with pytest.raises((ValidationError, NotFoundError, TaskNotAccessibleError)):
         task_service.update_task_status(task.id, user.id, "en_progreso")
 
 
@@ -338,7 +338,7 @@ def test_update_task_priority_deleted_task_fails(task_service, user_service):
     task = task_service.create_task(user.id, "Tarea a borrar")
     task_service.delete_task(task.id, user.id)
 
-    with pytest.raises((NotFoundError, ValidationError)):
+    with pytest.raises((NotFoundError, ValidationError, TaskNotAccessibleError)):
         task_service.update_task_priority(task.id, user.id, "alta")
 
 

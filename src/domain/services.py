@@ -313,18 +313,22 @@ class TaskService:
         )
         return [self._apply_overdue(t) for t in tasks]
 
-    def get_task(self, task_id: int, user_id: int, include_deleted: bool = False) -> Task:
+    def get_task(self, task_id: int, user_id: int, include_deleted: bool = False, operation: Operation = Operation.VIEW) -> Task:
         task = self.task_repo.get_by_id(task_id)
         if not task:
             raise NotFoundError("Tarea no encontrada.")
-        if task.user_id != user_id:
-            raise UnauthorizedError("No tiene permiso para acceder a esta tarea.")
-        if not include_deleted and task.is_deleted:
-            raise NotFoundError("Tarea no encontrada.")
+
+        if include_deleted and task.is_deleted:
+            # If explicitly included, we only allow the owner
+            if task.user_id != user_id:
+                raise TaskNotAccessibleError("No tiene permiso para acceder a esta tarea.")
+        else:
+            authorize(task, user_id, operation)
+
         return self._apply_overdue(task)
 
     def delete_task(self, task_id: int, user_id: int) -> Task:
-        task = self.get_task(task_id, user_id, include_deleted=True)
+        task = self.get_task(task_id, user_id, include_deleted=True, operation=Operation.DELETE)
         if task.is_deleted:
             raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
 
@@ -348,7 +352,7 @@ class TaskService:
             raise
 
     def update_task_status(self, task_id: int, user_id: int, target_status: str) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.CHANGE_STATUS)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar el estado de una tarea eliminada.")
         old_status = task.status
@@ -375,7 +379,7 @@ class TaskService:
             raise
 
     def reopen_task(self, task_id: int, user_id: int) -> Task:
-        task = self.get_task(task_id, user_id, include_deleted=True)
+        task = self.get_task(task_id, user_id, include_deleted=True, operation=Operation.REOPEN)
         if task.is_deleted:
             raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
 
@@ -409,7 +413,7 @@ class TaskService:
         if cleaned_priority not in ("alta", "media", "baja"):
             raise ValidationError(f"Nivel de prioridad inválido: '{priority}'. Valores permitidos: alta, media, baja.")
 
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar la prioridad de una tarea eliminada.")
 
@@ -436,7 +440,7 @@ class TaskService:
         return self._apply_overdue(task)
 
     def update_task_category(self, task_id: int, user_id: int, category_id: Optional[int]) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar la categoría de una tarea eliminada.")
 
@@ -480,7 +484,7 @@ class TaskService:
         priority: Optional[str] = None,
         category_id: Any = _NO_CHANGE
     ) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede modificar una tarea eliminada.")
 

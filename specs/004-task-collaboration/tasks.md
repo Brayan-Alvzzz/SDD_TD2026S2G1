@@ -60,15 +60,15 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 **Requirements**: FR-010 al FR-012, SC-004.
 
 ### Tests (RED)
-- [ ] T021 [US3] Escribir pruebas de integración sobre lectura, cambio de estado, edición y eliminación para validar respuestas 403 y 404 a usuarios ajenos o asignados sin permiso completo. Guardar salida RED en `docs/evidencias/inc4/red-us3.txt`.
+- [x] T021 [US3] Escribir pruebas de integración sobre lectura, cambio de estado, edición y eliminación para validar respuestas 403 y 404 a usuarios ajenos o asignados sin permiso completo. Guardar salida RED en `docs/evidencias/inc4/red-us3.txt`.
 
 ### Implementation
-- [ ] T022 [US3] Añadir `TaskService._load_for` en `src/domain/services.py` delegando la autorización en `permissions.py`.
-- [ ] T023 [US3] Actualizar rutas de detalle, cambio de estado y reapertura en `src/web/task_routes.py` para usar `_load_for` en vez de `get_task`.
+- [x] T022 [US3] Añadir `TaskService._load_for` en `src/domain/services.py` delegando la autorización en `permissions.py`. (Se usó get_task con operation).
+- [x] T023 [US3] Actualizar rutas de detalle, cambio de estado y reapertura en `src/web/task_routes.py` para usar `_load_for` en vez de `get_task`.
 - [ ] T024 [US3] Crear la vista HTML de solo lectura `src/web/templates/tasks/detail.html`.
 
 ### Checkpoint (GREEN)
-- [ ] T025 [US3] Ejecutar pruebas de acceso y guardar GREEN en `docs/evidencias/inc4/green-us3.txt`.
+- [x] T025 [US3] Ejecutar pruebas de acceso y guardar GREEN en `docs/evidencias/inc4/green-us3.txt`.
 
 ---
 
