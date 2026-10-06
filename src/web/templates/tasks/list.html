@@ -192,7 +192,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/api.js') }}?t={{ range(1, 10000) | random }}"></script>
-<script src="{{ url_for('static', filename='js/tasks.js') }}?t={{ range(1, 10000) | random }}"></script>
-<script src="{{ url_for('static', filename='js/assignment.js') }}?t={{ range(1, 10000) | random }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/assignment.js') }}?v=2"></script>
 {% endblock %}

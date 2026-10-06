@@ -148,10 +148,27 @@ def test_js_xss_prevention(page: Page, live_server, test_data):
     modal.locator(".btn-submit-assign").click()
     
     # The error should be displayed safely in the UI without executing scripts
-    error_notification = page.locator(".alert.alert-error")
+    error_notification = page.locator(".alert.alert-error").first
     expect(error_notification).to_be_visible(timeout=2000)
     # The text content of the error should not contain parsed HTML scripts
     expect(error_notification).to_contain_text("No se encontró un usuario con ese correo")
+
+    # Direct test of the showNotification renderer with malicious HTML
+    page.evaluate("""
+        window.xssFired = false;
+        showNotification("<img src=x onerror=window.xssFired=true>", "error");
+    """)
+    
+    direct_error = page.locator(".alert.alert-error").nth(1)
+    expect(direct_error).to_be_visible()
+    
+    # Verify the HTML was not parsed into elements
+    assert page.locator(".alert.alert-error img").count() == 0
+    expect(direct_error).to_contain_text("<img src=x onerror=window.xssFired=true>")
+    
+    # Wait a moment to ensure onerror didn't fire
+    page.wait_for_timeout(200)
+    assert page.evaluate("window.xssFired") is False
 
 def test_js_unassign_without_reload(page: Page, live_server, test_data):
     login(page, live_server, test_data["owner"]["email"])

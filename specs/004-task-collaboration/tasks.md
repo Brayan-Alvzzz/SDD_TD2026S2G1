@@ -97,10 +97,10 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 
 ### Tests (Manual & JS Verification)
 - [x] T030.5 [US4] Escribir pruebas de integración end-to-end asíncronas con Playwright (`test_collaboration_js.py`) verificando el cambio de estado asíncrono sin inyectar controles de propietario, manejo del modal de asignación y recuperación de red. Guardar salida RED en `docs/evidencias/inc4/ui-red-corregido.txt`.
-- [ ] T031 [US4] Actualizar `src/web/static/js/tasks.js` para extraer `data-viewer-role` del DOM e inyectar dinámicamente solo los botones permitidos (propietario vs asignado).
-- [ ] T032 [P] [US4] Implementar `src/web/static/js/assignment.js` para gestionar modal de asignación y llamadas PUT/DELETE a la API de US1 con rollback visual ante fallo.
-- [ ] T033 [P] [US4] Implementar `src/web/static/js/notifications.js` para marcar notificaciones como leídas de forma asíncrona.
-- [ ] T034 [US4] Verificación manual: completar y reabrir una tarea ajena desde el listado sin recargar la página. Si la red falla, la UI debe revertir el checkbox y mostrar alerta.
+- [x] T031 [US4] Actualizar `src/web/static/js/tasks.js` para extraer `data-viewer-role` del DOM e inyectar dinámicamente solo los botones permitidos (propietario vs asignado).
+- [x] T032 [P] [US4] Implementar `src/web/static/js/assignment.js` para gestionar modal de asignación y llamadas PUT/DELETE a la API de US1 con rollback visual ante fallo.
+- [x] T033 [P] [US4] Implementar `src/web/static/js/notifications.js` para marcar notificaciones como leídas de forma asíncrona.
+- [x] T034 [US4] Verificación manual: completar y reabrir una tarea ajena desde el listado sin recargar la página. Si la red falla, la UI debe revertir el checkbox y mostrar alerta.
 
 ---
 
@@ -108,9 +108,9 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 
 **Purpose**: Verificación de toda la base y de los nuevos compromisos juntos.
 
-- [ ] T035 Revisión final del contrato JSON con las rutas implementadas (todos los endpoints responden a la misma semántica de error).
-- [ ] T036 Ejecutar toda la suite combinada (deben pasar la 156 existentes más las nuevas), verificando que ninguna de las viejas fue debilitada o borrada.
-- [ ] T037 Guardar salida final GREEN consolidada en `docs/evidencias/inc4/green-final.txt`.
+- [x] T035 Revisión final del contrato JSON con las rutas implementadas (todos los endpoints responden a la misma semántica de error).
+- [x] T036 Ejecutar toda la suite combinada (deben pasar la 156 existentes más las nuevas), verificando que ninguna de las viejas fue debilitada o borrada.
+- [x] T037 Guardar salida final GREEN consolidada en `docs/evidencias/inc4/green-final.txt`.
 
 ---
 
