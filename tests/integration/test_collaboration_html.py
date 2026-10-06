@@ -69,14 +69,14 @@ def test_html_list_includes_roles_and_escaping(client, users_and_tasks):
     assert soup.find("select", {"name": "role"}) is not None
 
     # Tarea propia
-    row1 = soup.find("tr", {"data-task-id": str(t1.id)})
+    row1 = soup.find("div", {"data-task-id": str(t1.id)})
     assert row1 is not None
     assert row1.get("data-viewer-role") == "owner"
     assert "owner" in row1.text.lower() or "propietario" in row1.text.lower()
 
     # Tarea ajena asignada a owner (t3)
     t3 = users_and_tasks["t3"]
-    row3 = soup.find("tr", {"data-task-id": str(t3.id)})
+    row3 = soup.find("div", {"data-task-id": str(t3.id)})
     assert row3 is not None
     assert row3.get("data-viewer-role") == "assignee"
 
@@ -89,8 +89,8 @@ def test_html_list_controls_only_for_owner(client, users_and_tasks):
     resp = client.get("/tasks")
     soup = BeautifulSoup(resp.data.decode("utf-8"), "html.parser")
 
-    row2 = soup.find("tr", {"data-task-id": str(t2.id)})
-    row3 = soup.find("tr", {"data-task-id": str(t3.id)})
+    row2 = soup.find("div", {"data-task-id": str(t2.id)})
+    row3 = soup.find("div", {"data-task-id": str(t3.id)})
 
     # Botones de editar, eliminar, administrar asignaciones solo en row2
     # Comprobamos enlaces a editar

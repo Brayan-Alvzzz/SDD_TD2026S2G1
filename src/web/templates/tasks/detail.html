@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Tarea - {{ task.title }}{% endblock %}
+
+{% block content %}
+<div class="task-detail-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h1 style="font-size: 1.75rem; font-weight: 700;">{{ task.title }}</h1>
+            <div class="task-meta" style="margin-top: 0.5rem;">
+                <span class="badge badge-{{ task.status }}">
+                    {{ task.status | replace('_', ' ') }}
+                </span>
+                <span class="badge badge-priority-{{ task.priority }}">
+                    Prioridad: {{ task.priority }}
+                </span>
+                {% if task.category_id %}
+                    <span class="badge badge-category">
+                        📁 {{ task.category_name or 'Categoría' }}
+                    </span>
+                {% endif %}
+                {% if viewer_role == 'owner' %}
+                    <span class="badge" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-color);">Propietario</span>
+                {% else %}
+                    <span class="badge" style="background: var(--primary-color); color: white;">Asignado</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="task-actions">
+            {% if task.status == 'pendiente' %}
+                <form method="POST" action="/api/tasks/{{ task.id }}/status" class="inline-form js-status-form">
+                    <input type="hidden" name="status" value="en_progreso">
+                    <button type="submit" class="btn btn-sm btn-primary">Iniciar ▶</button>
+                </form>
+            {% elif task.status == 'en_progreso' %}
+                <form method="POST" action="/api/tasks/{{ task.id }}/status" class="inline-form js-status-form">
+                    <input type="hidden" name="status" value="completada">
+                    <button type="submit" class="btn btn-sm btn-success">Completar ✓</button>
+                </form>
+            {% elif task.status == 'completada' %}
+                <form method="POST" action="{{ url_for('tasks.reopen_task_view', id=task.id) }}" class="reopen-task-form inline-form">
+                    <button type="submit" class="btn btn-sm btn-secondary">Reabrir ↺</button>
+                </form>
+            {% endif %}
+            
+            {% if viewer_role == 'owner' %}
+                <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
+                <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form" onsubmit="return confirm('¿Seguro que deseas eliminar esta tarea?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="task-detail-body" style="margin-top: 1.5rem; background: var(--bg-surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+    <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem;">Descripción</h3>
+        {% if task.description %}
+            <p style="white-space: pre-wrap;">{{ task.description }}</p>
+        {% else %}
+            <p style="color: var(--text-muted); font-style: italic;">Sin descripción</p>
+        {% endif %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+            <h3 style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem;">Fechas</h3>
+            <p><strong>Creada:</strong> {{ task.created_at[:10] }}</p>
+            {% if task.due_date %}
+                <p>
+                    <strong>Vence:</strong> {{ task.due_date }}
+                    {% if task.is_overdue %}
+                        <span class="badge badge-overdue" style="margin-left: 0.5rem;">Vencida</span>
+                    {% endif %}
+                </p>
+            {% endif %}
+        </div>
+        <div>
+            <h3 style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem;">Colaboración</h3>
+            <p><strong>Propietario:</strong> {{ task.owner_email }}</p>
+            
+            {% if viewer_role == 'owner' %}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    {% if task.assignee_id %}
+                        <p style="margin-bottom: 0.5rem;"><strong>Asignada a:</strong> {{ task.assignee_email }}</p>
+                        <form method="POST" action="{{ url_for('tasks.delete_task_assignee_view', id=task.id) }}" class="inline-form" onsubmit="return confirm('¿Remover asignación?');">
+                            <button type="submit" class="btn btn-sm btn-outline" style="color: var(--danger-color); border-color: var(--danger-color);">Desasignar</button>
+                        </form>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" style="margin-top: {% if task.assignee_id %}1rem{% else %}0{% endif %};">
+                        <label for="assignee_email" style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            {% if task.assignee_id %}Reasignar a:{% else %}Asignar a:{% endif %}
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="email" name="assignee_email" id="assignee_email" class="form-control" placeholder="usuario@ejemplo.com" required style="max-width: 300px;">
+                            <button type="submit" class="btn btn-primary">Asignar</button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                {% if task.assignee_id %}
+                    <p><strong>Asignada a:</strong> {{ task.assignee_email }}</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

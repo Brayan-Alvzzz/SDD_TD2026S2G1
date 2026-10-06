@@ -302,5 +302,18 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Resultados de las pruebas RED:**
   - Tras resolver incompatibilidades previas con la dependencia `beautifulsoup4` (instalada en el entorno .venv de pruebas) y ajustes con `user_repo`, las pruebas fallaron con éxito devolviendo `AssertionError` y `404 NOT FOUND` (Exit Code 1).
   - La falla es previsible, puesto que no existen aún las rutas GET ni las plantillas HTML (T018, T024, T028, T029 se mantienen pendientes).
-  - Las evidencias correspondientes se guardaron en `docs/evidencias/inc4/html-red.txt`.
-- No se implementó funcionalidad ni se modificó el código de producción.
+  - No se implementó funcionalidad ni se modificó el código de producción.
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Implementación GREEN para Rutas y Vistas HTML
+
+- **Resultados de las pruebas:**
+  - Se ejecutaron exitosamente las pruebas en `tests/integration/test_collaboration_html.py`, logrando que las 7 pruebas pasaran a GREEN.
+  - La regresión completa de toda la suite se mantiene íntegra en GREEN con 229 pruebas exitosas.
+- **Trabajo realizado:**
+  - Se actualizó `src/web/task_routes.py` para usar `list_tasks_visible` con el filtro de rol en la vista de lista de tareas.
+  - Se añadieron las rutas `GET /tasks/<id>`, `POST /tasks/<id>/assignee` y `POST /tasks/<id>/assignee/delete` para soportar la visualización y edición de asignaciones en HTML.
+  - Se actualizó la plantilla `src/web/templates/tasks/list.html` incorporando insignias de rol, filtro por rol y el atributo `data-viewer-role`.
+  - Se creó la plantilla de detalle `src/web/templates/tasks/detail.html` cumpliendo estrictamente con los accesos limitados por rol y ocultando botones no permitidos (editar/eliminar) para usuarios asignados.
+  - Se añadieron las rutas HTML correspondientes en `src/web/notification_routes.py` para renderizar las vistas y marcar notificaciones como leídas.
+  - Se creó la plantilla `src/web/templates/notifications/list.html` manejando correctamente el estado de tareas "ya no disponibles".
+  - Se inyectó el enlace a notificaciones con el contador `unread_count` en la plantilla de navegación base (`base.html`).

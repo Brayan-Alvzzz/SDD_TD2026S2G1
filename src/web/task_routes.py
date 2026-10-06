@@ -38,24 +38,29 @@ def get_collaboration_service() -> CollaborationService:
 def list_tasks_view():
     user_id = session["user_id"]
     status_filter = request.args.get("status")
+    status_val = status_filter if status_filter else "todas"
     sort = request.args.get("sort", "created_desc")
     category_filter = request.args.get("category_id")
+    role_filter = request.args.get("role", "all")
     task_service = get_task_service()
     category_service = get_category_service()
     categories = category_service.list_categories(user_id)
 
     try:
-        tasks = task_service.list_tasks(
+        tasks = task_service.list_tasks_visible(
             user_id,
-            status=status_filter,
+            role=role_filter,
+            status=status_val,
             sort=sort,
             category_id=category_filter
         )
     except ValidationError as e:
         flash(str(e), "error")
-        tasks = task_service.list_tasks(user_id, sort="created_desc")
+        tasks = task_service.list_tasks_visible(user_id, role="all", status="todas", sort="created_desc")
         status_filter = None
         sort = "created_desc"
+        role_filter = "all"
+        category_filter = None
 
     return render_template(
         "tasks/list.html",
@@ -63,7 +68,9 @@ def list_tasks_view():
         categories=categories,
         current_filter=status_filter,
         current_sort=sort,
-        current_category=category_filter
+        current_category=category_filter,
+        current_role=role_filter,
+        user_id=user_id
     )
 
 
@@ -237,6 +244,62 @@ def create_task():
         ), 400
 
 
+@task_bp.route("/tasks/<int:id>", methods=["GET"])
+@login_required
+def detail_task_view(id):
+    user_id = session["user_id"]
+    task_service = get_task_service()
+    try:
+        task = task_service.get_task(id, user_id)
+        viewer_role = "owner" if task.user_id == user_id else "assignee"
+        return render_template("tasks/detail.html", task=task, viewer_role=viewer_role)
+    except (NotFoundError, TaskNotAccessibleError):
+        abort(404)
+    except UnauthorizedError:
+        abort(403)
+
+@task_bp.route("/tasks/<int:id>/assignee", methods=["POST"])
+@login_required
+def update_task_assignee_view(id):
+    user_id = session["user_id"]
+    assignee_email = request.form.get("assignee_email", "").strip()
+    collab_service = get_collaboration_service()
+    try:
+        if assignee_email:
+            collab_service.assign_task(id, user_id, assignee_email)
+            flash("Tarea asignada exitosamente.", "success")
+        else:
+            flash("El correo del asignado es obligatorio.", "error")
+        return redirect(url_for("tasks.detail_task_view", id=id))
+    except ValidationError as e:
+        flash(str(e), "error")
+        return redirect(url_for("tasks.detail_task_view", id=id))
+    except (NotFoundError, TaskNotAccessibleError):
+        abort(404)
+    except (UnauthorizedError, OperationNotPermittedError):
+        abort(403)
+    except ConflictError as e:
+        flash(str(e), "error")
+        return redirect(url_for("tasks.detail_task_view", id=id))
+
+@task_bp.route("/tasks/<int:id>/assignee/delete", methods=["POST"])
+@login_required
+def delete_task_assignee_view(id):
+    user_id = session["user_id"]
+    collab_service = get_collaboration_service()
+    try:
+        collab_service.unassign_task(id, user_id)
+        flash("Asignación removida exitosamente.", "success")
+        return redirect(url_for("tasks.detail_task_view", id=id))
+    except (NotFoundError, TaskNotAccessibleError):
+        abort(404)
+    except (UnauthorizedError, OperationNotPermittedError):
+        abort(403)
+    except ConflictError as e:
+        flash(str(e), "error")
+        return redirect(url_for("tasks.detail_task_view", id=id))
+
+
 @task_bp.route("/tasks/<int:id>/edit", methods=["GET"])
 @login_required
 def edit_task_view(id):
@@ -247,7 +310,7 @@ def edit_task_view(id):
         task = task_service.get_task(id, user_id)
         categories = category_service.list_categories(user_id)
         return render_template("tasks/edit.html", task=task, categories=categories)
-    except (NotFoundError, UnauthorizedError):
+    except (NotFoundError, UnauthorizedError, TaskNotAccessibleError):
         abort(404)
 
 

@@ -4,7 +4,7 @@ from src.infrastructure.repositories import NotificationRepository
 from src.domain.services import NotificationService
 from src.domain.exceptions import NotFoundError, UnauthorizedError
 
-notification_bp = Blueprint("notifications", __name__, url_prefix="/api/notifications")
+notification_bp = Blueprint("notifications", __name__)
 
 def get_notification_service():
     db_session = db.session
@@ -16,7 +16,7 @@ def _auth_required():
         return jsonify({"status": "error", "message": "Acceso no autorizado"}), 401
     return None
 
-@notification_bp.route("", methods=["GET"])
+@notification_bp.route("/api/notifications", methods=["GET"])
 def list_notifications():
     err = _auth_required()
     if err:
@@ -55,7 +55,7 @@ def list_notifications():
         "meta": {"unread_count": unread_count}
     }), 200
 
-@notification_bp.route("/<int:notification_id>/read", methods=["POST"])
+@notification_bp.route("/api/notifications/<int:notification_id>/read", methods=["POST"])
 def mark_as_read(notification_id):
     err = _auth_required()
     if err:
@@ -71,3 +71,32 @@ def mark_as_read(notification_id):
         return jsonify({"status": "error", "message": "Notificación no encontrada."}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+from flask import render_template, redirect, url_for, flash
+
+@notification_bp.route("/notifications", methods=["GET"])
+def notifications_view():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login_view"))
+
+    user_id = session["user_id"]
+    service = get_notification_service()
+    notifs = service.list_notifications(user_id)
+    return render_template("notifications/list.html", notifications=notifs)
+
+@notification_bp.route("/notifications/<int:notification_id>/read", methods=["POST"])
+def mark_as_read_view(notification_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login_view"))
+
+    user_id = session["user_id"]
+    service = get_notification_service()
+
+    try:
+        service.mark_as_read(notification_id, user_id)
+    except NotFoundError:
+        flash("Notificación no encontrada.", "error")
+    except Exception as e:
+        flash(str(e), "error")
+
+    return redirect(url_for("notifications.notifications_view"))

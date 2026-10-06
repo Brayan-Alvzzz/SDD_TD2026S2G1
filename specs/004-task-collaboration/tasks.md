@@ -46,7 +46,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 - [x] T015 [US1] Implementar `CollaborationService.assign_task` y `unassign_task` en `src/domain/services.py` asegurando la validación del destinatario y la transacción única (requiere `NotificationRepository` de la Fase 2).
 - [x] T016 [US1] Implementar endpoints PUT y DELETE `/api/tasks/<id>/assignee` en `src/web/task_routes.py` según el contrato JSON (FR-022).
 - [x] T017 [US1] Implementar `TaskRepository.list_visible` en `src/infrastructure/repositories.py` (una sola consulta, sin N+1, filtro de roles).
-- [ ] T018 [US1] Actualizar `GET /api/tasks` en `src/web/task_routes.py` y la plantilla `src/web/templates/tasks/list.html` con las insignias y filtros correspondientes. (API terminada, plantilla pendiente).
+- [x] T018 [US1] Actualizar `GET /api/tasks` en `src/web/task_routes.py` y la plantilla `src/web/templates/tasks/list.html` con las insignias y filtros correspondientes. (API terminada, plantilla pendiente).
 
 ### Checkpoint (GREEN)
 - [x] T019 [US1] Ejecutar pruebas de asignación y guardar GREEN en `docs/evidencias/inc4/green-us1.txt`.
@@ -65,7 +65,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 ### Implementation
 - [x] T022 [US3] Añadir `TaskService._load_for` en `src/domain/services.py` delegando la autorización en `permissions.py`. (Se usó get_task con operation).
 - [x] T023 [US3] Actualizar rutas de detalle, cambio de estado y reapertura en `src/web/task_routes.py` para usar `_load_for` en vez de `get_task`.
-- [ ] T024 [US3] Crear la vista HTML de solo lectura `src/web/templates/tasks/detail.html`.
+- [x] T024 [US3] Crear la vista HTML de solo lectura `src/web/templates/tasks/detail.html`.
 
 ### Checkpoint (GREEN)
 - [x] T025 [US3] Ejecutar pruebas de acceso y guardar GREEN en `docs/evidencias/inc4/green-us3.txt`.
@@ -82,8 +82,8 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 
 ### Implementation
 - [x] T027 [P] [US2] Actualizar el procesador de contexto en `src/web/app.py` para inyectar el contador de no leídas en la barra superior (requiere que el `NotificationRepository` de la Fase 2 esté terminado).
-- [ ] T028 [US2] Implementar rutas `GET /api/notifications` y `POST /api/notifications/<id>/read` en `src/web/notification_routes.py` (API terminada, rutas HTML pendientes).
-- [ ] T029 [US2] Crear la plantilla `src/web/templates/notifications/list.html` manejando el estado "ya no disponible" sin enlaces a tareas perdidas.
+- [x] T028 [US2] Implementar rutas `GET /api/notifications` y `POST /api/notifications/<id>/read` en `src/web/notification_routes.py` (API terminada, rutas HTML pendientes).
+- [x] T029 [US2] Crear la plantilla `src/web/templates/notifications/list.html` manejando el estado "ya no disponible" sin enlaces a tareas perdidas.
 
 ### Checkpoint (GREEN)
 - [x] T030 [US2] Ejecutar pruebas de notificaciones y guardar GREEN en `docs/evidencias/inc4/green-us2.txt` verificando el backend.

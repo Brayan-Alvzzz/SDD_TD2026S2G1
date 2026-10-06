@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 229 items
+
+tests/integration/test_assignment_routes.py .............                [  5%]
+tests/integration/test_auth_routes.py ...................                [ 13%]
+tests/integration/test_category_routes.py ...........                    [ 18%]
+tests/integration/test_collaboration_html.py .......                     [ 21%]
+tests/integration/test_collaboration_rollback.py ..                      [ 22%]
+tests/integration/test_foreign_keys.py ....                              [ 24%]
+tests/integration/test_migrations.py .........                           [ 28%]
+tests/integration/test_notification_routes.py .......                    [ 31%]
+tests/integration/test_task_access_roles.py .........                    [ 35%]
+tests/integration/test_task_list_roles.py .......                        [ 38%]
+tests/integration/test_task_routes.py .................................. [ 53%]
+                                                                         [ 53%]
+tests/integration/test_transaction_rollback.py .....                     [ 55%]
+tests/unit/test_category_service.py .......                              [ 58%]
+tests/unit/test_collaboration_service.py ..........                      [ 62%]
+tests/unit/test_notification_repository.py ......                        [ 65%]
+tests/unit/test_orm_relationships.py .                                   [ 65%]
+tests/unit/test_permissions.py ......                                    [ 68%]
+tests/unit/test_state_machine.py .......                                 [ 71%]
+tests/unit/test_task_service.py ........................................ [ 89%]
+......                                                                   [ 91%]
+tests/unit/test_user_service.py ...................                      [100%]
+
+============================= 229 passed in 22.51s =============================
