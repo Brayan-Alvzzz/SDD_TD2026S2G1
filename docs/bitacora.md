@@ -483,3 +483,13 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La regresión final de todo el sistema se ejecutó exitosamente. Un total de **264 pruebas** fueron superadas con `EXIT_CODE: 0`.
   - La salida completa se ha guardado en `docs/evidencias/inc5/regresion-final-inc5.txt`.
 - **Finalización del Incremento:** Las historias HU-15 (reprobada exitosamente tras Incremento 4) y HU-16 quedan completamente satisfechas y cerradas.
+
+## 2026-10-06 — Implementación Incremento 5: Corrección de UI Post-Verificación (Modal y Botones)
+
+- **Correcciones Identificadas:**
+  - **Modal de Asignación (CSS/HTML):** El modal de asignación carecía del formato estándar y aparecía sin fondo por depender de una variable CSS no definida (`--bg-surface`). Se corrigió el archivo `src/web/templates/tasks/list.html` aplicando las clases nativas del sistema de diseño (por ejemplo, `.card`, `.card-title`, `.form-input`) garantizando su legibilidad e integración visual sin añadir librerías externas.
+  - **Pérdida de Botones y Filtros tras Actualizar Estado (JS):** Al hacer clic en "Completar" o "Iniciar", la vista eliminaba el botón de "Asignar/Reasignar" porque `tasks.js` reescribía agresivamente el HTML de todo el contenedor de acciones (`actionsContainer.innerHTML`). Esto propiciaba que el usuario recargara la página manualmente o hiciera clics externos para recuperarlo, perdiendo el rol (`role=owned`) y los ordenamientos en la navegación subsiguiente.
+  - Se modificó `src/web/static/js/tasks.js` empleando `btn.outerHTML` para reemplazar **únicamente** el botón que dispara la acción (p. ej. transformar el botón de estado en el formulario "Reabrir") salvaguardando así la integridad del DOM restante, reteniendo el botón de asignación original y conservando todos sus permisos asignados por el backend sin forzar una recarga.
+- **Validación Exitosa (Regresión E2E y Unitaria):**
+  - Tras implementar las correcciones visuales, se ejecutó la suite global validando que ninguna prueba de UI se rompiese por los cambios de HTML o por la nueva inyección asíncrona optimizada de los botones.
+  - El resultado fue íntegro: `264 passed, 2 warnings in 53.69s` con `EXIT_CODE 0`. La evidencia de regresión UI fue almacenada en `docs/evidencias/inc5/green-ui-fixes.txt`.

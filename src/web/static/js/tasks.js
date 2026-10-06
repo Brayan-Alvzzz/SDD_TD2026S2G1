@@ -71,26 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 setOverdueBadge(taskId, result.data.is_overdue);
             }
 
-            // 5. Update actions container upon success
-            const taskItem = actionsContainer.closest('.task-item');
-            const isOwner = taskItem ? taskItem.dataset.viewerRole === 'owner' : true;
-
-            const deleteFormHTML = isOwner ? `
-                <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
-                    <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
-                        Eliminar
-                    </button>
-                </form>
-            ` : '';
-            const editBtnHTML = isOwner ? `<a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>` : '';
-
-            actionsContainer.innerHTML = `
+            // 5. Update next action button upon success
+            reopenBtn.closest("form").outerHTML = `
                 <button type="button" class="btn btn-sm btn-primary btn-advance-status"
                         data-task-id="${taskId}" data-next-status="en_progreso">
                     Iniciar ▶
                 </button>
-                ${editBtnHTML}
-                ${deleteFormHTML}
             `;
             showNotification("Tarea reabierta exitosamente.", "success");
             return;
@@ -145,40 +131,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // 5. Update next action button upon success
-        const taskItem = actionsContainer.closest('.task-item');
-        const isOwner = taskItem ? taskItem.dataset.viewerRole === 'owner' : true;
-
-        const deleteFormHTML = isOwner ? `
-            <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
-                <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
-                    Eliminar
-                </button>
-            </form>
-        ` : '';
-        const editBtnHTML = isOwner ? `<a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>` : '';
-
         if (nextStatus === "en_progreso") {
-            actionsContainer.innerHTML = `
+            btn.outerHTML = `
                 <button type="button" class="btn btn-sm btn-success btn-advance-status"
                         data-task-id="${taskId}" data-next-status="completada">
                     Completar ✓
                 </button>
-                ${editBtnHTML}
-                ${deleteFormHTML}
             `;
             showNotification("Tarea marcada como 'en progreso'", "success");
         } else if (nextStatus === "completada") {
-            const reopenFormHTML = `
+            btn.outerHTML = `
                 <form method="POST" action="/tasks/${taskId}/reopen" class="reopen-task-form inline-form">
                     <button type="submit" class="btn btn-sm btn-secondary btn-reopen-task" data-task-id="${taskId}">
                         Reabrir ↺
                     </button>
                 </form>
-            `;
-            actionsContainer.innerHTML = `
-                ${reopenFormHTML}
-                ${editBtnHTML}
-                ${deleteFormHTML}
             `;
             showNotification("¡Tarea completada con éxito!", "success");
         }

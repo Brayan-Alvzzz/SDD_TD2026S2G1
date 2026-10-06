@@ -181,18 +181,18 @@
 {% endif %}
 
 <!-- Assign Modal -->
-<div id="assign-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div class="modal-content" style="background-color: var(--bg-surface); margin: 15% auto; padding: 20px; border: 1px solid var(--border-color); width: 80%; max-width: 400px; border-radius: 8px;">
-        <span class="close" style="color: var(--text-muted); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
-        <h2>Asignar Tarea</h2>
-        <form id="assign-task-form" style="margin-top: 1rem;">
+<div id="assign-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+    <div class="card modal-content" style="margin: 10vh auto; width: 90%; max-width: 440px; position: relative;">
+        <button type="button" class="close alert-close" style="position: absolute; top: 1.5rem; right: 1.5rem;" aria-label="Cerrar">&times;</button>
+        <h2 class="card-title">Asignar Tarea</h2>
+        <form id="assign-task-form">
             <div class="form-group">
-                <label for="assignee_email_input">Correo del Asignado</label>
-                <input type="email" id="assignee_email_input" name="assignee_email" class="form-control" placeholder="usuario@ejemplo.com" required>
+                <label for="assignee_email_input" class="form-label">Correo del Asignado</label>
+                <input type="email" id="assignee_email_input" name="assignee_email" class="form-input" placeholder="usuario@ejemplo.com" required>
             </div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" id="btn-submit-unassign" class="btn btn-outline" style="color: var(--danger); border-color: var(--danger); display: none;">Desasignar</button>
                 <button type="submit" class="btn btn-primary btn-submit-assign">Asignar / Reasignar</button>
-                <button type="button" id="btn-submit-unassign" class="btn btn-outline" style="color: var(--danger-color); border-color: var(--danger-color); display: none;">Desasignar</button>
             </div>
         </form>
     </div>
