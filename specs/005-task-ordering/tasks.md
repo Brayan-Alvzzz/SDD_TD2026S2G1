@@ -28,7 +28,7 @@
 
 **Purpose**: Contrato REST y lectura ordenada (HU-16).
 
-- [ ] T005 [US16] **RED**: Escribir pruebas en `tests/integration/test_task_routes_ordering.py` verificando el contrato `PATCH /api/tasks/order`. Incluir 401 (sin sesión), 400 (malformado, duplicados), 403 (ajenos/asignados), 404 (inexistentes) y 409 (desactualizado). Verificar respuesta `changed` y que `GET /api/tasks` (o `list_visible`) ordene por `position ASC, id ASC`. Ejecutar y guardar salida como `docs/evidencias/inc5/red-routes-ordering.txt`.
+- [x] T005 [US16] **RED**: Escribir pruebas en `tests/integration/test_task_routes_ordering.py` verificando el contrato `PATCH /api/tasks/order`. Incluir 401 (sin sesión), 400 (malformado, duplicados), 403 (ajenos/asignados), 404 (inexistentes) y 409 (desactualizado). Verificar respuesta `changed` y que `GET /api/tasks` (o `list_visible`) ordene por `position ASC, id ASC`. Ejecutar y guardar salida como `docs/evidencias/inc5/red-routes-ordering.txt`.
 - [ ] T006 [US16] **GREEN**: Modificar `src/infrastructure/repositories.py` (`TaskRepository`) para que `list_by_user` y `list_visible` ordenen por `position ASC, id ASC`.
 - [ ] T007 [US16] **GREEN**: Implementar ruta `PATCH /api/tasks/order` en `src/web/task_routes.py` utilizando `TaskService.update_task_order` según contrato. Ejecutar suite de rutas y servicio, guardando `docs/evidencias/inc5/green-routes-ordering.txt`.
 

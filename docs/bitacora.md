@@ -419,5 +419,26 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - Las pruebas cubren: inicialización determinista de posición, reordenamiento persistente, independencia entre dueños, reordenamiento de tareas delegadas, rechazo de reordenamiento de tareas asignadas (de otro dueño) mediante `OperationNotPermittedError`, rechazo a tareas ajenas o inexistentes con `TaskNotAccessibleError`, rechazo por duplicados (`ValidationError`), y rechazo de listas desincronizadas (`ConflictError`).
   - Se incluye prueba con threads (`test_update_task_order_concurrency`) usando una BD SQLite temporal conectada simultáneamente para simular un bloqueo real concurrente y validar la robustez.
 - **Resultado RED:** Las pruebas fallan de manera predecible y genuina con Exit Code 1, debido a la ausencia de la columna `position` en el modelo y de la funcionalidad transaccional correspondiente.
-- **Evidencia guardada:** En `docs/evidencias/inc5/red-service-ordering.txt`.
+- **Evidencia guardada:** En `docs/evidencias/inc5/red-service-ordering.txt`. Se hace la observación de que el RED inicial contenía un error de preparación (una referencia inexistente a `get_db_session`). Esta evidencia histórica se conservó y se separó de los fallos funcionales legítimos.
 - **Siguiente Paso:** Hacer el commit del estado RED del bloque A sin modificar código de producción.
+
+## 2026-10-06 — Implementación Incremento 5: Bloque A (GREEN Servicio y Regresión)
+
+- **Actividad:** Implementación de la persistencia y servicio de reordenamiento.
+- **Detalles:**
+  - Corrección de la importación de base de datos en las pruebas, usando `db.session` y ajustando validaciones (como `OperationNotPermittedError`).
+  - Implementación de modelo (`position` en `Task` y `TaskORM`) y migración (asientos deterministas y `check constraint` para `'reorder'` en `audit_logs`).
+  - Implementación de `TaskService.update_task_order` con aislamamiento transaccional `BEGIN IMMEDIATE`.
+- **Verificación Puntual:**
+  - Se confirmó en tests que el propietario **SÍ** puede reordenar sus tareas aunque estén asignadas a otra persona.
+  - Se confirmó que el asignado **NO** puede reordenar tareas de otro propietario (retorna `OperationNotPermittedError`).
+- **Resultado GREEN:** 11 pruebas de `TaskService` pasaron. Regresión global exitosa con 248 pruebas superadas (`EXIT_CODE: 0`).
+- **Evidencias guardadas:** `docs/evidencias/inc5/regresion-service-ordering.txt`.
+
+## 2026-10-06 — Implementación Incremento 5: Bloque B (Pruebas RED Rutas)
+
+- **Actividad:** Definición de pruebas RED para el endpoint REST `PATCH /api/tasks/order` y listados.
+- **Detalles (T005):**
+  - Se creó `tests/integration/test_task_routes_ordering.py` verificando todos los casos HTTP descritos en el contrato (400, 401, 403, 404, 409, 200).
+  - Se comprobó que la consulta de lista de tareas respete el nuevo ordenamiento (`position ASC, id ASC`).
+- **Evidencia guardada:** En `docs/evidencias/inc5/red-routes-ordering.txt`.
