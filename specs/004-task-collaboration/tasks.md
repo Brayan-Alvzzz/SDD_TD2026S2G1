@@ -37,7 +37,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 **Requirements**: FR-001 al FR-009, FR-013 al FR-016, SC-001 al SC-003.
 
 ### Tests (RED)
-- [x] T011 [P] [US1] Escribir pruebas unitarias en `tests/unit/test_collaboration_service.py`. Las pruebas de integración en `tests/integration/test_assignment_routes.py` quedan pendientes para el bloque de rutas. Guardar salida RED en `docs/evidencias/inc4/red-us1.txt`.
+- [x] T011 [P] [US1] Escribir pruebas unitarias en `tests/unit/test_collaboration_service.py` (RED guardado en `docs/evidencias/inc4/red-us1.txt`) y pruebas de integración en `tests/integration/test_assignment_routes.py` (RED guardado en `docs/evidencias/inc4/rutas-asignacion-red.txt`).
 - [x] T012 [P] [US1] Escribir pruebas de rollback transaccional en `tests/integration/test_collaboration_rollback.py` (atomicidad de la asignación+auditoría+notificación).
 - [ ] T013 [P] [US1] Escribir pruebas de listado en `tests/integration/test_task_list_roles.py` sin duplicados y con filtros de rol combinados. Guardar salida RED en `docs/evidencias/inc4/red-list.txt`.
 

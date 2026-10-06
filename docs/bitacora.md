@@ -188,3 +188,14 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La ejecución focalizada de las 12 pruebas (`test_collaboration_service.py` y `test_collaboration_rollback.py`) arrojó éxito unánime sin filtraciones transaccionales ni errores en los mensajes, constatado en `docs/evidencias/inc4/asignacion-green-corregido.txt` (Exit Code 0).
   - La suite de regresión completa culminó exitosamente conservando sus aserciones. Resultado guardado en `docs/evidencias/inc4/regresion-asignacion-corregida.txt` (Exit Code 0).
 - Todo el bloque de aserciones transaccionales y de persistencia quedó certificado, manteniendo invariable la base de datos transaccional controlada por `CollaborationService`.
+
+## 2026-10-05 — Implementación Incremento 4: Fase de Pruebas RED para Rutas de Asignación
+
+- **Creación de Pruebas de Integración:**
+  - Se creó el archivo `tests/integration/test_assignment_routes.py` siguiendo el contrato estipulado en `specs/004-task-collaboration/contracts/task-collaboration-api.json`.
+  - Se implementaron 10 pruebas que cubren los métodos PUT y DELETE en el endpoint `/api/tasks/<id>/assignee`, testeando operaciones de asignación, reasignación, y desasignación por el propietario.
+  - Se probó la idempotencia, respuestas `changed` y `action` correctas, y los rechazos por destinatario inexistente o inválido, autoasignación, falta de sesión (401), y falta de permisos (403 para asignados, 404 para ajenos y tareas eliminadas).
+  - Se validó el caso de error de concurrencia (409) mokeando el repositorio y se comprobó que el backend use al actor de la sesión para prevenir suplantación.
+- **Resultado RED:**
+  - Al ejecutar la suite de integración de rutas, las pruebas arrojaron fallo (Exit Code 1), al no estar aún implementado el código de los endpoints correspondientes en `src/web/task_routes.py`. La salida fue guardada exitosamente en `docs/evidencias/inc4/rutas-asignacion-red.txt`.
+- No se avanzó en la implementación de rutas (T016), listado, permisos adicionales, HTML ni JS.
