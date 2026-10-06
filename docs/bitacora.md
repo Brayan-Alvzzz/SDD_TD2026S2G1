@@ -1,4 +1,15 @@
 # Bitácora
+## 2026-10-05 — Preparación RED para Colaboración JS (US4) y Recuperación
+
+- **Actividad:** Preparación del estado RED para las interacciones sin recarga (T031-T034).
+- **Incidente:** Se recuperó el trabajo de infraestructura de tests (`playwright`) y la suite `tests/integration/test_collaboration_js.py` tras un borrado accidental ("Reject all"). El commit base `80dfcaf` seguía presente y funcional, no se modificó historia git.
+- **Recuperación y Corrección:** 
+  - Se reintrodujo `tests/integration/test_collaboration_js.py` para levantar un servidor de Flask de prueba en background (`TestServerThread`).
+  - Se añadió la dependencia `pytest-playwright` y se corrigió el `import re` que causaba error.
+  - Se corrigió un `IntegrityError` (CHECK constraint failed `chk_notifications_type`) que rompía el setup. La fixture insertaba notificaciones con tipo "assigned", lo que violaba la BD; se modificó para inyectar correctamente `type="task_assigned"`.
+  - Se revisaron los selectores: como no se han introducido selectores de modales todavía, las aserciones validan sobre botones de avance de estados y las confirmaciones se esperan según el HTML existente (p. ej., `btn-advance-status` que ya existe por `tasks.js` base). Además se introdujo comprobación estricta para garantizar que el asignado no obtenga los controles propietarios.
+- **Resultado RED:** Las pruebas Playwright fallaron estrictamente por la ausencia de los flujos o del comportamiento esperado. Ejemplo: Fallos por Timeout al verificar que se inyectan clases o se remueven selectores dinámicamente (`Locator.click: Timeout 30000ms exceeded`). `6 failed, 1 passed, 1 warning`.
+- **Evidencia guardada:** En `docs/evidencias/inc4/ui-red-corregido.txt`
 
 ## 2026-10-05 — Fallo de reproducibilidad en `test_migration_preserves_existing_data`
 

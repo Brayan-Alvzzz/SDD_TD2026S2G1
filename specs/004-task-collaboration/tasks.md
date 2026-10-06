@@ -96,6 +96,7 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 **Requirements**: FR-023, SC-006.
 
 ### Tests (Manual & JS Verification)
+- [x] T030.5 [US4] Escribir pruebas de integración end-to-end asíncronas con Playwright (`test_collaboration_js.py`) verificando el cambio de estado asíncrono sin inyectar controles de propietario, manejo del modal de asignación y recuperación de red. Guardar salida RED en `docs/evidencias/inc4/ui-red-corregido.txt`.
 - [ ] T031 [US4] Actualizar `src/web/static/js/tasks.js` para extraer `data-viewer-role` del DOM e inyectar dinámicamente solo los botones permitidos (propietario vs asignado).
 - [ ] T032 [P] [US4] Implementar `src/web/static/js/assignment.js` para gestionar modal de asignación y llamadas PUT/DELETE a la API de US1 con rollback visual ante fallo.
 - [ ] T033 [P] [US4] Implementar `src/web/static/js/notifications.js` para marcar notificaciones como leídas de forma asíncrona.

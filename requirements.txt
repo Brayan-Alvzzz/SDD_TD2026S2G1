@@ -4,3 +4,5 @@ Flask-Migrate>=4.0.0
 pytest>=8.0.0
 pytest-cov>=4.0.0
 beautifulsoup4>=4.0.0
+pytest-playwright>=0.4.0
+playwright>=1.40.0
