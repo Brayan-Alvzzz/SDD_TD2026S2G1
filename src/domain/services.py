@@ -4,12 +4,13 @@ import hashlib
 import re
 import json
 from typing import Optional, List, Any, Union
-from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
-from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
+from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError, TaskNotAccessibleError, OperationNotPermittedError
 from src.domain.state_machine import TaskStateMachine
+from src.domain.permissions import authorize, Operation
 from src.infrastructure.security import hash_password, verify_password
 from src.infrastructure.repositories import (
-    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository, CategoryRepository
+    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository, CategoryRepository, NotificationRepository
 )
 from src.infrastructure.notifications import ConsoleNotificationService
 
@@ -278,24 +279,56 @@ class TaskService:
     ) -> List[Task]:
         if status and status not in ("pendiente", "en_progreso", "completada"):
             raise ValidationError(f"Filtro de estado inválido: '{status}'.")
-        valid_sorts = ("created_desc", "priority_desc", "priority_asc")
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc", "manual")
         if not sort or sort not in valid_sorts:
             sort = "created_desc"
         tasks = self.task_repo.list_by_user(user_id=user_id, status=status, sort=sort, category_id=category_id)
         return [self._apply_overdue(t) for t in tasks]
 
-    def get_task(self, task_id: int, user_id: int, include_deleted: bool = False) -> Task:
+    def list_tasks_visible(
+        self,
+        user_id: int,
+        role: str = "all",
+        status: Optional[str] = None,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
+        valid_roles = ("all", "owned", "assigned_to_me", "delegated")
+        if role not in valid_roles:
+            raise ValidationError(f"Filtro de rol inválido: '{role}'.")
+        if status and status not in ("todas", "pendiente", "en_progreso", "completada"):
+            raise ValidationError(f"Filtro de estado inválido: '{status}'.")
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc", "manual")
+        if not sort or sort not in valid_sorts:
+            raise ValidationError(f"Filtro de ordenamiento inválido: '{sort}'.")
+            
+        real_status = status if status != "todas" else None
+            
+        tasks = self.task_repo.list_visible(
+            user_id=user_id,
+            role=role,
+            status=real_status,
+            sort=sort,
+            category_id=category_id
+        )
+        return [self._apply_overdue(t) for t in tasks]
+
+    def get_task(self, task_id: int, user_id: int, include_deleted: bool = False, operation: Operation = Operation.VIEW) -> Task:
         task = self.task_repo.get_by_id(task_id)
         if not task:
             raise NotFoundError("Tarea no encontrada.")
-        if task.user_id != user_id:
-            raise UnauthorizedError("No tiene permiso para acceder a esta tarea.")
-        if not include_deleted and task.is_deleted:
-            raise NotFoundError("Tarea no encontrada.")
+
+        if include_deleted and task.is_deleted:
+            # If explicitly included, we only allow the owner
+            if task.user_id != user_id:
+                raise TaskNotAccessibleError("No tiene permiso para acceder a esta tarea.")
+        else:
+            authorize(task, user_id, operation)
+
         return self._apply_overdue(task)
 
     def delete_task(self, task_id: int, user_id: int) -> Task:
-        task = self.get_task(task_id, user_id, include_deleted=True)
+        task = self.get_task(task_id, user_id, include_deleted=True, operation=Operation.DELETE)
         if task.is_deleted:
             raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
 
@@ -319,7 +352,7 @@ class TaskService:
             raise
 
     def update_task_status(self, task_id: int, user_id: int, target_status: str) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.CHANGE_STATUS)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar el estado de una tarea eliminada.")
         old_status = task.status
@@ -346,7 +379,7 @@ class TaskService:
             raise
 
     def reopen_task(self, task_id: int, user_id: int) -> Task:
-        task = self.get_task(task_id, user_id, include_deleted=True)
+        task = self.get_task(task_id, user_id, include_deleted=True, operation=Operation.REOPEN)
         if task.is_deleted:
             raise NotFoundError("La tarea ya fue eliminada o no se encuentra disponible.")
 
@@ -380,7 +413,7 @@ class TaskService:
         if cleaned_priority not in ("alta", "media", "baja"):
             raise ValidationError(f"Nivel de prioridad inválido: '{priority}'. Valores permitidos: alta, media, baja.")
 
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar la prioridad de una tarea eliminada.")
 
@@ -407,7 +440,7 @@ class TaskService:
         return self._apply_overdue(task)
 
     def update_task_category(self, task_id: int, user_id: int, category_id: Optional[int]) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede cambiar la categoría de una tarea eliminada.")
 
@@ -451,7 +484,7 @@ class TaskService:
         priority: Optional[str] = None,
         category_id: Any = _NO_CHANGE
     ) -> Task:
-        task = self.get_task(task_id, user_id)
+        task = self.get_task(task_id, user_id, operation=Operation.EDIT)
         if task.is_deleted:
             raise ValidationError("No se puede modificar una tarea eliminada.")
 
@@ -543,6 +576,68 @@ class TaskService:
             self._rollback()
             raise
 
+    def update_task_order(self, user_id: int, task_ids: List[int]) -> int:
+        if not isinstance(task_ids, list):
+            raise ValidationError("El formato de la lista de tareas es inválido.")
+            
+        if len(task_ids) != len(set(task_ids)):
+            raise ValidationError("La lista contiene IDs duplicados.")
+
+        # Transacción y bloqueo estricto en SQLite
+        if self.session is not None and getattr(self.session.get_bind().dialect, "name", "") == "sqlite":
+            self.session.commit()
+            import sqlalchemy as sa
+            self.session.execute(sa.text("BEGIN IMMEDIATE"))
+
+        try:
+            from src.infrastructure.models import TaskORM
+            import sqlalchemy as sa
+            
+            tasks_orm = self.session.execute(
+                sa.select(TaskORM).where(TaskORM.user_id == user_id, TaskORM.is_deleted == False)
+            ).scalars().all()
+            
+            owned_ids = {t.id for t in tasks_orm}
+            
+            # Validación de Precedencia: 403 vs 404
+            invalid_ids = [tid for tid in task_ids if tid not in owned_ids]
+            if invalid_ids:
+                for tid in invalid_ids:
+                    other_task = self.session.get(TaskORM, tid)
+                    if other_task and not other_task.is_deleted and other_task.assignee_id == user_id and other_task.user_id != user_id:
+                        raise OperationNotPermittedError("No puede reordenar tareas asignadas que pertenecen a otro propietario.")
+                raise TaskNotAccessibleError("Una o más tareas no son accesibles o no existen.")
+
+            # Validación: 409 (faltan tareas)
+            if set(task_ids) != owned_ids:
+                raise ConflictError("La lista de tareas proporcionada está desactualizada respecto al estado actual del servidor.")
+
+            task_map = {t.id: t for t in tasks_orm}
+            changed_count = 0
+            
+            for idx, tid in enumerate(task_ids):
+                new_pos = (idx + 1) * 10
+                if task_map[tid].position != new_pos:
+                    task_map[tid].position = new_pos
+                    changed_count += 1
+
+            if changed_count > 0:
+                self.audit_repo.create(
+                    task_id=task_ids[0],
+                    actor_id=user_id,
+                    action="reorder",
+                    details=json.dumps({"task_ids": task_ids})
+                )
+                self._commit()
+            else:
+                self._rollback()
+
+            return changed_count
+
+        except Exception:
+            self._rollback()
+            raise
+
 
 class CategoryService:
     def __init__(self, category_repo: CategoryRepository, session=None):
@@ -599,3 +694,145 @@ class CategoryService:
             raise
 
 
+class CollaborationService:
+    def __init__(
+        self,
+        task_repo: TaskRepository,
+        user_repo: UserRepository,
+        audit_repo: AuditLogRepository,
+        notification_repo: NotificationRepository,
+        session=None
+    ):
+        self.task_repo = task_repo
+        self.user_repo = user_repo
+        self.audit_repo = audit_repo
+        self.notification_repo = notification_repo
+        self.session = session or getattr(task_repo, "session", None)
+
+    def _commit(self):
+        if self.session is not None:
+            self.session.commit()
+
+    def _rollback(self):
+        if self.session is not None:
+            self.session.rollback()
+
+    def assign_task(self, task_id: int, actor_id: int, assignee_email: str):
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise NotFoundError("Tarea no encontrada.")
+
+        authorize(task, actor_id, Operation.MANAGE_ASSIGNMENT)
+
+        if not assignee_email or not isinstance(assignee_email, str) or not assignee_email.strip():
+            raise ValidationError("El correo del asignado es obligatorio.")
+
+        assignee_email_clean = assignee_email.strip().lower()
+        assignee = self.user_repo.get_by_email(assignee_email_clean)
+        if not assignee:
+            raise ValidationError("No se encontró un usuario con ese correo.")
+
+        if assignee.id == task.user_id:
+            raise ValidationError("El propietario no puede auto-asignarse la tarea.")
+
+        if task.assignee_id == assignee.id:
+            return False, "none", assignee
+
+        old_assignee_id = task.assignee_id
+        action = "reassign" if old_assignee_id is not None else "assign"
+
+        try:
+            success = self.task_repo.set_assignee(task.id, old_assignee_id, assignee.id)
+            if not success:
+                raise ConflictError("La tarea fue modificada concurrentemente.")
+
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=actor_id,
+                action=action,
+                details=json.dumps({"old_assignee_id": old_assignee_id, "new_assignee_id": assignee.id})
+            )
+
+            actor = self.user_repo.get_by_id(actor_id)
+            actor_email = actor.email if actor else "desconocido"
+            current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+            self.notification_repo.create(
+                recipient_id=assignee.id,
+                task_id=task.id,
+                actor_id=actor_id,
+                type="task_assigned",
+                message=f"Asignada el {current_time} por {actor_email}"
+            )
+
+            self._commit()
+            return True, action, assignee
+        except Exception:
+            self._rollback()
+            raise
+
+    def unassign_task(self, task_id: int, actor_id: int):
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise NotFoundError("Tarea no encontrada.")
+
+        authorize(task, actor_id, Operation.MANAGE_ASSIGNMENT)
+
+        if task.assignee_id is None:
+            return False, "none", None
+
+        old_assignee_id = task.assignee_id
+
+        try:
+            success = self.task_repo.set_assignee(task.id, old_assignee_id, None)
+            if not success:
+                raise ConflictError("La tarea fue modificada concurrentemente.")
+
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=actor_id,
+                action="unassign",
+                details=json.dumps({"old_assignee_id": old_assignee_id, "new_assignee_id": None})
+            )
+
+            self._commit()
+            return True, "unassign", None
+        except Exception:
+            self._rollback()
+            raise
+
+class NotificationService:
+    def __init__(self, notification_repo: NotificationRepository, session=None):
+        self.notification_repo = notification_repo
+        self.session = session or getattr(notification_repo, "session", None)
+
+    def _commit(self):
+        if self.session is not None:
+            self.session.commit()
+
+    def _rollback(self):
+        if self.session is not None:
+            self.session.rollback()
+
+    def list_notifications(self, user_id: int) -> List[Notification]:
+        return self.notification_repo.list_by_recipient(user_id)
+
+    def count_unread(self, user_id: int) -> int:
+        return self.notification_repo.count_unread(user_id)
+
+    def mark_as_read(self, notification_id: int, user_id: int) -> bool:
+        # Fetch the notification to check existence and ownership
+        notif = self.notification_repo.get_by_id_and_recipient(notification_id, user_id)
+        if not notif:
+            raise NotFoundError("Notificación no encontrada o no pertenece al usuario.")
+
+        if notif.is_read:
+            return True
+
+        try:
+            self.notification_repo.mark_as_read(notification_id, user_id)
+            self._commit()
+            return True
+        except Exception:
+            self._rollback()
+            raise

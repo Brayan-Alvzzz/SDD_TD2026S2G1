@@ -1,0 +1,289 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 13 items
+
+tests/integration/test_assignment_routes.py FFFFFFFFF..F.                [100%]
+
+=================================== FAILURES ===================================
+______________________ test_assign_task_as_owner_success _______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.495900+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.503689+00:00', updated_at='2026-10-06T00:14:18.503689+00:00')}
+
+    def test_assign_task_as_owner_success(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:27: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_assign_task_as_owner_succ0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________________ test_reassign_task_as_owner __________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.629570+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.630892+00:00', updated_at='2026-10-06T00:14:18.630892+00:00')}
+
+    def test_reassign_task_as_owner(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": stranger.email})
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:45: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_reassign_task_as_owner0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________________ test_unassign_task_as_owner __________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.687028+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.687943+00:00', updated_at='2026-10-06T00:14:18.687943+00:00')}
+
+    def test_unassign_task_as_owner(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+    
+        resp = client.delete(f"/api/tasks/{task.id}/assignee")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:60: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_unassign_task_as_owner0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+____________________________ test_assign_idempotent ____________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.743676+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.744912+00:00', updated_at='2026-10-06T00:14:18.744912+00:00')}
+
+    def test_assign_idempotent(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:75: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_assign_idempotent0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+___________________________ test_unassign_idempotent ___________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.811059+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.812236+00:00', updated_at='2026-10-06T00:14:18.812236+00:00')}
+
+    def test_unassign_idempotent(client, users_and_task):
+        owner = users_and_task["owner"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        resp = client.delete(f"/api/tasks/{task.id}/assignee")
+>       assert resp.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:86: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_unassign_idempotent0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________ test_reject_nonexistent_and_self_assignment __________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.897592+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.898572+00:00', updated_at='2026-10-06T00:14:18.898572+00:00')}
+
+    def test_reject_nonexistent_and_self_assignment(client, users_and_task):
+        owner = users_and_task["owner"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": "nobody@example.com"})
+>       assert resp.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:97: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_reject_nonexistent_and_se0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+______________________________ test_invalid_input ______________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:18.970037+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:18.970970+00:00', updated_at='2026-10-06T00:14:18.970970+00:00')}
+
+    def test_invalid_input(client, users_and_task):
+        owner = users_and_task["owner"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={})
+>       assert resp.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:110: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_invalid_input0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_____________________________ test_401_no_session ______________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:19.022198+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:19.023138+00:00', updated_at='2026-10-06T00:14:19.023138+00:00')}
+
+    def test_401_no_session(client, users_and_task):
+        task = users_and_task["task"]
+        assignee = users_and_task["assignee"]
+    
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+>       assert resp.status_code == 401
+E       assert 404 == 401
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:120: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_401_no_session0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_______________________ test_403_assignee_cannot_manage ________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:19.070202+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:19.071015+00:00', updated_at='2026-10-06T00:14:19.071015+00:00')}
+
+    def test_403_assignee_cannot_manage(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+    
+        _login(client, owner)
+        client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+    
+        _login(client, assignee)
+        resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": stranger.email})
+>       assert resp.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:136: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_403_assignee_cannot_manag0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_____________________________ test_409_concurrency _____________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:14:19.210576+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:14:19.211298+00:00', updated_at='2026-10-06T00:14:19.211298+00:00')}
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10d2d0140>
+
+    def test_409_concurrency(client, users_and_task, task_repo):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+        _login(client, owner)
+    
+        with patch.object(task_repo.__class__, 'set_assignee', return_value=False):
+            resp = client.put(f"/api/tasks/{task.id}/assignee", json={"assignee_email": assignee.email})
+>           assert resp.status_code == 409
+E           assert 404 == 409
+E            +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_assignment_routes.py:170: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-31/test_409_concurrency0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+FAILED tests/integration/test_assignment_routes.py::test_assign_task_as_owner_success
+FAILED tests/integration/test_assignment_routes.py::test_reassign_task_as_owner
+FAILED tests/integration/test_assignment_routes.py::test_unassign_task_as_owner
+FAILED tests/integration/test_assignment_routes.py::test_assign_idempotent - ...
+FAILED tests/integration/test_assignment_routes.py::test_unassign_idempotent
+FAILED tests/integration/test_assignment_routes.py::test_reject_nonexistent_and_self_assignment
+FAILED tests/integration/test_assignment_routes.py::test_invalid_input - asse...
+FAILED tests/integration/test_assignment_routes.py::test_401_no_session - ass...
+FAILED tests/integration/test_assignment_routes.py::test_403_assignee_cannot_manage
+FAILED tests/integration/test_assignment_routes.py::test_409_concurrency - as...
+========================= 10 failed, 3 passed in 0.85s =========================

@@ -1,0 +1,310 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collecting ... collected 8 items
+
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_success_and_persistence[chromium] FAILED [ 12%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_delegated[chromium] FAILED [ 25%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_disabled_in_mixed_views[chromium] PASSED [ 37%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_error_recovery[chromium] FAILED [ 50%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_409_conflict[chromium] FAILED [ 62%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_network_error_recovery[chromium] FAILED [ 75%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_pending_request[chromium] FAILED [ 87%]
+tests/integration/test_collaboration_js.py::test_js_assignee_can_complete_without_reload[chromium] PASSED [100%]
+
+=================================== FAILURES ===================================
+___________ test_ui_drag_and_drop_success_and_persistence[chromium] ____________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_success_and_persistence(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+    
+        # Ir a Mis Tareas con orden manual (que es el defecto para role=owned)
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        t3_selector = f"div.task-item[data-task-id='{test_data['t3']['id']}']"
+    
+        # Playwright action to simulate drag and drop
+        # Arrancamos t1 y lo soltamos sobre t3
+>       with page.expect_response(lambda response: response.url.endswith("/api/tasks/order") and response.request.method == "PATCH", timeout=3000) as response_info:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_task_ordering_ui.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:85: in __exit__
+    self._event.value
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._sync_base.EventInfo object at 0x10da116a0>
+
+    @property
+    def value(self) -> T:
+        while not self._future.done():
+            self._sync_base._dispatcher_fiber.switch()
+        asyncio._set_running_loop(self._sync_base._loop)
+        exception = self._future.exception()
+        if exception:
+>           raise exception
+E           playwright._impl._errors.TimeoutError: Timeout 3000ms exceeded while waiting for event "response"
+
+.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:59: TimeoutError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_success_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+----------------------------- Captured stderr call -----------------------------
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /login HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[32mPOST /login HTTP/1.1[0m" 302 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /tasks HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/api.js?v=2 HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/tasks.js?v=2 HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/assignment.js?v=2 HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /tasks?role=owned HTTP/1.1" 200 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/api.js?v=2 HTTP/1.1[0m" 304 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/tasks.js?v=2 HTTP/1.1[0m" 304 -
+INFO  [werkzeug] 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/assignment.js?v=2 HTTP/1.1[0m" 304 -
+------------------------------ Captured log call -------------------------------
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /login HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[32mPOST /login HTTP/1.1[0m" 302 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /tasks HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/api.js?v=2 HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/tasks.js?v=2 HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /static/js/assignment.js?v=2 HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "GET /tasks?role=owned HTTP/1.1" 200 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/api.js?v=2 HTTP/1.1[0m" 304 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/tasks.js?v=2 HTTP/1.1[0m" 304 -
+INFO     werkzeug:_internal.py:97 127.0.0.1 - - [06/Oct/2026 13:45:13] "[36mGET /static/js/assignment.js?v=2 HTTP/1.1[0m" 304 -
+__________________ test_ui_drag_and_drop_delegated[chromium] ___________________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_delegated(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        tdel_selector = f"div.task-item[data-task-id='{test_data['t_del']['id']}']"
+    
+>       with page.expect_response(lambda response: response.url.endswith("/api/tasks/order") and response.request.method == "PATCH", timeout=3000):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_task_ordering_ui.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:85: in __exit__
+    self._event.value
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._sync_base.EventInfo object at 0x10ddded50>
+
+    @property
+    def value(self) -> T:
+        while not self._future.done():
+            self._sync_base._dispatcher_fiber.switch()
+        asyncio._set_running_loop(self._sync_base._loop)
+        exception = self._future.exception()
+        if exception:
+>           raise exception
+E           playwright._impl._errors.TimeoutError: Timeout 3000ms exceeded while waiting for event "response"
+
+.venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:59: TimeoutError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_delegate0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_____________ test_ui_drag_and_drop_http_error_recovery[chromium] ______________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_http_error_recovery(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        request_sent = False
+        def intercept_and_fail(route):
+            nonlocal request_sent
+            request_sent = True
+            route.fulfill(status=500, json={"status": "error", "error": "Internal Server Error"})
+    
+        page.route("**/api/tasks/order", intercept_and_fail)
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
+    
+        page.drag_and_drop(t1_selector, t2_selector)
+    
+>       assert request_sent, "El guardado no fue intentado (API request no enviada)."
+E       AssertionError: El guardado no fue intentado (API request no enviada).
+E       assert False
+
+tests/integration/test_task_ordering_ui.py:147: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_http_err0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+______________ test_ui_drag_and_drop_http_409_conflict[chromium] _______________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_http_409_conflict(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        request_sent = False
+        def intercept_and_conflict(route):
+            nonlocal request_sent
+            request_sent = True
+            route.fulfill(status=409, json={"status": "error", "error": "Desactualizado"})
+    
+        page.route("**/api/tasks/order", intercept_and_conflict)
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
+    
+        page.drag_and_drop(t1_selector, t2_selector)
+    
+>       assert request_sent, "El guardado no fue intentado (API request no enviada)."
+E       AssertionError: El guardado no fue intentado (API request no enviada).
+E       assert False
+
+tests/integration/test_task_ordering_ui.py:169: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_http_4090/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+____________ test_ui_drag_and_drop_network_error_recovery[chromium] ____________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_network_error_recovery(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        request_sent = False
+        def intercept_and_abort(route):
+            nonlocal request_sent
+            request_sent = True
+            route.abort()
+    
+        page.route("**/api/tasks/order", intercept_and_abort)
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
+    
+        page.drag_and_drop(t1_selector, t2_selector)
+    
+>       assert request_sent, "El guardado no fue intentado (API request no enviada)."
+E       AssertionError: El guardado no fue intentado (API request no enviada).
+E       assert False
+
+tests/integration/test_task_ordering_ui.py:192: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_network_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_______________ test_ui_drag_and_drop_pending_request[chromium] ________________
+
+page = <Page url='http://127.0.0.1:5006/tasks?role=owned'>
+live_server = 'http://127.0.0.1:5006'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'email': 'other@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}, ...}
+
+    def test_ui_drag_and_drop_pending_request(page: Page, live_server, test_data):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks?role=owned")
+    
+        request_count = 0
+        import time
+        def handle_route(route):
+            nonlocal request_count
+            request_count += 1
+            time.sleep(1) # Slow response
+            route.fulfill(status=200, json={"status": "success", "changed": 2})
+    
+        page.route("**/api/tasks/order", handle_route)
+    
+        t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
+        t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
+        t3_selector = f"div.task-item[data-task-id='{test_data['t3']['id']}']"
+    
+        page.drag_and_drop(t1_selector, t2_selector)
+        page.drag_and_drop(t2_selector, t3_selector)
+    
+>       assert request_count == 1, "Se inició una segunda petición mientras la primera estaba pendiente."
+E       AssertionError: Se inició una segunda petición mientras la primera estaba pendiente.
+E       assert 0 == 1
+
+tests/integration/test_task_ordering_ui.py:218: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-105/test_ui_drag_and_drop_pending_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+=============================== warnings summary ===============================
+tests/integration/test_task_ordering_ui.py:8
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_task_ordering_ui.py:8: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_task_ordering_ui.py)
+    class TestServerThread(threading.Thread):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_success_and_persistence[chromium]
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_delegated[chromium]
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_error_recovery[chromium]
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_409_conflict[chromium]
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_network_error_recovery[chromium]
+FAILED tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_pending_request[chromium]
+=================== 6 failed, 2 passed, 1 warning in 19.51s ====================
+EXIT_CODE: 1

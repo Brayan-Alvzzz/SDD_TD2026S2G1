@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 174 items
+
+tests/integration/test_auth_routes.py ...................                [ 10%]
+tests/integration/test_category_routes.py ...........                    [ 17%]
+tests/integration/test_foreign_keys.py ....                              [ 19%]
+tests/integration/test_migrations.py .........                           [ 24%]
+tests/integration/test_task_routes.py .................................. [ 44%]
+                                                                         [ 44%]
+tests/integration/test_transaction_rollback.py .....                     [ 47%]
+tests/unit/test_category_service.py .......                              [ 51%]
+tests/unit/test_notification_repository.py ......                        [ 54%]
+tests/unit/test_orm_relationships.py .                                   [ 55%]
+tests/unit/test_permissions.py ......                                    [ 58%]
+tests/unit/test_state_machine.py .......                                 [ 62%]
+tests/unit/test_task_service.py ........................................ [ 85%]
+......                                                                   [ 89%]
+tests/unit/test_user_service.py ...................                      [100%]
+
+============================= 174 passed in 15.01s =============================

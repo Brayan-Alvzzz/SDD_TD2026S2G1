@@ -25,6 +25,10 @@ class Task:
     user_id: int
     title: str
     description: Optional[str] = None
+    assignee_id: Optional[int] = None
+    assignee_email: Optional[str] = None
+    owner_email: Optional[str] = None
+    viewer_role: Optional[str] = None
     due_date: Optional[str] = None
     status: str = "pendiente"
     priority: str = "media"
@@ -35,6 +39,7 @@ class Task:
     deleted_at: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+    position: Optional[int] = None
 
 
 @dataclass
@@ -55,4 +60,20 @@ class PasswordResetToken:
     expires_at: str
     used: bool = False
     created_at: str = ""
+
+
+@dataclass
+class Notification:
+    id: Optional[int]
+    recipient_id: int
+    task_id: int
+    actor_id: int
+    type: str
+    message: str
+    is_read: bool = False
+    read_at: Optional[str] = None
+    created_at: str = ""
+    available: bool = False
+    task_title: Optional[str] = None
+    task_status: Optional[str] = None
 

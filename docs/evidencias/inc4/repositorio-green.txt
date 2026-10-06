@@ -1,0 +1,666 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 6 items
+
+tests/unit/test_notification_repository.py::test_notification_insertion_base ERROR [ 16%]
+tests/unit/test_notification_repository.py::test_notification_isolation ERROR [ 33%]
+tests/unit/test_notification_repository.py::test_notification_available_view_and_loss_of_access ERROR [ 50%]
+tests/unit/test_notification_repository.py::test_notification_unread_count ERROR [ 66%]
+tests/unit/test_notification_repository.py::test_notification_rollback ERROR [ 83%]
+tests/unit/test_notification_repository.py::test_notification_global_max_id_isolation ERROR [100%]
+
+==================================== ERRORS ====================================
+______________ ERROR at setup of test_notification_insertion_base ______________
+
+self = <sqlalchemy.orm.relationships._JoinCondition object at 0x10b0c1550>
+
+    def _determine_joins(self) -> None:
+        """Determine the 'primaryjoin' and 'secondaryjoin' attributes,
+        if not passed to the constructor already.
+    
+        This is based on analysis of the foreign key relationships
+        between the parent and target mapped selectables.
+    
+        """
+        if self.secondaryjoin is not None and self.secondary is None:
+            raise sa_exc.ArgumentError(
+                "Property %s specified with secondary "
+                "join condition but "
+                "no secondary argument" % self.prop
+            )
+    
+        # find a join between the given mapper's mapped table and
+        # the given table. will try the mapper's local table first
+        # for more specificity, then if not found will try the more
+        # general mapped table, which in the case of inheritance is
+        # a join.
+        try:
+            consider_as_foreign_keys = self.consider_as_foreign_keys or None
+            if self.secondary is not None:
+                if self.secondaryjoin is None:
+                    self.secondaryjoin = join_condition(
+                        self.child_persist_selectable,
+                        self.secondary,
+                        a_subset=self.child_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+                if self.primaryjoin_initial is None:
+                    self.primaryjoin = join_condition(
+                        self.parent_persist_selectable,
+                        self.secondary,
+                        a_subset=self.parent_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+                else:
+                    self.primaryjoin = self.primaryjoin_initial
+            else:
+                if self.primaryjoin_initial is None:
+>                   self.primaryjoin = join_condition(
+                        self.parent_persist_selectable,
+                        self.child_persist_selectable,
+                        a_subset=self.parent_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/relationships.py:2507: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/util.py:123: in join_condition
+    return Join._join_condition(
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/selectable.py:1479: in _join_condition
+    cls._joincond_trim_constraints(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'sqlalchemy.sql.selectable.Join'>
+a = Table('users', MetaData(), Column('id', Integer(), table=<users>, primary_key=True, nullable=False), Column('email', S...), table=<users>, nullable=False), Column('created_at', String(length=35), table=<users>, nullable=False), schema=None)
+b = Table('tasks', MetaData(), Column('id', Integer(), table=<tasks>, primary_key=True, nullable=False), Column('user_id',...), table=<tasks>, nullable=False), Column('updated_at', String(length=35), table=<tasks>, nullable=False), schema=None)
+constraints = defaultdict(<class 'list'>, {ForeignKeyConstraint(<sqlalchemy.sql.base.ReadOnlyColumnCollection object at 0x10bf54270>...<users>, primary_key=True, nullable=False), Column('assignee_id', Integer(), ForeignKey('users.id'), table=<tasks>))]})
+consider_as_foreign_keys = None
+
+    @classmethod
+    def _joincond_trim_constraints(
+        cls,
+        a: FromClause,
+        b: FromClause,
+        constraints: Dict[Any, Any],
+        consider_as_foreign_keys: Optional[Any],
+    ) -> None:
+        # more than one constraint matched.  narrow down the list
+        # to include just those FKCs that match exactly to
+        # "consider_as_foreign_keys".
+        if consider_as_foreign_keys:
+            for const in list(constraints):
+                if {f.parent for f in const.elements} != set(
+                    consider_as_foreign_keys
+                ):
+                    del constraints[const]
+    
+        # if still multiple constraints, but
+        # they all refer to the exact same end result, use it.
+        if len(constraints) > 1:
+            dedupe = {tuple(crit) for crit in constraints.values()}
+            if len(dedupe) == 1:
+                key = list(constraints)[0]
+                constraints = {key: constraints[key]}
+    
+        if len(constraints) != 1:
+>           raise exc.AmbiguousForeignKeysError(
+                "Can't determine join between '%s' and '%s'; "
+                "tables have more than one foreign key "
+                "constraint relationship between them. "
+                "Please specify the 'onclause' of this "
+                "join explicitly." % (a.description, b.description)
+            )
+E           sqlalchemy.exc.AmbiguousForeignKeysError: Can't determine join between 'users' and 'tasks'; tables have more than one foreign key constraint relationship between them. Please specify the 'onclause' of this join explicitly.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/sql/selectable.py:1624: AmbiguousForeignKeysError
+
+The above exception was the direct cause of the following exception:
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10b0c1160>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4269: in _do_configure_registries
+    mapper._post_configure_properties()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2355: in _post_configure_properties
+    prop.init()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/interfaces.py:685: in init
+    self.do_init()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/relationships.py:1725: in do_init
+    self._setup_join_conditions()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/relationships.py:1984: in _setup_join_conditions
+    self._join_condition = jc = _JoinCondition(
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/relationships.py:2413: in __init__
+    self._determine_joins()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.orm.relationships._JoinCondition object at 0x10b0c1550>
+
+    def _determine_joins(self) -> None:
+        """Determine the 'primaryjoin' and 'secondaryjoin' attributes,
+        if not passed to the constructor already.
+    
+        This is based on analysis of the foreign key relationships
+        between the parent and target mapped selectables.
+    
+        """
+        if self.secondaryjoin is not None and self.secondary is None:
+            raise sa_exc.ArgumentError(
+                "Property %s specified with secondary "
+                "join condition but "
+                "no secondary argument" % self.prop
+            )
+    
+        # find a join between the given mapper's mapped table and
+        # the given table. will try the mapper's local table first
+        # for more specificity, then if not found will try the more
+        # general mapped table, which in the case of inheritance is
+        # a join.
+        try:
+            consider_as_foreign_keys = self.consider_as_foreign_keys or None
+            if self.secondary is not None:
+                if self.secondaryjoin is None:
+                    self.secondaryjoin = join_condition(
+                        self.child_persist_selectable,
+                        self.secondary,
+                        a_subset=self.child_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+                if self.primaryjoin_initial is None:
+                    self.primaryjoin = join_condition(
+                        self.parent_persist_selectable,
+                        self.secondary,
+                        a_subset=self.parent_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+                else:
+                    self.primaryjoin = self.primaryjoin_initial
+            else:
+                if self.primaryjoin_initial is None:
+                    self.primaryjoin = join_condition(
+                        self.parent_persist_selectable,
+                        self.child_persist_selectable,
+                        a_subset=self.parent_local_selectable,
+                        consider_as_foreign_keys=consider_as_foreign_keys,
+                    )
+                else:
+                    self.primaryjoin = self.primaryjoin_initial
+        except sa_exc.NoForeignKeysError as nfe:
+            if self.secondary is not None:
+                raise sa_exc.NoForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are no foreign keys "
+                    "linking these tables via secondary table '%s'.  "
+                    "Ensure that referencing columns are associated "
+                    "with a ForeignKey or ForeignKeyConstraint, or "
+                    "specify 'primaryjoin' and 'secondaryjoin' "
+                    "expressions." % (self.prop, self.secondary)
+                ) from nfe
+            else:
+                raise sa_exc.NoForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are no foreign keys "
+                    "linking these tables.  "
+                    "Ensure that referencing columns are associated "
+                    "with a ForeignKey or ForeignKeyConstraint, or "
+                    "specify a 'primaryjoin' expression." % self.prop
+                ) from nfe
+        except sa_exc.AmbiguousForeignKeysError as afe:
+            if self.secondary is not None:
+                raise sa_exc.AmbiguousForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are multiple foreign key "
+                    "paths linking the tables via secondary table '%s'.  "
+                    "Specify the 'foreign_keys' "
+                    "argument, providing a list of those columns which "
+                    "should be counted as containing a foreign key "
+                    "reference from the secondary table to each of the "
+                    "parent and child tables." % (self.prop, self.secondary)
+                ) from afe
+            else:
+>               raise sa_exc.AmbiguousForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are multiple foreign key "
+                    "paths linking the tables.  Specify the "
+                    "'foreign_keys' argument, providing a list of those "
+                    "columns which should be counted as containing a "
+                    "foreign key reference to the parent table." % self.prop
+                ) from afe
+E               sqlalchemy.exc.AmbiguousForeignKeysError: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/relationships.py:2551: AmbiguousForeignKeysError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_insertion_ba0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+________________ ERROR at setup of test_notification_isolation _________________
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10b14f4d0>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+registries = set(), cascade = True
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def _do_configure_registries(
+        registries: Set[_RegistryType], cascade: bool
+    ) -> Iterator[registry]:
+        registry = util.preloaded.orm_decl_api.registry
+    
+        orig = set(registries)
+    
+        for reg in registry._recurse_with_dependencies(registries):
+            if reg._new_mappers:
+                reg.dispatch.before_configured(reg)
+    
+            has_skip = False
+    
+            for mapper in reg._mappers_to_configure():
+                run_configure = None
+    
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+    
+                if getattr(mapper, "_configure_failed", False):
+                    e = sa_exc.InvalidRequestError(
+                        "One or more mappers failed to initialize - "
+                        "can't proceed with initialization of other "
+                        "mappers. Triggering mapper: '%s'. "
+                        "Original exception was: %s"
+                        % (mapper, mapper._configure_failed)
+                    )
+                    e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
+>                   raise e
+E                   sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[UserORM(users)]'. Original exception was: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4265: InvalidRequestError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_isolation0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+____ ERROR at setup of test_notification_available_view_and_loss_of_access _____
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10b56ce10>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+registries = set(), cascade = True
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def _do_configure_registries(
+        registries: Set[_RegistryType], cascade: bool
+    ) -> Iterator[registry]:
+        registry = util.preloaded.orm_decl_api.registry
+    
+        orig = set(registries)
+    
+        for reg in registry._recurse_with_dependencies(registries):
+            if reg._new_mappers:
+                reg.dispatch.before_configured(reg)
+    
+            has_skip = False
+    
+            for mapper in reg._mappers_to_configure():
+                run_configure = None
+    
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+    
+                if getattr(mapper, "_configure_failed", False):
+                    e = sa_exc.InvalidRequestError(
+                        "One or more mappers failed to initialize - "
+                        "can't proceed with initialization of other "
+                        "mappers. Triggering mapper: '%s'. "
+                        "Original exception was: %s"
+                        % (mapper, mapper._configure_failed)
+                    )
+                    e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
+>                   raise e
+E                   sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[UserORM(users)]'. Original exception was: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4265: InvalidRequestError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_available_vi0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_______________ ERROR at setup of test_notification_unread_count _______________
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10b2e9ba0>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+registries = set(), cascade = True
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def _do_configure_registries(
+        registries: Set[_RegistryType], cascade: bool
+    ) -> Iterator[registry]:
+        registry = util.preloaded.orm_decl_api.registry
+    
+        orig = set(registries)
+    
+        for reg in registry._recurse_with_dependencies(registries):
+            if reg._new_mappers:
+                reg.dispatch.before_configured(reg)
+    
+            has_skip = False
+    
+            for mapper in reg._mappers_to_configure():
+                run_configure = None
+    
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+    
+                if getattr(mapper, "_configure_failed", False):
+                    e = sa_exc.InvalidRequestError(
+                        "One or more mappers failed to initialize - "
+                        "can't proceed with initialization of other "
+                        "mappers. Triggering mapper: '%s'. "
+                        "Original exception was: %s"
+                        % (mapper, mapper._configure_failed)
+                    )
+                    e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
+>                   raise e
+E                   sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[UserORM(users)]'. Original exception was: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4265: InvalidRequestError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_unread_count0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________ ERROR at setup of test_notification_rollback _________________
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10be99940>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+registries = set(), cascade = True
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def _do_configure_registries(
+        registries: Set[_RegistryType], cascade: bool
+    ) -> Iterator[registry]:
+        registry = util.preloaded.orm_decl_api.registry
+    
+        orig = set(registries)
+    
+        for reg in registry._recurse_with_dependencies(registries):
+            if reg._new_mappers:
+                reg.dispatch.before_configured(reg)
+    
+            has_skip = False
+    
+            for mapper in reg._mappers_to_configure():
+                run_configure = None
+    
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+    
+                if getattr(mapper, "_configure_failed", False):
+                    e = sa_exc.InvalidRequestError(
+                        "One or more mappers failed to initialize - "
+                        "can't proceed with initialization of other "
+                        "mappers. Triggering mapper: '%s'. "
+                        "Original exception was: %s"
+                        % (mapper, mapper._configure_failed)
+                    )
+                    e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
+>                   raise e
+E                   sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[UserORM(users)]'. Original exception was: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4265: InvalidRequestError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_rollback0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________ ERROR at setup of test_notification_global_max_id_isolation __________
+
+user_repo = <src.infrastructure.repositories.UserRepository object at 0x10b117650>
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10adbf380>
+
+    @pytest.fixture
+    def users(user_repo, db_session):
+>       u1 = user_repo.create("owner@example.com", "hash")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_notification_repository.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/infrastructure/repositories.py:15: in create
+    user_orm = UserORM(
+<sqlalchemy generated __init__ for class src.infrastructure.models.UserORM>:4: in __init__
+    return new_state._initialize_instance(self, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/state.py:592: in _initialize_instance
+    manager.dispatch.init(self, args, kwargs)
+.venv/lib/python3.13/site-packages/sqlalchemy/event/attr.py:514: in __call__
+    fn(*args, **kw)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4440: in _event_on_init
+    instrumenting_mapper._check_configure()
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:2338: in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4220: in _configure_registries
+    registries_configured = list(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+registries = set(), cascade = True
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def _do_configure_registries(
+        registries: Set[_RegistryType], cascade: bool
+    ) -> Iterator[registry]:
+        registry = util.preloaded.orm_decl_api.registry
+    
+        orig = set(registries)
+    
+        for reg in registry._recurse_with_dependencies(registries):
+            if reg._new_mappers:
+                reg.dispatch.before_configured(reg)
+    
+            has_skip = False
+    
+            for mapper in reg._mappers_to_configure():
+                run_configure = None
+    
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+    
+                if getattr(mapper, "_configure_failed", False):
+                    e = sa_exc.InvalidRequestError(
+                        "One or more mappers failed to initialize - "
+                        "can't proceed with initialization of other "
+                        "mappers. Triggering mapper: '%s'. "
+                        "Original exception was: %s"
+                        % (mapper, mapper._configure_failed)
+                    )
+                    e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
+>                   raise e
+E                   sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[UserORM(users)]'. Original exception was: Could not determine join condition between parent/child tables on relationship UserORM.tasks - there are multiple foreign key paths linking the tables.  Specify the 'foreign_keys' argument, providing a list of those columns which should be counted as containing a foreign key reference to the parent table.
+
+.venv/lib/python3.13/site-packages/sqlalchemy/orm/mapper.py:4265: InvalidRequestError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-16/test_notification_global_max_i0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+ERROR tests/unit/test_notification_repository.py::test_notification_insertion_base
+ERROR tests/unit/test_notification_repository.py::test_notification_isolation
+ERROR tests/unit/test_notification_repository.py::test_notification_available_view_and_loss_of_access
+ERROR tests/unit/test_notification_repository.py::test_notification_unread_count
+ERROR tests/unit/test_notification_repository.py::test_notification_rollback
+ERROR tests/unit/test_notification_repository.py::test_notification_global_max_id_isolation
+============================== 6 errors in 0.74s ===============================

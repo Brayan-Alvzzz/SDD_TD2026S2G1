@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_______________ ERROR collecting tests/unit/test_permissions.py ________________
+ImportError while importing test module '/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/unit/test_permissions.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_permissions.py:3: in <module>
+    from src.domain.exceptions import TaskNotAccessibleError, OperationNotPermittedError
+E   ImportError: cannot import name 'TaskNotAccessibleError' from 'src.domain.exceptions' (/Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/src/domain/exceptions.py)
+=========================== short test summary info ============================
+ERROR tests/unit/test_permissions.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.05s ===============================

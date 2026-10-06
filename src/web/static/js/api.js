@@ -16,11 +16,12 @@ const API = {
             });
 
             const result = await response.json().catch(() => ({
-                success: false,
+                status: "error",
                 error: "Respuesta inválida del servidor"
             }));
 
-            if (!response.ok || !result.success) {
+            const isSuccess = response.ok && (result.success === true || result.status === "success");
+            if (!isSuccess) {
                 const errorMsg = result.error || `Error ${response.status}: Operación fallida`;
                 return { success: false, error: errorMsg, status: response.status };
             }
@@ -101,10 +102,18 @@ function showNotification(message, type = "error") {
 
     const alert = document.createElement("div");
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
-        <span>${message}</span>
-        <button class="alert-close" onclick="this.parentElement.remove()">×</button>
-    `;
+    
+    const span = document.createElement("span");
+    span.textContent = message;
+    
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "alert-close";
+    closeBtn.textContent = "×";
+    closeBtn.onclick = () => alert.remove();
+    
+    alert.appendChild(span);
+    alert.appendChild(closeBtn);
+    
     container.appendChild(alert);
 
     setTimeout(() => {

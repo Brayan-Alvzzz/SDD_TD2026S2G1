@@ -59,9 +59,24 @@ def create_app(test_config=None) -> Flask:
     # Context processor for templates
     @app.context_processor
     def inject_user():
+        user_id = session.get("user_id")
+        unread_count = 0
+        if user_id:
+            try:
+                from src.infrastructure.database import db
+                from src.infrastructure.repositories import NotificationRepository
+                from src.domain.services import NotificationService
+                db_session = db.session
+                notif_repo = NotificationRepository(db_session)
+                service = NotificationService(notif_repo, db_session)
+                unread_count = service.count_unread(user_id)
+            except Exception:
+                pass
+
         return {
-            "current_user_id": session.get("user_id"),
-            "current_user_email": session.get("user_email")
+            "current_user_id": user_id,
+            "current_user_email": session.get("user_email"),
+            "unread_count": unread_count
         }
 
     # Security Headers
@@ -76,10 +91,12 @@ def create_app(test_config=None) -> Flask:
     from src.web.auth_routes import auth_bp
     from src.web.task_routes import task_bp
     from src.web.category_routes import category_bp
+    from src.web.notification_routes import notification_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(task_bp)
     app.register_blueprint(category_bp)
+    app.register_blueprint(notification_bp)
 
     @app.route("/")
     def index():

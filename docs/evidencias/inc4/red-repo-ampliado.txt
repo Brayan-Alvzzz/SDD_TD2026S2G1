@@ -1,0 +1,143 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 6 items
+
+tests/unit/test_notification_repository.py::test_notification_insertion_base ERROR [ 16%]
+tests/unit/test_notification_repository.py::test_notification_isolation ERROR [ 33%]
+tests/unit/test_notification_repository.py::test_notification_available_view_and_loss_of_access ERROR [ 50%]
+tests/unit/test_notification_repository.py::test_notification_unread_count ERROR [ 66%]
+tests/unit/test_notification_repository.py::test_notification_rollback ERROR [ 83%]
+tests/unit/test_notification_repository.py::test_notification_global_max_id_isolation ERROR [100%]
+
+==================================== ERRORS ====================================
+______________ ERROR at setup of test_notification_insertion_base ______________
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_insertion_ba0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+________________ ERROR at setup of test_notification_isolation _________________
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_isolation0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+____ ERROR at setup of test_notification_available_view_and_loss_of_access _____
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_available_vi0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_______________ ERROR at setup of test_notification_unread_count _______________
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_unread_count0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________________ ERROR at setup of test_notification_rollback _________________
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_rollback0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_________ ERROR at setup of test_notification_global_max_id_isolation __________
+
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10a243380>
+
+    @pytest.fixture
+    def repo(db_session):
+        if NotificationRepository is None:
+>           pytest.fail("NotificationRepository not implemented yet")
+E           Failed: NotificationRepository not implemented yet
+
+tests/unit/test_notification_repository.py:17: Failed
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-15/test_notification_global_max_i0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+ERROR tests/unit/test_notification_repository.py::test_notification_insertion_base
+ERROR tests/unit/test_notification_repository.py::test_notification_isolation
+ERROR tests/unit/test_notification_repository.py::test_notification_available_view_and_loss_of_access
+ERROR tests/unit/test_notification_repository.py::test_notification_unread_count
+ERROR tests/unit/test_notification_repository.py::test_notification_rollback
+ERROR tests/unit/test_notification_repository.py::test_notification_global_max_id_isolation
+============================== 6 errors in 0.38s ===============================

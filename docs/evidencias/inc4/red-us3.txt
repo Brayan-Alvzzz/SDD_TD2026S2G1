@@ -1,0 +1,257 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 9 items
+
+tests/integration/test_task_access_roles.py .FFFFFFFF                    [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_assignee_allowed_operations _______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.457698+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.458945+00:00', updated_at='2026-10-06T00:47:15.461281+00:00'), ...}
+db_session = <sqlalchemy.orm.scoping.scoped_session object at 0x10c8cb4d0>
+audit_repo = <src.infrastructure.repositories.AuditLogRepository object at 0x10cf71ba0>
+
+    def test_assignee_allowed_operations(client, users_and_task, db_session, audit_repo):
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+    
+        _login(client, assignee)
+    
+        # Consultar
+        resp = client.get(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 200
+E       assert 405 == 200
+E        +  where 405 = <WrapperTestResponse streamed [405 METHOD NOT ALLOWED]>.status_code
+
+tests/integration/test_task_access_roles.py:70: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_assignee_allowed_operatio0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+______________________ test_assignee_forbidden_operations ______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.527585+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.528983+00:00', updated_at='2026-10-06T00:47:15.531036+00:00'), ...}
+
+    def test_assignee_forbidden_operations(client, users_and_task):
+        assignee = users_and_task["assignee"]
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+    
+        _login(client, assignee)
+    
+        # No puede editar datos generales
+        resp = client.put(f"/api/tasks/{task.id}", json={"title": "Intento de Hack", "status": "pendiente", "priority": "alta"})
+        assert resp.status_code == 403
+    
+        # No puede eliminar
+        resp = client.delete(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_access_roles.py:102: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_assignee_forbidden_operat0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+____________________________ test_stranger_gets_404 ____________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.584893+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.586047+00:00', updated_at='2026-10-06T00:47:15.588367+00:00'), ...}
+
+    def test_stranger_gets_404(client, users_and_task):
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+    
+        _login(client, stranger)
+    
+        # Intento de lectura
+        resp = client.get(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 404
+E       assert 405 == 404
+E        +  where 405 = <WrapperTestResponse streamed [405 METHOD NOT ALLOWED]>.status_code
+
+tests/integration/test_task_access_roles.py:125: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_stranger_gets_4040/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+___________________________ test_no_session_gets_401 ___________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.636725+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.637792+00:00', updated_at='2026-10-06T00:47:15.640196+00:00'), ...}
+
+    def test_no_session_gets_401(client, users_and_task):
+        task = users_and_task["task"]
+    
+        resp = client.get(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 401
+E       assert 405 == 401
+E        +  where 405 = <WrapperTestResponse streamed [405 METHOD NOT ALLOWED]>.status_code
+
+tests/integration/test_task_access_roles.py:135: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_no_session_gets_4010/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+___________________________ test_deleted_task_access ___________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.720702+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.721867+00:00', updated_at='2026-10-06T00:47:15.724758+00:00'), ...}
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10ca96750>
+
+    def test_deleted_task_access(client, users_and_task, task_repo):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        task = users_and_task["task"]
+        collab_service = users_and_task["collab_service"]
+    
+>       task_service = TaskService(task_repo)
+                       ^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: TaskService.__init__() missing 1 required positional argument: 'audit_repo'
+
+tests/integration/test_task_access_roles.py:146: TypeError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_deleted_task_access0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+________________________ test_old_assignee_loses_access ________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.775992+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.777265+00:00', updated_at='2026-10-06T00:47:15.782011+00:00'), ...}
+
+    def test_old_assignee_loses_access(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+        collab_service = users_and_task["collab_service"]
+    
+        # Reasignar a stranger
+        collab_service.assign_task(task.id, owner.id, stranger.email)
+    
+        _login(client, assignee)
+        resp = client.get(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 404
+E       assert 405 == 404
+E        +  where 405 = <WrapperTestResponse streamed [405 METHOD NOT ALLOWED]>.status_code
+
+tests/integration/test_task_access_roles.py:169: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_old_assignee_loses_access0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+________________________ test_body_manipulation_ignored ________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.836123+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.837316+00:00', updated_at='2026-10-06T00:47:15.839464+00:00'), ...}
+audit_repo = <src.infrastructure.repositories.AuditLogRepository object at 0x10d4ff6b0>
+
+    def test_body_manipulation_ignored(client, users_and_task, audit_repo):
+        assignee = users_and_task["assignee"]
+        owner = users_and_task["owner"]
+        task = users_and_task["task"]
+    
+        _login(client, assignee)
+    
+        # Asignado intenta cambiar el estado y envía en el cuerpo actor_id o user_id simulando ser el owner
+        resp = client.patch(f"/api/tasks/{task.id}/status", json={"status": "completada", "actor_id": owner.id, "user_id": owner.id})
+>       assert resp.status_code == 200
+E       assert 403 == 200
+E        +  where 403 = <WrapperTestResponse streamed [403 FORBIDDEN]>.status_code
+
+tests/integration/test_task_access_roles.py:180: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_body_manipulation_ignored0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+_______________________ test_old_notification_no_access ________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+users_and_task = {'owner': User(id=1, email='owner_access@example.com', password_hash='hash', created_at='2026-10-06T00:47:15.892318+00...e, deleted_at=None, created_at='2026-10-06T00:47:15.893962+00:00', updated_at='2026-10-06T00:47:15.896225+00:00'), ...}
+
+    def test_old_notification_no_access(client, users_and_task):
+        owner = users_and_task["owner"]
+        assignee = users_and_task["assignee"]
+        stranger = users_and_task["stranger"]
+        task = users_and_task["task"]
+        collab_service = users_and_task["collab_service"]
+        notif_repo = users_and_task["notif_repo"]
+    
+        # stranger es asignado, y se le revoca
+        collab_service.assign_task(task.id, owner.id, stranger.email)
+    
+        # Verificamos que stranger recibió notificación
+        notifs = notif_repo.list_by_recipient(stranger.id)
+        assert len(notifs) > 0
+        notif_id = notifs[0].id
+    
+        # Propietario desasigna
+        collab_service.unassign_task(task.id, owner.id)
+    
+        # stranger intenta acceder a la tarea (incluso si tuviera la notificación)
+        _login(client, stranger)
+        resp = client.get(f"/api/tasks/{task.id}")
+>       assert resp.status_code == 404
+E       assert 405 == 404
+E        +  where 405 = <WrapperTestResponse streamed [405 METHOD NOT ALLOWED]>.status_code
+
+tests/integration/test_task_access_roles.py:209: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-44/test_old_notification_no_acces0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+FAILED tests/integration/test_task_access_roles.py::test_assignee_allowed_operations
+FAILED tests/integration/test_task_access_roles.py::test_assignee_forbidden_operations
+FAILED tests/integration/test_task_access_roles.py::test_stranger_gets_404 - ...
+FAILED tests/integration/test_task_access_roles.py::test_no_session_gets_401
+FAILED tests/integration/test_task_access_roles.py::test_deleted_task_access
+FAILED tests/integration/test_task_access_roles.py::test_old_assignee_loses_access
+FAILED tests/integration/test_task_access_roles.py::test_body_manipulation_ignored
+FAILED tests/integration/test_task_access_roles.py::test_old_notification_no_access
+========================= 8 failed, 1 passed in 0.59s ==========================

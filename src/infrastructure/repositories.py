@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional, List, Union
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
-from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM, CategoryORM
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
+from src.infrastructure.models import UserORM, TaskORM, AuditLogORM, PasswordResetTokenORM, CategoryORM, NotificationORM
 
 
 class UserRepository:
@@ -59,6 +59,14 @@ class TaskRepository:
             if cat_orm:
                 category_name = cat_orm.name
 
+        owner_email = None
+        if getattr(r, "user", None) is not None:
+            owner_email = r.user.email
+
+        assignee_email = None
+        if getattr(r, "assignee", None) is not None:
+            assignee_email = r.assignee.email
+
         return Task(
             id=r.id,
             user_id=r.user_id,
@@ -69,11 +77,15 @@ class TaskRepository:
             priority=r.priority if r.priority else "media",
             category_id=r.category_id,
             category_name=category_name,
+            assignee_id=r.assignee_id,
+            owner_email=owner_email,
+            assignee_email=assignee_email,
             is_overdue=is_overdue,
             is_deleted=r.is_deleted,
             deleted_at=r.deleted_at,
             created_at=r.created_at,
-            updated_at=r.updated_at
+            updated_at=r.updated_at,
+            position=r.position
         )
 
     def create(
@@ -87,6 +99,14 @@ class TaskRepository:
         category_id: Optional[int] = None
     ) -> Task:
         now = datetime.now(timezone.utc).isoformat()
+        max_pos = self.session.execute(
+            sa.select(sa.func.max(TaskORM.position)).where(
+                TaskORM.user_id == user_id,
+                TaskORM.is_deleted == False
+            )
+        ).scalar()
+        new_position = (max_pos or 0) + 10
+
         task_orm = TaskORM(
             user_id=user_id,
             title=title.strip(),
@@ -96,7 +116,8 @@ class TaskRepository:
             priority=priority or "media",
             category_id=category_id,
             created_at=now,
-            updated_at=now
+            updated_at=now,
+            position=new_position
         )
         self.session.add(task_orm)
         self.session.flush()
@@ -147,10 +168,73 @@ class TaskRepository:
                 else_=4
             )
             stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "manual":
+            stmt = stmt.order_by(TaskORM.position.asc(), TaskORM.id.asc())
         else:
             stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
 
         rows = self.session.execute(stmt).scalars().all()
+        return [self._to_domain(r) for r in rows]
+
+    def list_visible(
+        self,
+        user_id: int,
+        role: str = "all",
+        status: Optional[str] = None,
+        sort: str = "created_desc",
+        category_id: Optional[Union[int, str]] = None
+    ) -> List[Task]:
+        from sqlalchemy.orm import joinedload
+        
+        stmt = sa.select(TaskORM).options(
+            joinedload(TaskORM.category),
+            joinedload(TaskORM.user),
+            joinedload(TaskORM.assignee)
+        ).where(TaskORM.is_deleted == False)
+
+        if role == "owned":
+            stmt = stmt.where(TaskORM.user_id == user_id)
+        elif role == "assigned_to_me":
+            stmt = stmt.where(TaskORM.assignee_id == user_id)
+        elif role == "delegated":
+            stmt = stmt.where(sa.and_(TaskORM.user_id == user_id, TaskORM.assignee_id.is_not(None)))
+        else: # "all"
+            stmt = stmt.where(sa.or_(TaskORM.user_id == user_id, TaskORM.assignee_id == user_id))
+
+        if status:
+            stmt = stmt.where(TaskORM.status == status)
+
+        if category_id is not None and category_id != "":
+            if str(category_id).lower() == "none":
+                stmt = stmt.where(TaskORM.category_id.is_(None))
+            else:
+                try:
+                    stmt = stmt.where(TaskORM.category_id == int(category_id))
+                except (ValueError, TypeError):
+                    pass
+
+        if sort == "priority_desc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'alta', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'baja', 3),
+                else_=4
+            )
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "priority_asc":
+            priority_order = sa.case(
+                (TaskORM.priority == 'baja', 1),
+                (TaskORM.priority == 'media', 2),
+                (TaskORM.priority == 'alta', 3),
+                else_=4
+            )
+            stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "manual":
+            stmt = stmt.order_by(TaskORM.position.asc(), TaskORM.id.asc())
+        else:
+            stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
+
+        rows = self.session.execute(stmt).scalars().unique().all()
         return [self._to_domain(r) for r in rows]
 
     def soft_delete(self, task_id: int, user_id: int, deleted_at: str) -> Optional[Task]:
@@ -173,6 +257,7 @@ class TaskRepository:
             task_orm.status = task.status
             task_orm.priority = task.priority or "media"
             task_orm.category_id = task.category_id
+            task_orm.assignee_id = task.assignee_id
             task_orm.is_deleted = task.is_deleted
             task_orm.deleted_at = task.deleted_at
             task_orm.updated_at = now
@@ -181,6 +266,26 @@ class TaskRepository:
         task.updated_at = now
         return task
 
+    def set_assignee(self, task_id: int, old_assignee_id: Optional[int], new_assignee_id: Optional[int]) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+
+        where_clause = [
+            TaskORM.id == task_id,
+            TaskORM.is_deleted == False
+        ]
+        if old_assignee_id is None:
+            where_clause.append(TaskORM.assignee_id.is_(None))
+        else:
+            where_clause.append(TaskORM.assignee_id == old_assignee_id)
+
+        stmt = (
+            sa.update(TaskORM)
+            .where(sa.and_(*where_clause))
+            .values(assignee_id=new_assignee_id, updated_at=now)
+        )
+        result = self.session.execute(stmt)
+        self.session.flush()
+        return result.rowcount > 0
 
 class AuditLogRepository:
     def __init__(self, session: Session):
@@ -364,4 +469,115 @@ class CategoryRepository:
         return True
 
 
+class NotificationRepository:
+    def __init__(self, session: Session):
+        self.session = session
 
+    def create(self, recipient_id: int, task_id: int, actor_id: int, type: str, message: str) -> Notification:
+        now = datetime.now(timezone.utc).isoformat()
+        notif_orm = NotificationORM(
+            recipient_id=recipient_id,
+            task_id=task_id,
+            actor_id=actor_id,
+            type=type,
+            message=message,
+            created_at=now
+        )
+        self.session.add(notif_orm)
+        self.session.flush()
+        return Notification(
+            id=notif_orm.id,
+            recipient_id=notif_orm.recipient_id,
+            task_id=notif_orm.task_id,
+            actor_id=notif_orm.actor_id,
+            type=notif_orm.type,
+            message=notif_orm.message,
+            is_read=notif_orm.is_read,
+            read_at=notif_orm.read_at,
+            created_at=notif_orm.created_at
+        )
+
+    def get_by_id_and_recipient(self, notification_id: int, recipient_id: int) -> Optional[Notification]:
+        stmt = sa.select(NotificationORM).where(
+            NotificationORM.id == notification_id,
+            NotificationORM.recipient_id == recipient_id
+        )
+        notif_orm = self.session.execute(stmt).scalars().first()
+        if notif_orm:
+            return Notification(
+                id=notif_orm.id,
+                recipient_id=notif_orm.recipient_id,
+                task_id=notif_orm.task_id,
+                actor_id=notif_orm.actor_id,
+                type=notif_orm.type,
+                message=notif_orm.message,
+                is_read=notif_orm.is_read,
+                read_at=notif_orm.read_at,
+                created_at=notif_orm.created_at
+            )
+        return None
+
+    def list_by_recipient(self, recipient_id: int) -> List[Notification]:
+        subq = (
+            sa.select(
+                NotificationORM.task_id,
+                sa.func.max(NotificationORM.id).label("max_id")
+            )
+            .where(NotificationORM.recipient_id == recipient_id)
+            .group_by(NotificationORM.task_id)
+            .subquery()
+        )
+
+        stmt = (
+            sa.select(NotificationORM, TaskORM, subq.c.max_id)
+            .outerjoin(TaskORM, TaskORM.id == NotificationORM.task_id)
+            .outerjoin(subq, subq.c.task_id == NotificationORM.task_id)
+            .where(NotificationORM.recipient_id == recipient_id)
+            .order_by(NotificationORM.is_read.asc(), NotificationORM.created_at.desc(), NotificationORM.id.desc())
+            .limit(50)
+        )
+
+        rows = self.session.execute(stmt).all()
+        results = []
+        for n_orm, t_orm, max_id in rows:
+            available = False
+            if t_orm and not t_orm.is_deleted and t_orm.assignee_id == recipient_id and n_orm.id == max_id:
+                available = True
+
+            n = Notification(
+                id=n_orm.id,
+                recipient_id=n_orm.recipient_id,
+                task_id=n_orm.task_id,
+                actor_id=n_orm.actor_id,
+                type=n_orm.type,
+                message=n_orm.message,
+                is_read=n_orm.is_read,
+                read_at=n_orm.read_at,
+                created_at=n_orm.created_at,
+                available=available,
+                task_title=t_orm.title if available and t_orm else None,
+                task_status=t_orm.status if available and t_orm else None
+            )
+            results.append(n)
+        return results
+
+    def count_unread(self, recipient_id: int) -> int:
+        stmt = sa.select(sa.func.count()).where(
+            NotificationORM.recipient_id == recipient_id,
+            NotificationORM.is_read == False
+        )
+        return self.session.execute(stmt).scalar() or 0
+
+    def mark_as_read(self, notification_id: int, recipient_id: int) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        stmt = (
+            sa.update(NotificationORM)
+            .where(
+                NotificationORM.id == notification_id,
+                NotificationORM.recipient_id == recipient_id,
+                NotificationORM.is_read == False
+            )
+            .values(is_read=True, read_at=now)
+        )
+        self.session.execute(stmt)
+        self.session.flush()

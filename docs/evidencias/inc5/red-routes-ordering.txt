@@ -1,0 +1,196 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collecting ... collected 8 items
+
+tests/integration/test_task_routes_ordering.py::test_order_tasks_success_and_idempotence FAILED [ 12%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_unauthenticated FAILED [ 25%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_invalid_structure FAILED [ 37%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_operation_not_permitted FAILED [ 50%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_not_found PASSED [ 62%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_conflict FAILED [ 75%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_empty_success FAILED [ 87%]
+tests/integration/test_task_routes_ordering.py::test_task_list_orders_by_position PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_order_tasks_success_and_idempotence ___________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x10cb21160>
+task_service = <src.domain.services.TaskService object at 0x10cb216a0>
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cb21400>
+
+    def test_order_tasks_success_and_idempotence(client, user_service, task_service, task_repo):
+        owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
+    
+        with client.session_transaction() as sess:
+            sess["user_id"] = owner.id
+            sess["user_email"] = owner.email
+    
+        res = client.patch("/api/tasks/order", json={"task_ids": [t3.id, t1.id, t2.id]})
+        # Fallará porque no existe la ruta
+>       assert res.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:31: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_success_and_i0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_______________________ test_order_tasks_unauthenticated _______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+
+    def test_order_tasks_unauthenticated(client):
+        res = client.patch("/api/tasks/order", json={"task_ids": [1, 2]})
+>       assert res.status_code == 401
+E       assert 404 == 401
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:44: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_unauthenticat0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+______________________ test_order_tasks_invalid_structure ______________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x10cf782d0>
+task_service = <src.domain.services.TaskService object at 0x10cf78550>
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cf78690>
+
+    def test_order_tasks_invalid_structure(client, user_service, task_service, task_repo):
+        owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
+        with client.session_transaction() as sess:
+            sess["user_id"] = owner.id
+            sess["user_email"] = owner.email
+    
+        # Not JSON
+        res = client.patch("/api/tasks/order", data="not-json")
+>       assert res.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:55: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_invalid_struc0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+___________________ test_order_tasks_operation_not_permitted ___________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x10cf79f90>
+task_service = <src.domain.services.TaskService object at 0x10cf7a210>
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cf7a350>
+
+    def test_order_tasks_operation_not_permitted(client, user_service, task_service, task_repo):
+        owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
+        with client.session_transaction() as sess:
+            sess["user_id"] = owner.id
+            sess["user_email"] = owner.email
+    
+        # Attempt to order t_assigned which belongs to other
+        res = client.patch("/api/tasks/order", json={"task_ids": [t1.id, t2.id, t3.id, t_assigned.id]})
+>       assert res.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:82: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_operation_not0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+__________________________ test_order_tasks_conflict ___________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x10d38c9d0>
+task_service = <src.domain.services.TaskService object at 0x10d38ce90>
+task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10d38cc30>
+
+    def test_order_tasks_conflict(client, user_service, task_service, task_repo):
+        owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
+        with client.session_transaction() as sess:
+            sess["user_id"] = owner.id
+            sess["user_email"] = owner.email
+    
+        # Missing t3
+        res = client.patch("/api/tasks/order", json={"task_ids": [t1.id, t2.id]})
+>       assert res.status_code == 409
+E       assert 404 == 409
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:112: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_conflict0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+________________________ test_order_tasks_empty_success ________________________
+
+client = <FlaskClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x10d55cb90>
+task_service = <src.domain.services.TaskService object at 0x10d55d010>
+
+    def test_order_tasks_empty_success(client, user_service, task_service):
+        owner = user_service.register_user("empty@test.com", "password123")
+        with client.session_transaction() as sess:
+            sess["user_id"] = owner.id
+            sess["user_email"] = owner.email
+    
+        res = client.patch("/api/tasks/order", json={"task_ids": []})
+>       assert res.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+
+tests/integration/test_task_routes_ordering.py:126: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-99/test_order_tasks_empty_success0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+=========================== short test summary info ============================
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_success_and_idempotence
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_unauthenticated
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_invalid_structure
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_operation_not_permitted
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_conflict
+FAILED tests/integration/test_task_routes_ordering.py::test_order_tasks_empty_success
+========================= 6 failed, 2 passed in 1.17s ==========================
+EXIT_CODE: 1

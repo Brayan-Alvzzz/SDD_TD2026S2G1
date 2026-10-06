@@ -1,0 +1,37 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collected 237 items
+
+tests/integration/test_assignment_routes.py .............                [  5%]
+tests/integration/test_auth_routes.py ...................                [ 13%]
+tests/integration/test_category_routes.py ...........                    [ 18%]
+tests/integration/test_collaboration_html.py .......                     [ 21%]
+tests/integration/test_collaboration_js.py .......                       [ 24%]
+tests/integration/test_collaboration_rollback.py ..                      [ 24%]
+tests/integration/test_foreign_keys.py ....                              [ 26%]
+tests/integration/test_migrations.py .........                           [ 30%]
+tests/integration/test_notification_routes.py .......                    [ 33%]
+tests/integration/test_task_access_roles.py .........                    [ 37%]
+tests/integration/test_task_list_roles.py .......                        [ 40%]
+tests/integration/test_task_routes.py .................................. [ 54%]
+                                                                         [ 54%]
+tests/integration/test_transaction_rollback.py .....                     [ 56%]
+tests/unit/test_category_service.py .......                              [ 59%]
+tests/unit/test_collaboration_service.py ..........                      [ 63%]
+tests/unit/test_notification_repository.py ......                        [ 66%]
+tests/unit/test_orm_relationships.py .                                   [ 66%]
+tests/unit/test_permissions.py ......                                    [ 69%]
+tests/unit/test_state_machine.py .......                                 [ 72%]
+tests/unit/test_task_service.py ........................................ [ 89%]
+.......                                                                  [ 91%]
+tests/unit/test_user_service.py ...................                      [100%]
+
+=============================== warnings summary ===============================
+tests/integration/test_collaboration_js.py:9
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_collaboration_js.py:9: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_collaboration_js.py)
+    class TestServerThread(threading.Thread):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 237 passed, 1 warning in 35.91s ========================

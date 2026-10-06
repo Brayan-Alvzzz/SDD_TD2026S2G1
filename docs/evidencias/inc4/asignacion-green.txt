@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collecting ... collected 11 items
+
+tests/unit/test_collaboration_service.py::test_assign_to_existing_user_keeps_owner PASSED [  9%]
+tests/unit/test_collaboration_service.py::test_assign_creates_audit_and_notification PASSED [ 18%]
+tests/unit/test_collaboration_service.py::test_reassign_notifies_only_new_recipient PASSED [ 27%]
+tests/unit/test_collaboration_service.py::test_unassign_records_audit_no_notification PASSED [ 36%]
+tests/unit/test_collaboration_service.py::test_same_assignee_idempotent PASSED [ 45%]
+tests/unit/test_collaboration_service.py::test_reject_self_assignment_and_nonexistent PASSED [ 54%]
+tests/unit/test_collaboration_service.py::test_manage_assignments_only_owner PASSED [ 63%]
+tests/unit/test_collaboration_service.py::test_reject_operations_on_deleted_task PASSED [ 72%]
+tests/unit/test_collaboration_service.py::test_concurrency_protection PASSED [ 81%]
+tests/integration/test_collaboration_rollback.py::test_rollback_if_audit_fails PASSED [ 90%]
+tests/integration/test_collaboration_rollback.py::test_rollback_if_notification_fails PASSED [100%]
+
+============================== 11 passed in 0.62s ==============================

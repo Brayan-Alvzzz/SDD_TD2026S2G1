@@ -9,12 +9,34 @@
         <p style="color: var(--text-muted); font-size: 0.9375rem;">Administra tus actividades en curso con control de estados y auditoría</p>
     </div>
     <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <form method="GET" action="{{ url_for('tasks.list_tasks_view') }}" class="inline-form" id="role-filter-form">
+            {% if current_filter %}
+                <input type="hidden" name="status" value="{{ current_filter }}">
+            {% endif %}
+            {% if current_sort %}
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+            {% endif %}
+            {% if current_category %}
+                <input type="hidden" name="category_id" value="{{ current_category }}">
+            {% endif %}
+            <label for="role-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Rol:</label>
+            <select name="role" id="role-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
+                <option value="all" {% if current_role == 'all' or not current_role %}selected{% endif %}>Todas</option>
+                <option value="owned" {% if current_role == 'owned' %}selected{% endif %}>Propias</option>
+                <option value="assigned_to_me" {% if current_role == 'assigned_to_me' %}selected{% endif %}>Asignadas a mí</option>
+                <option value="delegated" {% if current_role == 'delegated' %}selected{% endif %}>Delegadas</option>
+            </select>
+        </form>
+
         <form method="GET" action="{{ url_for('tasks.list_tasks_view') }}" class="inline-form" id="category-filter-form">
             {% if current_filter %}
                 <input type="hidden" name="status" value="{{ current_filter }}">
             {% endif %}
             {% if current_sort %}
                 <input type="hidden" name="sort" value="{{ current_sort }}">
+            {% endif %}
+            {% if current_role %}
+                <input type="hidden" name="role" value="{{ current_role }}">
             {% endif %}
             <label for="category-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Categoría:</label>
             <select name="category_id" id="category-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
@@ -37,22 +59,34 @@
             {% if current_category %}
                 <input type="hidden" name="category_id" value="{{ current_category }}">
             {% endif %}
+            {% if current_role %}
+                <input type="hidden" name="role" value="{{ current_role }}">
+            {% endif %}
             <label for="sort-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Ordenar por:</label>
             <select name="sort" id="sort-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
-                <option value="created_desc" {% if current_sort == 'created_desc' or not current_sort %}selected{% endif %}>Fecha de creación (más recientes)</option>
+                <option value="manual" {% if current_sort == 'manual' %}selected{% endif %}>Orden manual (arrastrar)</option>
+                <option value="created_desc" {% if current_sort == 'created_desc' %}selected{% endif %}>Fecha de creación (más recientes)</option>
                 <option value="priority_desc" {% if current_sort == 'priority_desc' %}selected{% endif %}>Prioridad (alta a baja)</option>
                 <option value="priority_asc" {% if current_sort == 'priority_asc' %}selected{% endif %}>Prioridad (baja a alta)</option>
             </select>
         </form>
 
         <div class="filter-tabs">
-            <a href="{{ url_for('tasks.list_tasks_view', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if not current_filter %}active{% endif %}">Todas</a>
-            <a href="{{ url_for('tasks.list_tasks_view', status='pendiente', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'pendiente' %}active{% endif %}">Pendientes</a>
-            <a href="{{ url_for('tasks.list_tasks_view', status='en_progreso', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'en_progreso' %}active{% endif %}">En Progreso</a>
-            <a href="{{ url_for('tasks.list_tasks_view', status='completada', sort=current_sort, category_id=current_category) }}" class="filter-tab {% if current_filter == 'completada' %}active{% endif %}">Completadas</a>
+            <a href="{{ url_for('tasks.list_tasks_view', sort=current_sort, category_id=current_category, role=current_role) }}" class="filter-tab {% if not current_filter %}active{% endif %}">Todas</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='pendiente', sort=current_sort, category_id=current_category, role=current_role) }}" class="filter-tab {% if current_filter == 'pendiente' %}active{% endif %}">Pendientes</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='en_progreso', sort=current_sort, category_id=current_category, role=current_role) }}" class="filter-tab {% if current_filter == 'en_progreso' %}active{% endif %}">En Progreso</a>
+            <a href="{{ url_for('tasks.list_tasks_view', status='completada', sort=current_sort, category_id=current_category, role=current_role) }}" class="filter-tab {% if current_filter == 'completada' %}active{% endif %}">Completadas</a>
         </div>
     </div>
 </div>
+
+{% set is_draggable = current_role == 'owned' and current_sort == 'manual' and not current_filter and not current_category %}
+
+{% if not is_draggable %}
+    <div class="alert alert-info" style="margin-bottom: 1rem; font-size: 0.875rem;">
+        💡 Para ordenar manualmente tus tareas (arrastrándolas), selecciona el rol <strong>Propias</strong>, quita los filtros y selecciona <strong>Orden manual</strong>.
+    </div>
+{% endif %}
 
 {% if not tasks %}
     <div class="empty-state">
@@ -70,9 +104,17 @@
 {% else %}
     <div class="task-list" id="task-list-container">
         {% for task in tasks %}
-            <div class="task-item" id="task-item-{{ task.id }}" data-task-id="{{ task.id }}">
+            {% set viewer_role = 'owner' if task.user_id == user_id else 'assignee' %}
+            <div class="task-item" id="task-item-{{ task.id }}" data-task-id="{{ task.id }}" data-viewer-role="{{ viewer_role }}" {% if is_draggable %}draggable="true"{% endif %} style="{% if is_draggable %}cursor: grab;{% endif %}">
                 <div class="task-main">
-                    <h3 class="task-title">{{ task.title }}</h3>
+                    <h3 class="task-title">
+                        <a href="{{ url_for('tasks.detail_task_view', id=task.id) }}" style="color: inherit; text-decoration: none;">{{ task.title }}</a>
+                        {% if viewer_role == 'owner' %}
+                            <span class="badge" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-color); font-size: 0.7rem;">Propietario</span>
+                        {% else %}
+                            <span class="badge" style="background: var(--primary-color); color: white; font-size: 0.7rem;">Asignado</span>
+                        {% endif %}
+                    </h3>
                     {% if task.description %}
                         <p class="task-desc">{{ task.description }}</p>
                     {% endif %}
@@ -95,6 +137,11 @@
                             {% endif %}
                         {% endif %}
                         <span title="Creada el">🕒 Creada: {{ task.created_at[:10] }}</span>
+                        {% if task.assignee_email %}
+                            <span class="task-assignee" id="task-assignee-{{ task.id }}" title="Asignada a">👤 {{ task.assignee_email }}</span>
+                        {% else %}
+                            <span class="task-assignee" id="task-assignee-{{ task.id }}" style="display: none;" title="Asignada a"></span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="task-actions">
@@ -115,20 +162,46 @@
                             </button>
                         </form>
                     {% endif %}
+
+                    {% if viewer_role == 'owner' %}
+                    <button type="button" class="btn btn-sm btn-outline btn-open-assign-modal" data-task-id="{{ task.id }}">
+                        {% if task.assignee_id %}Reasignar{% else %}Asignar{% endif %}
+                    </button>
                     <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
                     <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form">
                         <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
                             Eliminar
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         {% endfor %}
     </div>
 {% endif %}
+
+<!-- Assign Modal -->
+<div id="assign-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+    <div class="card modal-content" style="margin: 10vh auto; width: 90%; max-width: 440px; position: relative;">
+        <button type="button" class="close alert-close" style="position: absolute; top: 1.5rem; right: 1.5rem;" aria-label="Cerrar">&times;</button>
+        <h2 class="card-title">Asignar Tarea</h2>
+        <form id="assign-task-form">
+            <div class="form-group">
+                <label for="assignee_email_input" class="form-label">Correo del Asignado</label>
+                <input type="email" id="assignee_email_input" name="assignee_email" class="form-input" placeholder="usuario@ejemplo.com" required>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" id="btn-submit-unassign" class="btn btn-outline" style="color: var(--danger); border-color: var(--danger); display: none;">Desasignar</button>
+                <button type="submit" class="btn btn-primary btn-submit-assign">Asignar / Reasignar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/api.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/assignment.js') }}?v=2"></script>
 {% endblock %}

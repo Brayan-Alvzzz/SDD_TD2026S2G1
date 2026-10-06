@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collected 7 items
+
+tests/integration/test_collaboration_js.py .......                       [100%]
+
+=============================== warnings summary ===============================
+tests/integration/test_collaboration_js.py:9
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_collaboration_js.py:9: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_collaboration_js.py)
+    class TestServerThread(threading.Thread):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 7 passed, 1 warning in 11.75s =========================

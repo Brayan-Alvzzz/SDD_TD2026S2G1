@@ -71,21 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 setOverdueBadge(taskId, result.data.is_overdue);
             }
 
-            // 5. Update actions container upon success
-            const deleteFormHTML = `
-                <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
-                    <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
-                        Eliminar
-                    </button>
-                </form>
-            `;
-            actionsContainer.innerHTML = `
-                <button type="button" class="btn btn-sm btn-primary btn-advance-status" 
+            // 5. Update next action button upon success
+            reopenBtn.closest("form").outerHTML = `
+                <button type="button" class="btn btn-sm btn-primary btn-advance-status"
                         data-task-id="${taskId}" data-next-status="en_progreso">
                     Iniciar ▶
                 </button>
-                <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
-                ${deleteFormHTML}
             `;
             showNotification("Tarea reabierta exitosamente.", "success");
             return;
@@ -140,36 +131,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // 5. Update next action button upon success
-        const deleteFormHTML = `
-            <form method="POST" action="/tasks/${taskId}/delete" class="delete-task-form inline-form">
-                <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
-                    Eliminar
-                </button>
-            </form>
-        `;
-
         if (nextStatus === "en_progreso") {
-            actionsContainer.innerHTML = `
-                <button type="button" class="btn btn-sm btn-success btn-advance-status" 
+            btn.outerHTML = `
+                <button type="button" class="btn btn-sm btn-success btn-advance-status"
                         data-task-id="${taskId}" data-next-status="completada">
                     Completar ✓
                 </button>
-                <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
-                ${deleteFormHTML}
             `;
             showNotification("Tarea marcada como 'en progreso'", "success");
         } else if (nextStatus === "completada") {
-            const reopenFormHTML = `
+            btn.outerHTML = `
                 <form method="POST" action="/tasks/${taskId}/reopen" class="reopen-task-form inline-form">
                     <button type="submit" class="btn btn-sm btn-secondary btn-reopen-task" data-task-id="${taskId}">
                         Reabrir ↺
                     </button>
                 </form>
-            `;
-            actionsContainer.innerHTML = `
-                ${reopenFormHTML}
-                <a href="/tasks/${taskId}/edit" class="btn btn-sm btn-outline">Editar</a>
-                ${deleteFormHTML}
             `;
             showNotification("¡Tarea completada con éxito!", "success");
         }
@@ -184,5 +160,68 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
-});
 
+    let draggedItem = null;
+    let isReordering = false;
+    let originalOrder = [];
+
+    listContainer.addEventListener("dragstart", (e) => {
+        const taskItem = e.target.closest(".task-item");
+        if (!taskItem || taskItem.getAttribute("draggable") !== "true" || isReordering) {
+            e.preventDefault();
+            return;
+        }
+        draggedItem = taskItem;
+
+        // Record current order for potential rollback
+        originalOrder = Array.from(listContainer.children);
+
+        setTimeout(() => taskItem.style.opacity = "0.5", 0);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", taskItem.dataset.taskId);
+    });
+
+    listContainer.addEventListener("dragend", (e) => {
+        const taskItem = e.target.closest(".task-item");
+        if (taskItem) taskItem.style.opacity = "1";
+        draggedItem = null;
+    });
+
+    listContainer.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!draggedItem || isReordering) return;
+
+        const targetItem = e.target.closest(".task-item");
+        if (targetItem && targetItem !== draggedItem) {
+            const rect = targetItem.getBoundingClientRect();
+            const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+            listContainer.insertBefore(draggedItem, next ? targetItem.nextSibling : targetItem);
+        }
+    });
+
+    listContainer.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        if (!draggedItem || isReordering) return;
+
+        isReordering = true;
+
+        const items = Array.from(listContainer.querySelectorAll(".task-item"));
+        const taskIds = items.map(item => parseInt(item.dataset.taskId));
+
+        const result = await API.patch("/api/tasks/order", { task_ids: taskIds });
+
+        if (!result.success) {
+            // Rollback elements to their original positions without destroying them
+            originalOrder.forEach(item => listContainer.appendChild(item));
+
+            if (result.status === 409) {
+                showNotification("La lista de tareas está desactualizada. Por favor, recarga la página.", "error");
+            } else {
+                showNotification(result.error || "Error al guardar el nuevo orden.", "error");
+            }
+        }
+
+        isReordering = false;
+    });
+});
