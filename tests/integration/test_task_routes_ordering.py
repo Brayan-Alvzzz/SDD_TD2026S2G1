@@ -146,3 +146,23 @@ def test_task_list_orders_by_position(client, user_service, task_service, task_r
     # Then verify the order matches the position
     owner_task_ids = [t["id"] for t in tasks]
     assert owner_task_ids == [t3.id, t2.id, t1.id]
+
+def test_order_tasks_actor_spoofing_attempt(client, user_service, task_service, task_repo, db_session):
+    owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
+    
+    with client.session_transaction() as sess:
+        sess["user_id"] = owner.id
+        sess["user_email"] = owner.email
+        
+    # Attempt to spoof user_id in the body, but pass other's tasks
+    res = client.patch("/api/tasks/order", json={
+        "user_id": other.id, # malicious actor trying to supply ID
+        "task_ids": [t_other.id]
+    })
+    
+    # The route should ignore the 'user_id' in body and use session["user_id"] (owner).
+    # Since t_other.id is not accessible by owner, it should return 404 (or 403 if assigned to owner, but it's not)
+    assert res.status_code == 404
+    data = res.get_json()
+    assert data["status"] == "error"
+    assert "no son accesibles" in data["error"] or "inexistente" in data["error"]

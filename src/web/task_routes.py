@@ -39,9 +39,11 @@ def list_tasks_view():
     user_id = session["user_id"]
     status_filter = request.args.get("status")
     status_val = status_filter if status_filter else "todas"
-    sort = request.args.get("sort", "created_desc")
-    category_filter = request.args.get("category_id")
     role_filter = request.args.get("role", "all")
+    sort = request.args.get("sort")
+    if not sort:
+        sort = "manual" if role_filter == "owned" else "created_desc"
+    category_filter = request.args.get("category_id")
     task_service = get_task_service()
     category_service = get_category_service()
     categories = category_service.list_categories(user_id)
@@ -80,8 +82,48 @@ def list_tasks_api():
     user_id = session["user_id"]
     role_filter = request.args.get("role", "all")
     status_filter = request.args.get("status", "todas")
-    sort = request.args.get("sort", "created_desc")
+    sort = request.args.get("sort")
+    if not sort:
+        sort = "manual" if role_filter == "owned" else "created_desc"
     category_filter = request.args.get("category_id")
+
+@task_bp.route("/api/tasks/order", methods=["PATCH"])
+@login_required
+def update_task_order_api():
+    """
+    Actualiza el orden manual de las tareas del usuario.
+    Espera JSON: {"task_ids": [id1, id2, ...]}
+    """
+    user_id = session.get("user_id")
+    
+    data = request.get_json()
+    if not data or "task_ids" not in data:
+        return jsonify({"status": "error", "error": "El cuerpo debe incluir 'task_ids' como un arreglo."}), 400
+        
+    task_ids = data["task_ids"]
+    if not isinstance(task_ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in task_ids):
+        return jsonify({"status": "error", "error": "El arreglo 'task_ids' debe contener solo números enteros."}), 400
+        
+    if len(task_ids) != len(set(task_ids)):
+        return jsonify({"status": "error", "error": "El arreglo no puede contener identificadores duplicados."}), 400
+        
+    task_service = get_task_service()
+    
+    try:
+        changed_count = task_service.update_task_order(user_id, task_ids)
+        return jsonify({"status": "success", "changed": changed_count}), 200
+    except ValidationError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except OperationNotPermittedError as e:
+        return jsonify({"status": "error", "error": str(e)}), 403
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except ConflictError as e:
+        return jsonify({"status": "error", "error": str(e)}), 409
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "error": "Error interno al reordenar tareas."}), 500
     task_service = get_task_service()
 
     try:

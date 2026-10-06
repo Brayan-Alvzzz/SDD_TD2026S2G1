@@ -442,3 +442,15 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - Se creó `tests/integration/test_task_routes_ordering.py` verificando todos los casos HTTP descritos en el contrato (400, 401, 403, 404, 409, 200).
   - Se comprobó que la consulta de lista de tareas respete el nuevo ordenamiento (`position ASC, id ASC`).
 - **Evidencia guardada:** En `docs/evidencias/inc5/red-routes-ordering.txt`.
+
+## 2026-10-06 — Implementación Incremento 5: Bloque B (GREEN Rutas y Regresión)
+
+- **Actividad:** Implementación de la ruta `PATCH /api/tasks/order` y el listado de tareas manual.
+- **Detalles (T006, T007):**
+  - Se añadió la prueba explícita `test_order_tasks_actor_spoofing_attempt` para validar que cualquier intento de enviar un `user_id` falso por JSON sea ignorado (el actor se extrae estrictamente de `session["user_id"]`), generando evidencia adicional en `docs/evidencias/inc5/red-routes-spoofing.txt`.
+  - Se implementó la ruta REST respetando fielmente el contrato de respuestas 400, 401, 403, 404 y 409 usando manejo de excepciones encapsulado en `TaskService`.
+  - Se ajustaron los repositorios y servicios (`list_by_user`, `list_tasks_visible`, `valid_sorts`) para admitir un modo de ordenación explícito `sort="manual"` (basado en `position ASC, id ASC`), y se modificó `task_routes.py` para usar por defecto este orden manual cuando la vista es `Mis Tareas` (`role="owned"`).
+- **Resultado GREEN:** La suite de rutas pasó exitosamente (9 pruebas). Regresión global exitosa con 257 pruebas superadas (`EXIT_CODE: 0`).
+- **Evidencias guardadas:**
+  - `docs/evidencias/inc5/green-routes-ordering.txt`
+  - `docs/evidencias/inc5/regresion-routes-ordering.txt`

@@ -279,7 +279,7 @@ class TaskService:
     ) -> List[Task]:
         if status and status not in ("pendiente", "en_progreso", "completada"):
             raise ValidationError(f"Filtro de estado inválido: '{status}'.")
-        valid_sorts = ("created_desc", "priority_desc", "priority_asc")
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc", "manual")
         if not sort or sort not in valid_sorts:
             sort = "created_desc"
         tasks = self.task_repo.list_by_user(user_id=user_id, status=status, sort=sort, category_id=category_id)
@@ -298,7 +298,7 @@ class TaskService:
             raise ValidationError(f"Filtro de rol inválido: '{role}'.")
         if status and status not in ("todas", "pendiente", "en_progreso", "completada"):
             raise ValidationError(f"Filtro de estado inválido: '{status}'.")
-        valid_sorts = ("created_desc", "priority_desc", "priority_asc")
+        valid_sorts = ("created_desc", "priority_desc", "priority_asc", "manual")
         if not sort or sort not in valid_sorts:
             raise ValidationError(f"Filtro de ordenamiento inválido: '{sort}'.")
             

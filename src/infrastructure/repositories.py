@@ -168,6 +168,8 @@ class TaskRepository:
                 else_=4
             )
             stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "manual":
+            stmt = stmt.order_by(TaskORM.position.asc(), TaskORM.id.asc())
         else:
             stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
 
@@ -227,6 +229,8 @@ class TaskRepository:
                 else_=4
             )
             stmt = stmt.order_by(priority_order.asc(), TaskORM.created_at.desc(), TaskORM.id.desc())
+        elif sort == "manual":
+            stmt = stmt.order_by(TaskORM.position.asc(), TaskORM.id.asc())
         else:
             stmt = stmt.order_by(TaskORM.created_at.desc(), TaskORM.id.desc())
 

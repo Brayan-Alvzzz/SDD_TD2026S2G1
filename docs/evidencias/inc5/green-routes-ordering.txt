@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collecting ... collected 9 items
+
+tests/integration/test_task_routes_ordering.py::test_order_tasks_success_and_idempotence PASSED [ 11%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_unauthenticated PASSED [ 22%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_invalid_structure PASSED [ 33%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_operation_not_permitted PASSED [ 44%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_not_found PASSED [ 55%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_conflict PASSED [ 66%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_empty_success PASSED [ 77%]
+tests/integration/test_task_routes_ordering.py::test_task_list_orders_by_position PASSED [ 88%]
+tests/integration/test_task_routes_ordering.py::test_order_tasks_actor_spoofing_attempt PASSED [100%]
+
+============================== 9 passed in 1.32s ===============================
+EXIT_CODE: 0
