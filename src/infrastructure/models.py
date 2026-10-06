@@ -69,6 +69,7 @@ class TaskORM(db.Model):
             assignee_id: Optional[int] = None,
             is_deleted: Optional[bool] = None,
             deleted_at: Optional[str] = None,
+            position: Optional[int] = None,
             **kwargs: Any
         ) -> None: ...
 
@@ -96,6 +97,7 @@ class TaskORM(db.Model):
     deleted_at = db.Column(db.String(35), nullable=True)
     created_at = db.Column(db.String(35), nullable=False)
     updated_at = db.Column(db.String(35), nullable=False)
+    position = db.Column(db.Integer, nullable=True)
 
     category = db.relationship("CategoryORM", backref=db.backref("tasks", passive_deletes=True))
     audit_logs = db.relationship("AuditLogORM", backref="task", cascade="all, delete-orphan", passive_deletes=True)

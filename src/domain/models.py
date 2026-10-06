@@ -39,6 +39,7 @@ class Task:
     deleted_at: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+    position: Optional[int] = None
 
 
 @dataclass

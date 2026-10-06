@@ -5,7 +5,7 @@ import re
 import json
 from typing import Optional, List, Any, Union
 from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
-from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError, TaskNotAccessibleError
+from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError, TaskNotAccessibleError, OperationNotPermittedError
 from src.domain.state_machine import TaskStateMachine
 from src.domain.permissions import authorize, Operation
 from src.infrastructure.security import hash_password, verify_password
@@ -572,6 +572,68 @@ class TaskService:
 
             self._commit()
             return self._apply_overdue(updated)
+        except Exception:
+            self._rollback()
+            raise
+
+    def update_task_order(self, user_id: int, task_ids: List[int]) -> int:
+        if not isinstance(task_ids, list):
+            raise ValidationError("El formato de la lista de tareas es inválido.")
+            
+        if len(task_ids) != len(set(task_ids)):
+            raise ValidationError("La lista contiene IDs duplicados.")
+
+        # Transacción y bloqueo estricto en SQLite
+        if self.session is not None and getattr(self.session.get_bind().dialect, "name", "") == "sqlite":
+            self.session.commit()
+            import sqlalchemy as sa
+            self.session.execute(sa.text("BEGIN IMMEDIATE"))
+
+        try:
+            from src.infrastructure.models import TaskORM
+            import sqlalchemy as sa
+            
+            tasks_orm = self.session.execute(
+                sa.select(TaskORM).where(TaskORM.user_id == user_id, TaskORM.is_deleted == False)
+            ).scalars().all()
+            
+            owned_ids = {t.id for t in tasks_orm}
+            
+            # Validación de Precedencia: 403 vs 404
+            invalid_ids = [tid for tid in task_ids if tid not in owned_ids]
+            if invalid_ids:
+                for tid in invalid_ids:
+                    other_task = self.session.get(TaskORM, tid)
+                    if other_task and not other_task.is_deleted and other_task.assignee_id == user_id and other_task.user_id != user_id:
+                        raise OperationNotPermittedError("No puede reordenar tareas asignadas que pertenecen a otro propietario.")
+                raise TaskNotAccessibleError("Una o más tareas no son accesibles o no existen.")
+
+            # Validación: 409 (faltan tareas)
+            if set(task_ids) != owned_ids:
+                raise ConflictError("La lista de tareas proporcionada está desactualizada respecto al estado actual del servidor.")
+
+            task_map = {t.id: t for t in tasks_orm}
+            changed_count = 0
+            
+            for idx, tid in enumerate(task_ids):
+                new_pos = (idx + 1) * 10
+                if task_map[tid].position != new_pos:
+                    task_map[tid].position = new_pos
+                    changed_count += 1
+
+            if changed_count > 0:
+                self.audit_repo.create(
+                    task_id=task_ids[0],
+                    actor_id=user_id,
+                    action="reorder",
+                    details=json.dumps({"task_ids": task_ids})
+                )
+                self._commit()
+            else:
+                self._rollback()
+
+            return changed_count
+
         except Exception:
             self._rollback()
             raise

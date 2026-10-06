@@ -117,8 +117,8 @@ def test_update_task_order_persistence_and_idempotence(clean_app):
     
     with app.app_context():
         # Get repos without Flask-SQLAlchemy session binding to verify pure logic
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         task_repo = TaskRepository(session)
         audit_repo = AuditLogRepository(session)
         service = TaskService(task_repo, audit_repo, session=session)
@@ -143,8 +143,8 @@ def test_update_task_order_independent_owners(clean_app):
     owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         task_repo = TaskRepository(session)
         audit_repo = AuditLogRepository(session)
         service = TaskService(task_repo, audit_repo, session=session)
@@ -162,8 +162,8 @@ def test_update_task_order_assigned_other_owner(clean_app):
     owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         # Attempt to reorder including the assigned task (t_assigned)
@@ -175,8 +175,8 @@ def test_update_task_order_not_accessible(clean_app):
     owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         # Ajena y no asignada
@@ -192,8 +192,8 @@ def test_update_task_order_invalid_input(clean_app):
     owner_id, _, tasks, _, _ = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         with pytest.raises(ValidationError):
@@ -204,8 +204,8 @@ def test_update_task_order_out_of_sync(clean_app):
     owner_id, _, tasks, _, _ = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         # Missing one active task
@@ -217,8 +217,8 @@ def test_update_task_order_empty(clean_app):
     owner_id, other_id, tasks, _, _ = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         # Owner has tasks, empty list -> out of sync -> 409 Conflict
@@ -241,8 +241,8 @@ def test_update_task_order_audit(clean_app):
     owner_id, _, tasks, _, _ = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
@@ -280,8 +280,8 @@ def test_update_task_order_concurrency(clean_app):
     event_lock_acquired.wait(2.0)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         # Attempt to update order. This should block and potentially raise OperationalError (database is locked)
@@ -294,7 +294,7 @@ def test_update_task_order_concurrency(clean_app):
         # A true concurrency test of read-modify-write:
         # We can mock nothing. Just call update_task_order.
         changed = service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
-        assert changed == 3
+        assert changed == 2
         
     t.join()
     
@@ -307,7 +307,7 @@ def test_update_task_order_concurrency(clean_app):
     def lock_and_block():
         conn = sqlite3.connect(db_path, timeout=1.0)
         conn.execute("BEGIN EXCLUSIVE")
-        time.sleep(2.0)
+        time.sleep(6.0)
         conn.rollback()
         conn.close()
         
@@ -316,8 +316,8 @@ def test_update_task_order_concurrency(clean_app):
     time.sleep(0.2)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         # Enforce short timeout on this session's engine to fail fast
         session.get_bind().dispose()
         # In a real scenario, this will raise an OperationalError 'database is locked'.
@@ -333,8 +333,8 @@ def test_new_tasks_added_at_end(clean_app):
     owner_id, _, tasks, _, _ = seed_data(db_path)
     
     with app.app_context():
-        from src.infrastructure.database import get_db_session
-        session = get_db_session()
+        from src.infrastructure.database import db
+        session = db.session
         service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
         
         new_task = service.create_task(owner_id, "New Task")

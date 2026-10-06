@@ -84,7 +84,8 @@ class TaskRepository:
             is_deleted=r.is_deleted,
             deleted_at=r.deleted_at,
             created_at=r.created_at,
-            updated_at=r.updated_at
+            updated_at=r.updated_at,
+            position=r.position
         )
 
     def create(
@@ -98,6 +99,14 @@ class TaskRepository:
         category_id: Optional[int] = None
     ) -> Task:
         now = datetime.now(timezone.utc).isoformat()
+        max_pos = self.session.execute(
+            sa.select(sa.func.max(TaskORM.position)).where(
+                TaskORM.user_id == user_id,
+                TaskORM.is_deleted == False
+            )
+        ).scalar()
+        new_position = (max_pos or 0) + 10
+
         task_orm = TaskORM(
             user_id=user_id,
             title=title.strip(),
@@ -107,7 +116,8 @@ class TaskRepository:
             priority=priority or "media",
             category_id=category_id,
             created_at=now,
-            updated_at=now
+            updated_at=now,
+            position=new_position
         )
         self.session.add(task_orm)
         self.session.flush()
