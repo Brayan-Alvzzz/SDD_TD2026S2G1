@@ -356,3 +356,57 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - La regresión UI con las pruebas Playwright (`test_collaboration_html.py` y `test_collaboration_js.py`) pasó limpiamente sin necesidad de reintentos ni waits estáticos, certificando robustez. (Salida `docs/evidencias/inc4/regresion-ui.txt`).
   - La suite general se corrió en su totalidad (`pytest`) validando 237 ítems de manera victoriosa, demostrando que ninguna validación anterior (Incremental 1-3) fue degradada (Salida `docs/evidencias/inc4/green-final.txt`).
   - Con esto, T031, T032, T033, T034, T035, T036 y T037 quedan cerradas satisfactoriamente. Incremento 4 está formalmente finalizado.
+
+## 2026-10-06 — Incremento 5 (Reordenamiento manual): Especificación (speckit-specify)
+
+- **Actividad:** Inicio de la especificación del Incremento 5 para las Historias de Usuario HU-15 y HU-16.
+- **Análisis de estado previo:** Se determinó que HU-15 (completar tareas sin recargar) ya había sido implementada y probada durante el Incremento 4. Se incluyó en la especificación para completar la trazabilidad pero se anotó como un requisito satisfecho y no se volverá a implementar código duplicado.
+- **Contradicciones Identificadas:** La guía original mencionaba "no introducir endpoints nuevos", pero la memoria indicaba usar un "contrato extendido". Se tomó la decisión arquitectónica preliminar de que se creará un endpoint mínimo específico para esta funcionalidad (p. ej., `PATCH /api/tasks/order`) evitando el reúso de semánticas HTTP incorrectas (como modificar el contenido individual de una tarea para su ordenación colectiva). Esta decisión se cerrará formalmente en la fase de plan.
+- **Limitación de Alcance:** Se propuso restringir explícitamente el reordenamiento a tareas **propias** del usuario, previniendo escalada de permisos o complicaciones sobre listas de tareas asignadas, compartidas o ajenas.
+- **Artefactos Creados:**
+  - `specs/005-task-ordering/spec.md`
+  - `specs/005-task-ordering/checklists/requirements.md`
+- **Siguiente Paso Pendiente:** Resolver dudas de clarificación de los requerimientos identificados antes de iniciar el plan arquitectónico.
+
+## 2026-10-06 — Incremento 5 (Reordenamiento manual): Clarificación (speckit-clarify)
+
+- **Actividad:** Resolución de dudas de alcance en `spec.md` con el usuario.
+- **Decisiones Adoptadas (Totalmente Resueltas):**
+  1. **Alcance de Tareas:** Solo se permite reordenar las tareas cuyo propietario es el usuario autenticado (incluidas las que haya delegado). Queda estrictamente prohibido ordenar tareas que fueron asignadas por otro usuario.
+  2. **Vistas y Drag & Drop:** Habilitado de forma exclusiva en "Mis tareas" (`role=owned`) sin filtros activos (estado/categoría) y sin orden previo (prioridad). En otras vistas estará deshabilitado con instrucciones para activarlo. Tareas nuevas se insertan al final; tareas eliminadas preservan el orden relativo de las demás.
+  3. **Concurrencia Estricta:** Las sesiones concurrentes aplican "Last write wins". Sin embargo, el backend rechazará (400/409) si en la lista de ordenamiento faltan tareas (desactualizado), si hay tareas ajenas, si hay eliminadas o duplicadas. No habrá guardado parcial.
+  4. **Contrato:** Se adoptará un endpoint explícito `PATCH /api/tasks/order` para cumplir la funcionalidad resolviendo limpiamente la contradicción en la guía arquitectónica.
+  5. **HU-15:** Quedó validado que las pruebas asíncronas y el código del Incremento 4 ya cubren este requisito; no se requerirá reimplementación, solo pruebas de regresión.
+- **Resultado:** La checklist de calidad (`checklists/requirements.md`) ahora tiene todas sus validaciones en verde (`[x]`). No existen ambigüedades ni marcas `[NEEDS CLARIFICATION]` pendientes.
+- **Siguiente Paso:** Generar el Plan de Implementación (`speckit-plan`).
+
+## 2026-10-06 — Incremento 5 (Reordenamiento manual): Plan (`speckit-plan`)
+
+- **Actividad:** Generación de plan técnico, modelos y contratos de API.
+- **Decisiones Técnicas:**
+  1. **Persistencia**: Se introduce la columna numérica `position` en `TaskORM` y el modelo de dominio. La inicialización de la migración será programática e internamente determinista, evitando que ninguna tarea quede en NULL. Las nuevas tareas se crean con la posición máxima actual + 1. El borrado lógico no afecta el campo, garantizando que el orden visual de las restantes se mantenga al renderizar.
+  2. **Servicio y Concurrencia**: El servicio implementará un "last write wins" pero bajo validación estricta del conjunto: Extraerá las IDs en DB, comprobará su validez y longitud comparado a las enviadas. Si falta alguna o difieren los conjuntos por desincronización, arrojará `409 Conflict`. Actualización transaccional 100% atómica.
+  3. **Contrato HTTP**: Endpoint específico `PATCH /api/tasks/order` que acepta y procesa todo un arreglo. Retornará 400 (Errores de validación JSON/Tipo/Duplicados), 404 (ID inexistente o ajeno) o 409 (Estado desactualizado).
+  4. **UI**: Vanilla JS implementará Drag and Drop nativo en vistas aptas (sin requerir nuevas librerías externas), recuperando y revirtiendo el orden ante errores o avisando de conflictos (409) para recargar la vista.
+- **Artefactos Generados:**
+  - `specs/005-task-ordering/research.md`
+  - `specs/005-task-ordering/data-model.md`
+  - `specs/005-task-ordering/contracts/task-ordering-contract.md`
+  - `specs/005-task-ordering/quickstart.md`
+  - `specs/005-task-ordering/plan.md`
+- **Siguiente Paso Pendiente:** Descomposición de tareas con `/speckit-tasks` y posterior inicio de la implementación.
+
+## 2026-10-06 — Incremento 5 (Reordenamiento manual): Tareas y Análisis (`speckit-tasks`, `speckit-analyze`)
+
+- **Actividad:** Generación de archivo `tasks.md` y revisión de consistencia cruzada.
+- **Detalle de tareas (tasks.md):**
+  - Bloque A (Persistencia): Configurar modelo, migraciones deterministas y lógica de `TaskService.update_task_order` protegiendo la concurrencia con aislamiento transaccional/bloqueo de base de datos exacto. Pruebas RED preparadas para desincronizaciones de estado (409).
+  - Bloque B (Ruta y Listado): Implementación de endpoint REST (`PATCH /api/tasks/order`) respetando precedencia estricta de validación 401, 400, 403, 404, 409. Aseguramiento de lectura visual en orden ascendente posicional.
+  - Bloque C (Interfaz y Drag&Drop): Configuración de HTML5 nativo de arrastre solo en la vista idónea (`role=owned` sin filtros). Implementación de control optimista con recarga segura en caso de desajustes, e inclusión de test E2E comprobando arrastre + persistencia post F5 y resiliencia del previo completado asíncrono (HU-15).
+  - Bloque Final: Regresión completa.
+- **Análisis de Consistencia:**
+  - Cobertura total de historias (HU-15 indirecta como regresión, HU-16 priorizada).
+  - FR-001 a FR-009 mapeados de manera explícita en `tasks.md`.
+  - El mecanismo `BEGIN IMMEDIATE` (o aislamiento SQLAlchemy transaccional en `TaskService`) y los códigos de error (403 para asignados vs 404 para ajenos) quedaron perfectamente estipulados en `plan.md` y `contracts/task-ordering-contract.md`.
+- **Resultado:** No se detectaron conflictos mayores. Documentos rectificados, consistencia verificada exitosamente.
+- **Siguiente Paso:** Iniciar la ejecución de tareas empezando por Bloque A (RED / GREEN).
