@@ -7,9 +7,10 @@ from typing import Optional, List, Any, Union
 from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
 from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
 from src.domain.state_machine import TaskStateMachine
+from src.domain.permissions import authorize, Operation
 from src.infrastructure.security import hash_password, verify_password
 from src.infrastructure.repositories import (
-    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository, CategoryRepository
+    UserRepository, TaskRepository, AuditLogRepository, PasswordResetTokenRepository, CategoryRepository, NotificationRepository
 )
 from src.infrastructure.notifications import ConsoleNotificationService
 
@@ -599,3 +600,107 @@ class CategoryService:
             raise
 
 
+class CollaborationService:
+    def __init__(
+        self,
+        task_repo: TaskRepository,
+        user_repo: UserRepository,
+        audit_repo: AuditLogRepository,
+        notification_repo: NotificationRepository,
+        session=None
+    ):
+        self.task_repo = task_repo
+        self.user_repo = user_repo
+        self.audit_repo = audit_repo
+        self.notification_repo = notification_repo
+        self.session = session or getattr(task_repo, "session", None)
+
+    def _commit(self):
+        if self.session is not None:
+            self.session.commit()
+
+    def _rollback(self):
+        if self.session is not None:
+            self.session.rollback()
+
+    def assign_task(self, task_id: int, actor_id: int, assignee_email: str) -> None:
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise NotFoundError("Tarea no encontrada.")
+
+        authorize(task, actor_id, Operation.MANAGE_ASSIGNMENT)
+
+        if not assignee_email or not isinstance(assignee_email, str) or not assignee_email.strip():
+            raise ValidationError("El correo del asignado es obligatorio.")
+
+        assignee_email_clean = assignee_email.strip().lower()
+        assignee = self.user_repo.get_by_email(assignee_email_clean)
+        if not assignee:
+            raise ValidationError(f"No se encontró un usuario con el correo {assignee_email_clean}.")
+
+        if assignee.id == task.user_id:
+            raise ValidationError("El propietario no puede auto-asignarse la tarea.")
+
+        if task.assignee_id == assignee.id:
+            return  # Idempotent
+
+        old_assignee_id = task.assignee_id
+        action = "reassign" if old_assignee_id is not None else "assign"
+
+        try:
+            success = self.task_repo.set_assignee(task.id, old_assignee_id, assignee.id)
+            if not success:
+                raise ConflictError("La tarea fue modificada concurrentemente.")
+
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=actor_id,
+                action=action,
+                details=json.dumps({"old_assignee_id": old_assignee_id, "new_assignee_id": assignee.id})
+            )
+
+            actor = self.user_repo.get_by_id(actor_id)
+            actor_email = actor.email if actor else "desconocido"
+            current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+            self.notification_repo.create(
+                recipient_id=assignee.id,
+                task_id=task.id,
+                actor_id=actor_id,
+                type="task_assigned",
+                message=f"Asignada el {current_time} por {actor_email}"
+            )
+
+            self._commit()
+        except Exception:
+            self._rollback()
+            raise
+
+    def unassign_task(self, task_id: int, actor_id: int) -> None:
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise NotFoundError("Tarea no encontrada.")
+
+        authorize(task, actor_id, Operation.MANAGE_ASSIGNMENT)
+
+        if task.assignee_id is None:
+            return  # Idempotent
+
+        old_assignee_id = task.assignee_id
+
+        try:
+            success = self.task_repo.set_assignee(task.id, old_assignee_id, None)
+            if not success:
+                raise ConflictError("La tarea fue modificada concurrentemente.")
+
+            self.audit_repo.create(
+                task_id=task.id,
+                actor_id=actor_id,
+                action="unassign",
+                details=json.dumps({"old_assignee_id": old_assignee_id, "new_assignee_id": None})
+            )
+
+            self._commit()
+        except Exception:
+            self._rollback()
+            raise

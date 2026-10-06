@@ -129,7 +129,7 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **T007:**
   - Se implementó `NotificationRepository` en `src/infrastructure/repositories.py`.
   - La consulta central en `list_by_recipient` utiliza subconsultas con `MAX(id)` asociadas y agrupadas por tarea y destinatario (`task_id`, `recipient_id`), lo cual resuelve el campo derivado `available` combinando la validación contra el modelo actual (`is_deleted=False` y `assignee_id==recipient_id`).
-  - No ejecuta confirmaciones (`session.commit()`), permitiendo la correcta participación en transacciones envolventes del servicio. 
+  - No ejecuta confirmaciones (`session.commit()`), permitiendo la correcta participación en transacciones envolventes del servicio.
 - **T009:**
   - Las 6 pruebas que certificaban el repositorio y sus restricciones en la BD generaron respuesta completamente GREEN. Las evidencias de paso reposan en `docs/evidencias/inc4/repositorio-green.txt`.
   - La regresión íntegra de la base (173/173 tests, abarcando previos y este repositorio) arrojó compatibilidad inquebrantable, constatado en `docs/evidencias/inc4/regresion-repositorio.txt`.
@@ -161,3 +161,30 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Ajuste Aplicado:** Se agregaron declaraciones `def __init__(self, ...): ...` explícitas para cada modelo en `src/infrastructure/models.py`. Para no interferir con la magia en tiempo de ejecución de SQLAlchemy ni alterar el código en producción de forma destructiva, estas declaraciones se colocaron exclusivamente dentro de bloques `if TYPE_CHECKING:`. Esto informa al analizador sobre los parámetros esperados (kwargs válidos) sin que Python evalúe esos constructores al levantar la aplicación.
 - **Validación Pyrefly:** Al ejecutar `npx pyright src/infrastructure/repositories.py`, los diagnósticos desaparecieron completamente (0 errors).
 - **Regresión:** Se ejecutó la suite completa excluyendo temporalmente las pruebas RED (aún no implementadas) de US1. El resultado fue exitoso: **174 passed**. La salida real se guardó en `docs/evidencias/inc4/regresion-tipado-orm.txt`.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 3 (GREEN Servicio US1)
+
+- Se retomó la implementación de `CollaborationService` tras una interrupción accidental de las pruebas.
+- Se implementó la actualización atómica (CAS) en `TaskRepository.set_assignee` y se construyó el servicio en `src/domain/services.py` integrando auditoría y notificaciones dentro de la misma transacción.
+- Se corrigieron los llamados a los métodos del repositorio en las pruebas (e.g., `audit_repo.list_by_task`) y la secuencia del mock de la base de datos para que el rollback limpiara correctamente.
+- **Resultado GREEN:**
+  - Las 11 pruebas específicas del servicio (asignación, reasignación, desasignación, idempotencia, permisos y atomicidad) pasaron exitosamente. Salida guardada en `docs/evidencias/inc4/asignacion-green.txt` (Exit Code 0).
+  - La suite de regresión completa confirmó el éxito de todas las pruebas combinadas con **185 passed**. Evidencia almacenada en `docs/evidencias/inc4/regresion-asignacion.txt` (Exit Code 0).
+- Se marcaron como completadas las tareas T014, T015 y T019 en `tasks.md`.
+- No se avanzó a las rutas ni interfaz gráfica, respetando la directiva de la fase.
+
+## 2026-10-05 — Implementación Incremento 4: Revisión de Pruebas de Servicio US1
+
+- **Diagnóstico y Mejoras:**
+  - Se detectó que las pruebas unitarias y de integración de `CollaborationService` empleaban `db_session.commit()` o `db_session.rollback()` de forma explícita luego de llamar a la función. Esto ocultaba si el propio servicio estaba controlando transaccionalmente la persistencia según lo planificado.
+  - El formato del mensaje de la notificación utilizaba `task.title` en contravención con `data-model.md`, que indicaba que debía incluir únicamente fecha y correo del asignador para cumplir con restricciones de seguridad de visibilidad de datos e invariantes.
+- **Correcciones de Pruebas:**
+  - Se eliminaron los commits y rollbacks de los fixtures después de la ejecución del servicio y se introdujo la validación usando una sesión independiente de la base de datos transaccional (`_get_new_session()`).
+  - Se añadió la prueba unitaria `test_notification_message_format` comprobando que el contenido del campo `message` posee la fecha de asignación, el correo del asignador y nunca el título de la tarea, respetando el límite VARCHAR(255).
+  - Se aseguraron excepciones de dominio correctas (p.e., `TaskNotAccessibleError`) en el rechazo de operaciones sobre tareas eliminadas.
+  - La prueba con validaciones falló en primera instancia demostrando la necesidad de la corrección del mensaje (Salida: `docs/evidencias/inc4/asignacion-revision-previa.txt`).
+- **Implementación y Resultados:**
+  - Se modificó `CollaborationService.assign_task` en `src/domain/services.py` para cumplir estrictamente con el modelo de mensaje `Asignada el %Y-%m-%d %H:%M:%S UTC por <correo>`.
+  - La ejecución focalizada de las 12 pruebas (`test_collaboration_service.py` y `test_collaboration_rollback.py`) arrojó éxito unánime sin filtraciones transaccionales ni errores en los mensajes, constatado en `docs/evidencias/inc4/asignacion-green-corregido.txt` (Exit Code 0).
+  - La suite de regresión completa culminó exitosamente conservando sus aserciones. Resultado guardado en `docs/evidencias/inc4/regresion-asignacion-corregida.txt` (Exit Code 0).
+- Todo el bloque de aserciones transaccionales y de persistencia quedó certificado, manteniendo invariable la base de datos transaccional controlada por `CollaborationService`.

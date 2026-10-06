@@ -1,0 +1,45 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0
+collected 12 items
+
+tests/unit/test_collaboration_service.py ..F.......                      [ 83%]
+tests/integration/test_collaboration_rollback.py ..                      [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_notification_message_format _______________________
+
+collaboration_service = <src.domain.services.CollaborationService object at 0x10c424a50>
+users_and_task = {'owner': User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:02:13.773288+00:00'), ...=False, deleted_at=None, created_at='2026-10-06T00:02:13.774083+00:00', updated_at='2026-10-06T00:02:13.774083+00:00')}
+
+    def test_notification_message_format(collaboration_service, users_and_task):
+        owner = users_and_task["owner"]
+        assignee_email = users_and_task["other"].email
+        assignee_id = users_and_task["other"].id
+        task_id = users_and_task["task"].id
+    
+        collaboration_service.assign_task(task_id, owner.id, assignee_email)
+    
+        with _get_new_session() as verify_session:
+            notifications = verify_session.execute(sa.select(NotificationORM).where(NotificationORM.recipient_id == assignee_id)).scalars().all()
+            assert len(notifications) == 1
+            msg = notifications[0].message
+            assert len(msg) <= 255
+>           assert owner.email in msg
+E           AssertionError: assert 'owner@example.com' in 'Se te ha asignado la tarea: Test Task'
+E            +  where 'owner@example.com' = User(id=1, email='owner@example.com', password_hash='hash', created_at='2026-10-06T00:02:13.773288+00:00').email
+
+tests/unit/test_collaboration_service.py:82: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-28/test_notification_message_form0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+=========================== short test summary info ============================
+FAILED tests/unit/test_collaboration_service.py::test_notification_message_format
+========================= 1 failed, 11 passed in 0.79s =========================

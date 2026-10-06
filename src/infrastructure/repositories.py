@@ -183,6 +183,26 @@ class TaskRepository:
         task.updated_at = now
         return task
 
+    def set_assignee(self, task_id: int, old_assignee_id: Optional[int], new_assignee_id: Optional[int]) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+
+        where_clause = [
+            TaskORM.id == task_id,
+            TaskORM.is_deleted == False
+        ]
+        if old_assignee_id is None:
+            where_clause.append(TaskORM.assignee_id.is_(None))
+        else:
+            where_clause.append(TaskORM.assignee_id == old_assignee_id)
+
+        stmt = (
+            sa.update(TaskORM)
+            .where(sa.and_(*where_clause))
+            .values(assignee_id=new_assignee_id, updated_at=now)
+        )
+        result = self.session.execute(stmt)
+        self.session.flush()
+        return result.rowcount > 0
 
 class AuditLogRepository:
     def __init__(self, session: Session):
@@ -404,7 +424,7 @@ class NotificationRepository:
             .group_by(NotificationORM.task_id)
             .subquery()
         )
-        
+
         stmt = (
             sa.select(NotificationORM, TaskORM, subq.c.max_id)
             .outerjoin(TaskORM, TaskORM.id == NotificationORM.task_id)
@@ -413,14 +433,14 @@ class NotificationRepository:
             .order_by(NotificationORM.is_read.asc(), NotificationORM.created_at.desc(), NotificationORM.id.desc())
             .limit(50)
         )
-        
+
         rows = self.session.execute(stmt).all()
         results = []
         for n_orm, t_orm, max_id in rows:
             available = False
             if t_orm and not t_orm.is_deleted and t_orm.assignee_id == recipient_id and n_orm.id == max_id:
                 available = True
-                
+
             n = Notification(
                 id=n_orm.id,
                 recipient_id=n_orm.recipient_id,
