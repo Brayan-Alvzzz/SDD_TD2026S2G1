@@ -483,6 +483,26 @@ class NotificationRepository:
             created_at=notif_orm.created_at
         )
 
+    def get_by_id_and_recipient(self, notification_id: int, recipient_id: int) -> Optional[Notification]:
+        stmt = sa.select(NotificationORM).where(
+            NotificationORM.id == notification_id,
+            NotificationORM.recipient_id == recipient_id
+        )
+        notif_orm = self.session.execute(stmt).scalars().first()
+        if notif_orm:
+            return Notification(
+                id=notif_orm.id,
+                recipient_id=notif_orm.recipient_id,
+                task_id=notif_orm.task_id,
+                actor_id=notif_orm.actor_id,
+                type=notif_orm.type,
+                message=notif_orm.message,
+                is_read=notif_orm.is_read,
+                read_at=notif_orm.read_at,
+                created_at=notif_orm.created_at
+            )
+        return None
+
     def list_by_recipient(self, recipient_id: int) -> List[Notification]:
         subq = (
             sa.select(

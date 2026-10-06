@@ -4,7 +4,7 @@ import hashlib
 import re
 import json
 from typing import Optional, List, Any, Union
-from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category
+from src.domain.models import User, Task, AuditLog, PasswordResetToken, Category, Notification
 from src.domain.exceptions import ValidationError, ConflictError, UnauthorizedError, NotFoundError
 from src.domain.state_machine import TaskStateMachine
 from src.domain.permissions import authorize, Operation
@@ -735,6 +735,42 @@ class CollaborationService:
 
             self._commit()
             return True, "unassign", None
+        except Exception:
+            self._rollback()
+            raise
+
+class NotificationService:
+    def __init__(self, notification_repo: NotificationRepository, session=None):
+        self.notification_repo = notification_repo
+        self.session = session or getattr(notification_repo, "session", None)
+
+    def _commit(self):
+        if self.session is not None:
+            self.session.commit()
+
+    def _rollback(self):
+        if self.session is not None:
+            self.session.rollback()
+
+    def list_notifications(self, user_id: int) -> List[Notification]:
+        return self.notification_repo.list_by_recipient(user_id)
+
+    def count_unread(self, user_id: int) -> int:
+        return self.notification_repo.count_unread(user_id)
+
+    def mark_as_read(self, notification_id: int, user_id: int) -> bool:
+        # Fetch the notification to check existence and ownership
+        notif = self.notification_repo.get_by_id_and_recipient(notification_id, user_id)
+        if not notif:
+            raise NotFoundError("Notificación no encontrada o no pertenece al usuario.")
+
+        if notif.is_read:
+            return True
+
+        try:
+            self.notification_repo.mark_as_read(notification_id, user_id)
+            self._commit()
+            return True
         except Exception:
             self._rollback()
             raise

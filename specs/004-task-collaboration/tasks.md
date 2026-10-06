@@ -81,12 +81,12 @@ Este documento contiene las tareas organizadas por fases y casos de uso, siguien
 - [x] T026 [US2] Escribir pruebas en `tests/integration/test_notification_routes.py` (idempotencia de lectura, acceso denegado a ajenas, y disponibilidad derivada). Guardar RED en `docs/evidencias/inc4/red-us2.txt`.
 
 ### Implementation
-- [ ] T027 [P] [US2] Actualizar el procesador de contexto en `src/web/app.py` para inyectar el contador de no leídas en la barra superior (requiere que el `NotificationRepository` de la Fase 2 esté terminado).
-- [ ] T028 [US2] Implementar rutas `GET /api/notifications` y `POST /api/notifications/<id>/read` en `src/web/notification_routes.py` (HTML y API).
+- [x] T027 [P] [US2] Actualizar el procesador de contexto en `src/web/app.py` para inyectar el contador de no leídas en la barra superior (requiere que el `NotificationRepository` de la Fase 2 esté terminado).
+- [ ] T028 [US2] Implementar rutas `GET /api/notifications` y `POST /api/notifications/<id>/read` en `src/web/notification_routes.py` (API terminada, rutas HTML pendientes).
 - [ ] T029 [US2] Crear la plantilla `src/web/templates/notifications/list.html` manejando el estado "ya no disponible" sin enlaces a tareas perdidas.
 
 ### Checkpoint (GREEN)
-- [ ] T030 [US2] Ejecutar pruebas de notificaciones y guardar GREEN en `docs/evidencias/inc4/green-us2.txt`.
+- [x] T030 [US2] Ejecutar pruebas de notificaciones y guardar GREEN en `docs/evidencias/inc4/green-us2.txt` verificando el backend.
 
 ---
 

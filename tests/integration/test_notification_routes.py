@@ -95,7 +95,7 @@ def test_mark_as_read_idempotent(client, users_and_notifications):
     # Comprobar estado en base de datos desde otra sesión
     session2 = _get_new_session(db_session)
     repo2 = NotificationRepository(session2)
-    n2 = repo2._get_orm(target_notif.id)
+    n2 = repo2.get_by_id_and_recipient(target_notif.id, assignee.id)
     assert n2.is_read is True
     first_read_at = n2.read_at
     assert first_read_at is not None
@@ -109,7 +109,7 @@ def test_mark_as_read_idempotent(client, users_and_notifications):
     # Comprobar que no cambia read_at
     session3 = _get_new_session(db_session)
     repo3 = NotificationRepository(session3)
-    n3 = repo3._get_orm(target_notif.id)
+    n3 = repo3.get_by_id_and_recipient(target_notif.id, assignee.id)
     assert n3.read_at == first_read_at
     session3.close()
 
@@ -135,7 +135,7 @@ def test_mark_as_read_others_or_nonexistent_returns_404(client, users_and_notifi
     # Confirmar sin cambios
     session2 = _get_new_session(db_session)
     repo2 = NotificationRepository(session2)
-    n2 = repo2._get_orm(stranger_notif_id)
+    n2 = repo2.get_by_id_and_recipient(stranger_notif_id, stranger.id)
     assert n2.is_read is False
     session2.close()
 

@@ -273,3 +273,16 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - Como era esperado al no existir todavía el registro de rutas o endpoints reales para notificaciones, pytest devolvió 7 `AssertionError` puros (principalmente recibiendo un 404 general en lugar del 200, 403 o la respuesta JSON correcta esperada).
   - La salida se ha guardado en `docs/evidencias/inc4/red-us2.txt` con código de salida 1.
   - Se ha marcado como finalizada la tarea de pruebas `T026` y se ha congelado el avance hacia las implementaciones de los controladores para respetar el flujo TDD estricto.
+
+## 2026-10-05 — Implementación Incremento 4: Fase 5 (GREEN Notificaciones Internas - US2)
+
+- **Implementación (T027, T028):**
+  - Se creó el `NotificationService` en `src/domain/services.py` delegando al `NotificationRepository` las operaciones `list_notifications`, `count_unread` y `mark_as_read`.
+  - Se añadió `get_by_id_and_recipient` a `NotificationRepository` para validar la existencia y pertenencia de la notificación y poder diferenciar el error 404 (ajena/inexistente) de la idempotencia (ya leída).
+  - Se implementaron los controladores en `src/web/notification_routes.py` para `GET /api/notifications` y `POST /api/notifications/<id>/read`. Estos endpoints respetan el formato JSON, exigen sesión y limitan estrictamente las consultas al `user_id` de la sesión activa, tal cual lo dicta el contrato de la API.
+  - Se actualizó el procesador de contexto `inject_user` en `src/web/app.py` para inyectar `unread_count` usando el servicio implementado.
+
+- **Resultado GREEN:**
+  - Las 7 pruebas de integración para las notificaciones pasaron exitosamente. La evidencia se guardó en `docs/evidencias/inc4/green-us2.txt` (Exit Code 0).
+  - La regresión global se ejecutó exitosamente validando todas las 222 pruebas del proyecto. La evidencia está en `docs/evidencias/inc4/regresion-notificaciones.txt` (Exit Code 0).
+  - Se registró la finalización de T027 y T030, y T028 como parcial (API terminada, rutas HTML pendientes). No se implementó la plantilla de notificaciones.
