@@ -2,8 +2,8 @@
 
 ## 1. Prerequisites
 
-- Aplicación corriendo localmente (`flask run`).
-- Base de datos actualizada (`flask db upgrade`) inicializando los campos `position`.
+- Aplicación corriendo localmente (ejecutar `flask run` o `python -m flask run`).
+- Base de datos actualizada ejecutando el comando: `flask db upgrade` (inicializará el campo `position` de forma determinista para tareas existentes).
 - Usuario de prueba autenticado (ej: `test@example.com`).
 
 ## 2. Test Setup (Manual)
@@ -24,9 +24,9 @@
 1. Abrir una pestaña incógnito, iniciar sesión con el mismo usuario.
 2. En incógnito, crear "Tarea D".
 3. Volver a la pestaña normal (desactualizada). Arrastrar "Tarea B" al primer lugar.
-4. **Expected Outcome**: El DOM debe intentar soltar la tarea, y luego fallar devolviendo la tarea a su lugar original (rollback visual). Se debe mostrar un mensaje "El listado está desactualizado. Se recargará para mostrar cambios de otra sesión". (Comportamiento `409 Conflict`).
+4. **Expected Outcome**: El DOM intentará reordenar, pero la solicitud fallará devolviendo un `409 Conflict`. El frontend restaurará la tarea a su lugar original (rollback visual) y lanzará un error que indica que la vista está desactualizada y sugiere recargar la página.
 
 ### Scenario C: No Drag-And-Drop en Vistas Filtradas
 1. Cambiar el filtro a "Completadas" o "Asignadas a mí".
 2. Intentar arrastrar una tarea usando el handle de mover.
-3. **Expected Outcome**: El arrastre debe estar deshabilitado (cursor normal o prohibido). Un tooltip o banner debe indicar que "El orden manual arrastrando solo funciona en la vista principal 'Mis tareas' sin filtros activos".
+3. **Expected Outcome**: El arrastre debe estar deshabilitado nativamente (no existe el atributo `draggable="true"` ni la clase `drag-handle`). No se iniciará el evento.

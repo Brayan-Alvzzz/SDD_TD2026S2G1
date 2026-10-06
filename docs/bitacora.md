@@ -465,3 +465,21 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Resultado RED:** Las nuevas pruebas de UI fallaron legítimamente (Timeout esperando peticiones, o fallos de aserciones al verificar notificaciones y envíos) ya que la lógica Javascript de arrastre aún no existe, pero los errores demostraron una ausencia de código en el frontal. La regresión `test_js_assignee_can_complete_without_reload` pasó adecuadamente. (Exit Code 1, 6 failed, 2 passed, 1 warning).
 - **Evidencias guardadas:**
   - `docs/evidencias/inc5/red-ui-ordering.txt`
+
+## 2026-10-06 — Implementación Incremento 5: Bloque C (GREEN UI, Correcciones y Regresión Final)
+
+- **Corrección de Flakiness en Pruebas de Interfaz:**
+  - Las pruebas `test_ui_drag_and_drop_http_error_recovery` y `test_ui_drag_and_drop_http_409_conflict` presentaban intermitencia debido a una *race condition* donde la aserción sobre un booleano en Python (`request_sent`) se ejecutaba antes de que el evento asíncrono de Playwright completara la petición de red. Se corrigió esperando a que la notificación `.alert-error` fuese visible antes de realizar la aserción.
+  - La prueba de peticiones solapadas se estabilizó usando intercepción de rutas en lugar de `time.sleep()`.
+- **Restauración de Rutas (Error de Truncamiento):**
+  - Durante la regresión final se descubrió que los endpoints `list_tasks_api` y `get_task_api` habían sido truncados accidentalmente al implementar `PATCH /api/tasks/order` en el bloque B. Se restauró el código perdido manteniendo el soporte para el filtro `sort="manual"`.
+- **Corrección de Validación JSON:**
+  - La prueba de validación de estructura inválida esperaba un código HTTP 400. Sin embargo, Flask 3.0+ devuelve 415 (Unsupported Media Type) si falla la conversión implícita de JSON. Se corrigió usando `request.get_json(silent=True)` en la ruta, permitiendo capturar el error y emitir explícitamente el 400 documentado en los contratos.
+- **Implementación HTML5 Drag and Drop:**
+  - Se modificó `src/web/templates/tasks/list.html` añadiendo `draggable="true"` únicamente cuando el usuario es propietario (`role=owned`), no hay filtros de categoría/estado, y el ordenamiento es manual.
+  - Se implementaron los handlers `dragstart`, `dragover` y `drop` en `src/web/static/js/tasks.js`. El front-end recopila el orden de los `data-task-id`, envía el `PATCH` a `api.js` y restaura visualmente la interfaz si la petición falla o retorna 409.
+- **Resultado GREEN y Regresión Final:**
+  - Todas las pruebas de UI se completaron en verde (`docs/evidencias/inc5/green-ui-ordering.txt`).
+  - La regresión final de todo el sistema se ejecutó exitosamente. Un total de **264 pruebas** fueron superadas con `EXIT_CODE: 0`.
+  - La salida completa se ha guardado en `docs/evidencias/inc5/regresion-final-inc5.txt`.
+- **Finalización del Incremento:** Las historias HU-15 (reprobada exitosamente tras Incremento 4) y HU-16 quedan completamente satisfechas y cerradas.
