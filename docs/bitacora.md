@@ -454,3 +454,14 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
 - **Evidencias guardadas:**
   - `docs/evidencias/inc5/green-routes-ordering.txt`
   - `docs/evidencias/inc5/regresion-routes-ordering.txt`
+
+## 2026-10-06 — Implementación Incremento 5: Bloque C (Pruebas RED UI y Drag&Drop)
+
+- **Actividad:** Definición de pruebas E2E RED para el drag and drop y recuperación en cliente.
+- **Detalles (T008, T009):**
+  - Se creó `tests/integration/test_task_ordering_ui.py` comprobando comportamientos E2E usando Playwright.
+  - Las pruebas evalúan: persistencia y éxito visual tras arrastrar tareas, capacidad de arrastre para tareas delegadas, inhabilitación del gesto de arrastre en vistas mixtas o filtradas, recuperación frente a fallos HTTP (500 y 409), recuperación frente a fallo de red, y bloqueo de peticiones solapadas.
+  - Se confirmó en la suite `test_collaboration_js.py` que la HU-15 ("completar tareas sin recargar") de la fase colaborativa no sufre roturas imprevistas.
+- **Resultado RED:** Las nuevas pruebas de UI fallaron legítimamente (Timeout esperando peticiones, o fallos de aserciones al verificar notificaciones y envíos) ya que la lógica Javascript de arrastre aún no existe, pero los errores demostraron una ausencia de código en el frontal. La regresión `test_js_assignee_can_complete_without_reload` pasó adecuadamente. (Exit Code 1, 6 failed, 2 passed, 1 warning).
+- **Evidencias guardadas:**
+  - `docs/evidencias/inc5/red-ui-ordering.txt`

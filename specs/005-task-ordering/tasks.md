@@ -38,7 +38,7 @@
 
 **Purpose**: UI, Drag and drop nativo, y control asíncrono.
 
-- [ ] T008 [US16] **RED**: Escribir regresión E2E asíncrona en `tests/integration/test_task_ordering_ui.py` (usando Playwright). Verificar que el arrastre funciona sin recarga, persistencia al recargar (F5), bloqueo de D&D en vistas filtradas o con asignadas, recuperación visual ante fallos y comprobación de la funcionalidad previa (completar sin recarga, HU-15). Ejecutar y guardar como `docs/evidencias/inc5/red-ui-ordering.txt`.
+- [x] T008 [US16] **RED**: Escribir regresión E2E asíncrona en `tests/integration/test_task_ordering_ui.py` (usando Playwright). Verificar que el arrastre funciona sin recarga, persistencia al recargar (F5), bloqueo de D&D en vistas filtradas o con asignadas, recuperación visual ante fallos y comprobación de la funcionalidad previa (completar sin recarga, HU-15). Ejecutar y guardar como `docs/evidencias/inc5/red-ui-ordering.txt`.
 - [ ] T009 [US16] **GREEN**: Actualizar `src/web/templates/tasks/index.html` para incluir `draggable="true"` en los `li` sólo cuando sea vista principal `Mis Tareas` y no tenga otros filtros de orden o estado activos.
 - [ ] T010 [US16] **GREEN**: Añadir cliente `PATCH /order` a `src/web/static/js/api.js`.
 - [ ] T011 [US16] **GREEN**: Implementar la lógica HTML5 de Drag & Drop (`dragstart`, `dragover`, `drop`) en `src/web/static/js/tasks.js`. Recopilar los `data-task-id` al soltar, invocar a `api.js` y hacer rollback visual si el código es 5xx, o un alert de recarga forzosa si el código es 409. Comprobar superación con T008 guardando evidencia en `docs/evidencias/inc5/green-ui-ordering.txt`.
