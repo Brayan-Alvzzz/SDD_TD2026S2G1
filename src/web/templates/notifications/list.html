@@ -69,8 +69,8 @@
                 
                 <div class="notification-actions" style="flex-shrink: 0;">
                     {% if not notif.is_read %}
-                        <form method="POST" action="{{ url_for('notifications.mark_as_read_view', notification_id=notif.id) }}" class="inline-form">
-                            <button type="submit" class="btn btn-sm btn-outline" style="border-radius: 20px; font-size: 0.75rem;">
+                        <form method="POST" action="{{ url_for('notifications.mark_as_read_view', notification_id=notif.id) }}" class="inline-form mark-read-form">
+                            <button type="button" class="btn btn-sm btn-outline btn-mark-read" data-notif-id="{{ notif.id }}" style="border-radius: 20px; font-size: 0.75rem;">
                                 Marcar como leída
                             </button>
                         </form>
@@ -84,4 +84,9 @@
         {% endfor %}
     </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/notifications.js') }}?v=2"></script>
 {% endblock %}

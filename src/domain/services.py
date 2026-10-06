@@ -668,7 +668,7 @@ class CollaborationService:
         assignee_email_clean = assignee_email.strip().lower()
         assignee = self.user_repo.get_by_email(assignee_email_clean)
         if not assignee:
-            raise ValidationError(f"No se encontró un usuario con el correo {assignee_email_clean}.")
+            raise ValidationError("No se encontró un usuario con ese correo.")
 
         if assignee.id == task.user_id:
             raise ValidationError("El propietario no puede auto-asignarse la tarea.")

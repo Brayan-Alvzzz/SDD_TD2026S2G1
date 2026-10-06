@@ -83,22 +83,22 @@
             {% if viewer_role == 'owner' %}
                 <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                     {% if task.assignee_id %}
-                        <p style="margin-bottom: 0.5rem;"><strong>Asignada a:</strong> {{ task.assignee_email }}</p>
-                        <form method="POST" action="{{ url_for('tasks.delete_task_assignee_view', id=task.id) }}" class="inline-form" onsubmit="return confirm('¿Remover asignación?');">
-                            <button type="submit" class="btn btn-sm btn-outline" style="color: var(--danger-color); border-color: var(--danger-color);">Desasignar</button>
+                        <p id="task-assignee-container-{{ task.id }}" style="margin-bottom: 0.5rem;"><strong>Asignada a:</strong> <span id="task-assignee-{{ task.id }}">{{ task.assignee_email }}</span></p>
+                        <form method="POST" action="{{ url_for('tasks.delete_task_assignee_view', id=task.id) }}" class="inline-form delete-task-assignee-form" data-task-id="{{ task.id }}">
+                            <button type="button" class="btn btn-sm btn-outline btn-submit-unassign" style="color: var(--danger-color); border-color: var(--danger-color);">Desasignar</button>
                         </form>
                     {% endif %}
                     
                     <style>
                         .mt-1rem { margin-top: 1rem; }
                     </style>
-                    <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" class="{% if task.assignee_id %}mt-1rem{% endif %}">
+                    <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" class="{% if task.assignee_id %}mt-1rem{% endif %} assign-task-form" data-task-id="{{ task.id }}">
                         <label for="assignee_email" style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">
                             {% if task.assignee_id %}Reasignar a:{% else %}Asignar a:{% endif %}
                         </label>
                         <div style="display: flex; gap: 0.5rem;">
-                            <input type="email" name="assignee_email" id="assignee_email" class="form-control" placeholder="usuario@ejemplo.com" required style="max-width: 300px;">
-                            <button type="submit" class="btn btn-primary">Asignar</button>
+                            <input type="email" name="assignee_email" id="assignee_email" class="form-control assignee_email_input" placeholder="usuario@ejemplo.com" required style="max-width: 300px;">
+                            <button type="submit" class="btn btn-primary btn-submit-assign">Asignar</button>
                         </div>
                     </form>
                 </div>
@@ -110,4 +110,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/assignment.js') }}?v=2"></script>
 {% endblock %}

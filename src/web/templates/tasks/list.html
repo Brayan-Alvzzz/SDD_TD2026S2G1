@@ -128,6 +128,11 @@
                             {% endif %}
                         {% endif %}
                         <span title="Creada el">🕒 Creada: {{ task.created_at[:10] }}</span>
+                        {% if task.assignee_email %}
+                            <span class="task-assignee" id="task-assignee-{{ task.id }}" title="Asignada a">👤 {{ task.assignee_email }}</span>
+                        {% else %}
+                            <span class="task-assignee" id="task-assignee-{{ task.id }}" style="display: none;" title="Asignada a"></span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="task-actions">
@@ -150,6 +155,9 @@
                     {% endif %}
 
                     {% if viewer_role == 'owner' %}
+                    <button type="button" class="btn btn-sm btn-outline btn-open-assign-modal" data-task-id="{{ task.id }}">
+                        {% if task.assignee_id %}Reasignar{% else %}Asignar{% endif %}
+                    </button>
                     <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
                     <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form">
                         <button type="submit" class="btn btn-sm btn-danger btn-delete-task">
@@ -162,9 +170,29 @@
         {% endfor %}
     </div>
 {% endif %}
+
+<!-- Assign Modal -->
+<div id="assign-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div class="modal-content" style="background-color: var(--bg-surface); margin: 15% auto; padding: 20px; border: 1px solid var(--border-color); width: 80%; max-width: 400px; border-radius: 8px;">
+        <span class="close" style="color: var(--text-muted); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+        <h2>Asignar Tarea</h2>
+        <form id="assign-task-form" style="margin-top: 1rem;">
+            <div class="form-group">
+                <label for="assignee_email_input">Correo del Asignado</label>
+                <input type="email" id="assignee_email_input" name="assignee_email" class="form-control" placeholder="usuario@ejemplo.com" required>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary btn-submit-assign">Asignar / Reasignar</button>
+                <button type="button" id="btn-submit-unassign" class="btn btn-outline" style="color: var(--danger-color); border-color: var(--danger-color); display: none;">Desasignar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/api.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}?t={{ range(1, 10000) | random }}"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}?t={{ range(1, 10000) | random }}"></script>
+<script src="{{ url_for('static', filename='js/assignment.js') }}?t={{ range(1, 10000) | random }}"></script>
 {% endblock %}

@@ -101,10 +101,18 @@ function showNotification(message, type = "error") {
 
     const alert = document.createElement("div");
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
-        <span>${message}</span>
-        <button class="alert-close" onclick="this.parentElement.remove()">×</button>
-    `;
+    
+    const span = document.createElement("span");
+    span.textContent = message;
+    
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "alert-close";
+    closeBtn.textContent = "×";
+    closeBtn.onclick = () => alert.remove();
+    
+    alert.appendChild(span);
+    alert.appendChild(closeBtn);
+    
     container.appendChild(alert);
 
     setTimeout(() => {
