@@ -16,11 +16,12 @@ const API = {
             });
 
             const result = await response.json().catch(() => ({
-                success: false,
+                status: "error",
                 error: "Respuesta inválida del servidor"
             }));
 
-            if (!response.ok || !result.success) {
+            const isSuccess = response.ok && (result.success === true || result.status === "success");
+            if (!isSuccess) {
                 const errorMsg = result.error || `Error ${response.status}: Operación fallida`;
                 return { success: false, error: errorMsg, status: response.status };
             }

@@ -86,44 +86,6 @@ def list_tasks_api():
     if not sort:
         sort = "manual" if role_filter == "owned" else "created_desc"
     category_filter = request.args.get("category_id")
-
-@task_bp.route("/api/tasks/order", methods=["PATCH"])
-@login_required
-def update_task_order_api():
-    """
-    Actualiza el orden manual de las tareas del usuario.
-    Espera JSON: {"task_ids": [id1, id2, ...]}
-    """
-    user_id = session.get("user_id")
-    
-    data = request.get_json()
-    if not data or "task_ids" not in data:
-        return jsonify({"status": "error", "error": "El cuerpo debe incluir 'task_ids' como un arreglo."}), 400
-        
-    task_ids = data["task_ids"]
-    if not isinstance(task_ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in task_ids):
-        return jsonify({"status": "error", "error": "El arreglo 'task_ids' debe contener solo números enteros."}), 400
-        
-    if len(task_ids) != len(set(task_ids)):
-        return jsonify({"status": "error", "error": "El arreglo no puede contener identificadores duplicados."}), 400
-        
-    task_service = get_task_service()
-    
-    try:
-        changed_count = task_service.update_task_order(user_id, task_ids)
-        return jsonify({"status": "success", "changed": changed_count}), 200
-    except ValidationError as e:
-        return jsonify({"status": "error", "error": str(e)}), 400
-    except OperationNotPermittedError as e:
-        return jsonify({"status": "error", "error": str(e)}), 403
-    except TaskNotAccessibleError as e:
-        return jsonify({"status": "error", "error": str(e)}), 404
-    except ConflictError as e:
-        return jsonify({"status": "error", "error": str(e)}), 409
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"status": "error", "error": "Error interno al reordenar tareas."}), 500
     task_service = get_task_service()
 
     try:
@@ -203,6 +165,45 @@ def get_task_api(id):
         return jsonify({"status": "error", "success": False, "error": str(e)}), 404
     except UnauthorizedError as e:
         return jsonify({"status": "error", "success": False, "error": str(e)}), 403
+
+@task_bp.route("/api/tasks/order", methods=["PATCH"])
+@login_required
+def update_task_order_api():
+    """
+    Actualiza el orden manual de las tareas del usuario.
+    Espera JSON: {"task_ids": [id1, id2, ...]}
+    """
+    user_id = session.get("user_id")
+
+    data = request.get_json(silent=True)
+    if not data or "task_ids" not in data:
+        return jsonify({"status": "error", "error": "El cuerpo debe incluir 'task_ids' como un arreglo."}), 400
+
+    task_ids = data["task_ids"]
+    if not isinstance(task_ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in task_ids):
+        return jsonify({"status": "error", "error": "El arreglo 'task_ids' debe contener solo números enteros."}), 400
+
+    if len(task_ids) != len(set(task_ids)):
+        return jsonify({"status": "error", "error": "El arreglo no puede contener identificadores duplicados."}), 400
+
+    task_service = get_task_service()
+
+    try:
+        changed_count = task_service.update_task_order(user_id, task_ids)
+        return jsonify({"status": "success", "changed": changed_count}), 200
+    except ValidationError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except OperationNotPermittedError as e:
+        return jsonify({"status": "error", "error": str(e)}), 403
+    except TaskNotAccessibleError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except ConflictError as e:
+        return jsonify({"status": "error", "error": str(e)}), 409
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "error": "Error interno al reordenar tareas."}), 500
+
 
 
 

@@ -64,7 +64,8 @@
             {% endif %}
             <label for="sort-select" style="font-size: 0.875rem; color: var(--text-muted); margin-right: 0.35rem;">Ordenar por:</label>
             <select name="sort" id="sort-select" onchange="this.form.submit()" class="form-select" style="width: auto; display: inline-block; padding: 0.35rem 0.75rem; font-size: 0.875rem;">
-                <option value="created_desc" {% if current_sort == 'created_desc' or not current_sort %}selected{% endif %}>Fecha de creación (más recientes)</option>
+                <option value="manual" {% if current_sort == 'manual' %}selected{% endif %}>Orden manual (arrastrar)</option>
+                <option value="created_desc" {% if current_sort == 'created_desc' %}selected{% endif %}>Fecha de creación (más recientes)</option>
                 <option value="priority_desc" {% if current_sort == 'priority_desc' %}selected{% endif %}>Prioridad (alta a baja)</option>
                 <option value="priority_asc" {% if current_sort == 'priority_asc' %}selected{% endif %}>Prioridad (baja a alta)</option>
             </select>
@@ -78,6 +79,14 @@
         </div>
     </div>
 </div>
+
+{% set is_draggable = current_role == 'owned' and current_sort == 'manual' and not current_filter and not current_category %}
+
+{% if not is_draggable %}
+    <div class="alert alert-info" style="margin-bottom: 1rem; font-size: 0.875rem;">
+        💡 Para ordenar manualmente tus tareas (arrastrándolas), selecciona el rol <strong>Propias</strong>, quita los filtros y selecciona <strong>Orden manual</strong>.
+    </div>
+{% endif %}
 
 {% if not tasks %}
     <div class="empty-state">
@@ -96,7 +105,7 @@
     <div class="task-list" id="task-list-container">
         {% for task in tasks %}
             {% set viewer_role = 'owner' if task.user_id == user_id else 'assignee' %}
-            <div class="task-item" id="task-item-{{ task.id }}" data-task-id="{{ task.id }}" data-viewer-role="{{ viewer_role }}">
+            <div class="task-item" id="task-item-{{ task.id }}" data-task-id="{{ task.id }}" data-viewer-role="{{ viewer_role }}" {% if is_draggable %}draggable="true"{% endif %} style="{% if is_draggable %}cursor: grab;{% endif %}">
                 <div class="task-main">
                     <h3 class="task-title">
                         <a href="{{ url_for('tasks.detail_task_view', id=task.id) }}" style="color: inherit; text-decoration: none;">{{ task.title }}</a>

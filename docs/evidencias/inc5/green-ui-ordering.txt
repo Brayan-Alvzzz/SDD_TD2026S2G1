@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collecting ... collected 8 items
+
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_success_and_persistence[chromium] PASSED [ 12%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_delegated[chromium] PASSED [ 25%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_disabled_in_mixed_views[chromium] PASSED [ 37%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_error_recovery[chromium] PASSED [ 50%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_http_409_conflict[chromium] PASSED [ 62%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_network_error_recovery[chromium] PASSED [ 75%]
+tests/integration/test_task_ordering_ui.py::test_ui_drag_and_drop_pending_request[chromium] PASSED [ 87%]
+tests/integration/test_collaboration_js.py::test_js_assignee_can_complete_without_reload[chromium] PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/integration/test_task_ordering_ui.py:8
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_task_ordering_ui.py:8: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_task_ordering_ui.py)
+    class TestServerThread(threading.Thread):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 8 passed, 1 warning in 14.35s =========================
+EXIT_CODE: 0
