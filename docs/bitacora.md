@@ -410,3 +410,14 @@ Artefactos: `specs/004-task-collaboration/{spec.md, plan.md, research.md, data-m
   - El mecanismo `BEGIN IMMEDIATE` (o aislamiento SQLAlchemy transaccional en `TaskService`) y los códigos de error (403 para asignados vs 404 para ajenos) quedaron perfectamente estipulados en `plan.md` y `contracts/task-ordering-contract.md`.
 - **Resultado:** No se detectaron conflictos mayores. Documentos rectificados, consistencia verificada exitosamente.
 - **Siguiente Paso:** Iniciar la ejecución de tareas empezando por Bloque A (RED / GREEN).
+
+## 2026-10-06 — Implementación Incremento 5: Bloque A (Pruebas RED Servicio de Reordenamiento)
+
+- **Actividad:** Creación de las pruebas RED para el bloque A (Servicio de Reordenamiento y Persistencia).
+- **Detalle de tareas (T001, T002):**
+  - Se creó `tests/integration/test_task_ordering_service.py` con 11 pruebas integrales enfocadas en `TaskService.update_task_order` y en la migración `005`.
+  - Las pruebas cubren: inicialización determinista de posición, reordenamiento persistente, independencia entre dueños, reordenamiento de tareas delegadas, rechazo de reordenamiento de tareas asignadas (de otro dueño) mediante `OperationNotPermittedError`, rechazo a tareas ajenas o inexistentes con `TaskNotAccessibleError`, rechazo por duplicados (`ValidationError`), y rechazo de listas desincronizadas (`ConflictError`).
+  - Se incluye prueba con threads (`test_update_task_order_concurrency`) usando una BD SQLite temporal conectada simultáneamente para simular un bloqueo real concurrente y validar la robustez.
+- **Resultado RED:** Las pruebas fallan de manera predecible y genuina con Exit Code 1, debido a la ausencia de la columna `position` en el modelo y de la funcionalidad transaccional correspondiente.
+- **Evidencia guardada:** En `docs/evidencias/inc5/red-service-ordering.txt`.
+- **Siguiente Paso:** Hacer el commit del estado RED del bloque A sin modificar código de producción.
