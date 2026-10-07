@@ -1,6 +1,7 @@
 from datetime import timedelta
 import os
-from flask import Flask, g, redirect, url_for, session, current_app
+from flask import Flask, g, redirect, url_for, session, current_app, request, jsonify
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from src.infrastructure.database import get_db_connection, init_db_schema
 
 
@@ -47,6 +48,10 @@ def create_app(test_config=None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Initialize CSRF Protection
+    csrf = CSRFProtect()
+    csrf.init_app(app)
+
     # Import models so Alembic / SQLAlchemy metadata discovers them
     import src.infrastructure.models  # noqa: F401
 
@@ -86,6 +91,12 @@ def create_app(test_config=None) -> Flask:
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         return response
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        if request.path.startswith('/api/'):
+            return jsonify({"status": "error", "success": False, "error": f"CSRF: {e.description}"}), 400
+        return f"Error 400: CSRF: {e.description}", 400
 
     # Register Blueprints
     from src.web.auth_routes import auth_bp

@@ -29,16 +29,19 @@
         <div class="task-actions">
             {% if task.status == 'pendiente' %}
                 <form method="POST" action="/api/tasks/{{ task.id }}/status" class="inline-form js-status-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="status" value="en_progreso">
                     <button type="submit" class="btn btn-sm btn-primary">Iniciar ▶</button>
                 </form>
             {% elif task.status == 'en_progreso' %}
                 <form method="POST" action="/api/tasks/{{ task.id }}/status" class="inline-form js-status-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="status" value="completada">
                     <button type="submit" class="btn btn-sm btn-success">Completar ✓</button>
                 </form>
             {% elif task.status == 'completada' %}
                 <form method="POST" action="{{ url_for('tasks.reopen_task_view', id=task.id) }}" class="reopen-task-form inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-sm btn-secondary">Reabrir ↺</button>
                 </form>
             {% endif %}
@@ -46,6 +49,7 @@
             {% if viewer_role == 'owner' %}
                 <a href="{{ url_for('tasks.edit_task_view', id=task.id) }}" class="btn btn-sm btn-outline">Editar</a>
                 <form method="POST" action="{{ url_for('tasks.delete_task_view', id=task.id) }}" class="delete-task-form inline-form" onsubmit="return confirm('¿Seguro que deseas eliminar esta tarea?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                 </form>
             {% endif %}
@@ -85,6 +89,7 @@
                     {% if task.assignee_id %}
                         <p id="task-assignee-container-{{ task.id }}" style="margin-bottom: 0.5rem;"><strong>Asignada a:</strong> <span id="task-assignee-{{ task.id }}">{{ task.assignee_email }}</span></p>
                         <form method="POST" action="{{ url_for('tasks.delete_task_assignee_view', id=task.id) }}" class="inline-form delete-task-assignee-form" data-task-id="{{ task.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="button" class="btn btn-sm btn-outline btn-submit-unassign" style="color: var(--danger-color); border-color: var(--danger-color);">Desasignar</button>
                         </form>
                     {% endif %}
@@ -93,6 +98,7 @@
                         .mt-1rem { margin-top: 1rem; }
                     </style>
                     <form method="POST" action="{{ url_for('tasks.update_task_assignee_view', id=task.id) }}" class="{% if task.assignee_id %}mt-1rem{% endif %} assign-task-form" data-task-id="{{ task.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <label for="assignee_email" style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem;">
                             {% if task.assignee_id %}Reasignar a:{% else %}Asignar a:{% endif %}
                         </label>

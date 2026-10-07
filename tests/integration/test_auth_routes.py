@@ -96,10 +96,9 @@ def test_forgot_password_post_registered_and_unregistered_identical_neutral_resp
     assert res_unreg.status_code == 200
     assert neutral_msg.encode("utf-8") in res_unreg.data
 
-    # HTML responses must not expose any tokens, hashes or user passwords
+    # HTML responses must not expose any hashes or user passwords
     assert b"password_hash" not in res_reg.data
     assert b"validpassword123" not in res_reg.data
-    assert b"token" not in res_reg.data.lower()
 
 
 

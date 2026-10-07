@@ -20,7 +20,7 @@
 - [x] T001 [US16] **RED**: Escribir prueba de migración y servicio en `tests/integration/test_task_ordering_service.py` comprobando inicialización determinista (sin huecos), inserción al final, conservación del orden relativo al borrar y actualización concurrente ("last write wins" con 409 verificado aislando sesiones de engine). Ejecutar y guardar salida como `docs/evidencias/inc5/red-service-ordering.txt`.
 - [x] T002 [US16] **GREEN**: Agregar columna `position` en `src/domain/models.py` (`Task`) y `src/infrastructure/models.py` (`TaskORM`).
 - [x] T003 [US16] **GREEN**: Generar script de migración en `migrations/versions/` (vía `flask db migrate -m "005_task_ordering"`) e inyectar en Python la inicialización determinista de las tareas previas usando actualización programática en lote por usuario.
-- [x] T004 [US16] **GREEN**: Implementar método `update_task_order(user_id, task_ids)` en `src/domain/services.py` (`TaskService`). Debe extraer los vivos (`is_deleted=False`), validar duplicados, pertenencia e igualdad de sets, emitiendo un commit atómico y bloqueando/leyendo el estado previo con exactitud para detectar inconsistencias. Se probará superando el test de T001 y se guardará `docs/evidencias/inc5/green-service-ordering.txt`.
+- [x] T004 [US16] **GREEN**: Implementar método `update_task_order(user_id, task_ids)` en `src/domain/services.py` (`TaskService`). Debe extraer los vivos (`is_deleted=False`), validar duplicados, pertenencia e igualdad de sets, emitiendo un commit atómico y bloqueando/leyendo el estado previo con exactitud para detectar inconsistencias. Se probará superando el test de T001 y se guardará `docs/evidencias/inc5/regresion-service-ordering.txt`.
 
 ---
 

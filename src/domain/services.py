@@ -583,16 +583,16 @@ class TaskService:
         if len(task_ids) != len(set(task_ids)):
             raise ValidationError("La lista contiene IDs duplicados.")
 
-        # Adquirir candado RESERVED/EXCLUSIVE en SQLite para evitar deadlocks
-        # sin hacer commit de la sesión, preservando así la atomicidad de transacciones mayores.
-        if self.session is not None and getattr(self.session.get_bind().dialect, "name", "") == "sqlite":
-            import sqlalchemy as sa
-            from src.infrastructure.models import UserORM
-            self.session.execute(
-                sa.update(UserORM).where(UserORM.id == user_id).values(id=UserORM.id)
-            )
-
         try:
+            # Adquirir candado RESERVED/EXCLUSIVE en SQLite para evitar deadlocks
+            # sin hacer commit de la sesión, preservando así la atomicidad de transacciones mayores.
+            if self.session is not None and getattr(self.session.get_bind().dialect, "name", "") == "sqlite":
+                import sqlalchemy as sa
+                from src.infrastructure.models import UserORM
+                self.session.execute(
+                    sa.update(UserORM).where(UserORM.id == user_id).values(id=UserORM.id)
+                )
+
             from src.infrastructure.models import TaskORM
             import sqlalchemy as sa
             

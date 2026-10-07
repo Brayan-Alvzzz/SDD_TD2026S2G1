@@ -70,6 +70,7 @@
                 <div class="notification-actions" style="flex-shrink: 0;">
                     {% if not notif.is_read %}
                         <form method="POST" action="{{ url_for('notifications.mark_as_read_view', notification_id=notif.id) }}" class="inline-form mark-read-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="button" class="btn btn-sm btn-outline btn-mark-read" data-notif-id="{{ notif.id }}" style="border-radius: 20px; font-size: 0.75rem;">
                                 Marcar como leída
                             </button>

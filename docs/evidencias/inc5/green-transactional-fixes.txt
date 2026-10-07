@@ -2,34 +2,33 @@
 platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
 rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
 plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
-collected 272 items
+collected 267 items
 
 tests/integration/test_assignment_routes.py .............                [  4%]
 tests/integration/test_auth_routes.py ...................                [ 11%]
-tests/integration/test_category_routes.py ...........                    [ 15%]
+tests/integration/test_category_routes.py ...........                    [ 16%]
 tests/integration/test_collaboration_html.py .......                     [ 18%]
-tests/integration/test_collaboration_js.py .......                       [ 20%]
+tests/integration/test_collaboration_js.py .......                       [ 21%]
 tests/integration/test_task_ordering_ui.py .......                       [ 23%]
 tests/integration/test_collaboration_rollback.py ..                      [ 24%]
-tests/integration/test_foreign_keys.py ....                              [ 25%]
+tests/integration/test_foreign_keys.py ....                              [ 26%]
 tests/integration/test_migrations.py .........                           [ 29%]
-tests/integration/test_notification_routes.py .......                    [ 31%]
-tests/integration/test_security_csrf.py .....                            [ 33%]
-tests/integration/test_task_access_roles.py .........                    [ 36%]
-tests/integration/test_task_list_roles.py .......                        [ 39%]
-tests/integration/test_task_ordering_service.py ..............           [ 44%]
+tests/integration/test_notification_routes.py .......                    [ 32%]
+tests/integration/test_task_access_roles.py .........                    [ 35%]
+tests/integration/test_task_list_roles.py .......                        [ 38%]
+tests/integration/test_task_ordering_service.py ..............           [ 43%]
 tests/integration/test_task_routes.py .................................. [ 56%]
                                                                          [ 56%]
-tests/integration/test_task_routes_ordering.py .........                 [ 60%]
-tests/integration/test_transaction_rollback.py .....                     [ 62%]
+tests/integration/test_task_routes_ordering.py .........                 [ 59%]
+tests/integration/test_transaction_rollback.py .....                     [ 61%]
 tests/unit/test_category_service.py .......                              [ 64%]
-tests/unit/test_collaboration_service.py ..........                      [ 68%]
+tests/unit/test_collaboration_service.py ..........                      [ 67%]
 tests/unit/test_notification_repository.py ......                        [ 70%]
 tests/unit/test_orm_relationships.py .                                   [ 70%]
-tests/unit/test_permissions.py ......                                    [ 73%]
+tests/unit/test_permissions.py ......                                    [ 72%]
 tests/unit/test_state_machine.py .......                                 [ 75%]
 tests/unit/test_task_service.py ........................................ [ 90%]
-.......                                                                  [ 93%]
+.......                                                                  [ 92%]
 tests/unit/test_user_service.py ...................                      [100%]
 
 =============================== warnings summary ===============================
@@ -42,5 +41,5 @@ tests/integration/test_task_ordering_ui.py:8
     class TestServerThread(threading.Thread):
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 272 passed, 2 warnings in 55.45s =======================
-Exit code: 0
+======================= 267 passed, 2 warnings in 52.43s =======================
+EXIT_CODE: 0

@@ -6,6 +6,41 @@ from src.infrastructure.database import db
 from src.infrastructure.repositories import UserRepository, TaskRepository, AuditLogRepository, CategoryRepository
 from src.domain.services import UserService, TaskService, CategoryService
 from src.web.app import create_app
+from flask.testing import FlaskClient
+from bs4 import BeautifulSoup
+
+class CSRFTestClient(FlaskClient):
+    def open(self, *args, **kwargs):
+        from flask import g
+        if "csrf_token" in g:
+            g.pop("csrf_token", None)
+
+        method = kwargs.get("method", "GET")
+        if method in ("POST", "PUT", "PATCH", "DELETE"):
+            has_token = False
+            if "headers" in kwargs and "X-CSRFToken" in kwargs.get("headers", {}):
+                has_token = True
+            elif "json" in kwargs and kwargs.get("json") and "csrf_token" in kwargs["json"]:
+                has_token = True
+            elif "data" in kwargs and isinstance(kwargs.get("data"), dict) and "csrf_token" in kwargs["data"]:
+                has_token = True
+
+            if not has_token:
+                res = self.get("/login", follow_redirects=True)
+                soup = BeautifulSoup(res.data, "html.parser")
+                token_input = soup.find("input", {"name": "csrf_token"})
+                token = token_input.get("value") if token_input else ""
+
+                if "json" in kwargs:
+                    headers = kwargs.get("headers", {})
+                    headers["X-CSRFToken"] = token
+                    kwargs["headers"] = headers
+                else:
+                    data = kwargs.get("data", {})
+                    if isinstance(data, dict):
+                        data["csrf_token"] = token
+                        kwargs["data"] = data
+        return super().open(*args, **kwargs)
 
 
 
@@ -35,8 +70,10 @@ def app(test_db_path):
         "SQLALCHEMY_DATABASE_URI": uri,
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
         "ENABLE_CONSOLE_PASSWORD_RESET": True,
+        "WTF_CSRF_ENABLED": True,
     }
     flask_app = create_app(test_config)
+    flask_app.test_client_class = CSRFTestClient
 
     with flask_app.app_context():
         # Apply versioned Alembic migrations strictly (no db.create_all())

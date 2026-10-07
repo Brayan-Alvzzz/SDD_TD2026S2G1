@@ -6,6 +6,7 @@
 <div class="card" style="max-width: 650px; margin: 1rem auto;">
     <h1 class="card-title">Nueva Tarea</h1>
     <form action="{{ url_for('tasks.create_task') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="form-group">
             <label for="title" class="form-label">Título <span style="color: var(--danger)">*</span></label>
             <input type="text" id="title" name="title" class="form-input" required 

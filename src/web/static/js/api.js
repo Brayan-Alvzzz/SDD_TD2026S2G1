@@ -3,6 +3,11 @@
  * Enforces JSON contracts, error parsing, and facilitates optimistic UI rollbacks.
  */
 
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 const API = {
     async patch(url, data) {
         try {
@@ -10,7 +15,8 @@ const API = {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "X-CSRFToken": getCsrfToken()
                 },
                 body: JSON.stringify(data)
             });
@@ -41,7 +47,8 @@ const API = {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "X-CSRFToken": getCsrfToken()
                 },
                 body: JSON.stringify(data)
             });
@@ -71,9 +78,39 @@ const API = {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "X-CSRFToken": getCsrfToken()
                 },
                 body: JSON.stringify(data)
+            });
+
+            const result = await response.json().catch(() => ({
+                status: "error",
+                error: "Respuesta inválida del servidor"
+            }));
+
+            if (!response.ok || result.status === "error" || result.success === false) {
+                const errorMsg = result.message || result.error || `Error ${response.status}: Operación fallida`;
+                return { success: false, error: errorMsg, status: response.status };
+            }
+
+            return { success: true, data: result.data, message: result.message };
+        } catch (err) {
+            return {
+                success: false,
+                error: "Error de conexión con el servidor. Se canceló la operación."
+            };
+        }
+    },
+
+    async delete(url) {
+        try {
+            const response = await fetch(url, {
+                method: "DELETE",
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRFToken": getCsrfToken()
+                }
             });
 
             const result = await response.json().catch(() => ({
