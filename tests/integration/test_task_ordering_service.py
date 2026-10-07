@@ -345,3 +345,66 @@ def test_new_tasks_added_at_end(clean_app):
         pos = cur.execute("SELECT position FROM tasks WHERE id=?", (new_task.id,)).fetchone()[0]
         assert pos > 30 # ya que las iniciales eran 10, 20, 30
         conn.close()
+
+
+def test_update_task_order_premature_commit_defect(clean_app):
+    app, db_path = clean_app
+    owner_id, other_id, tasks, _, _ = seed_data(db_path)
+    
+    with app.app_context():
+        from src.infrastructure.database import db
+        from src.infrastructure.models import TaskORM
+        session = db.session
+        task_repo = TaskRepository(session)
+        audit_repo = AuditLogRepository(session)
+        service = TaskService(task_repo, audit_repo, session=session)
+        
+        # 1. Make a pending change in the current session
+        task_orm = session.get(TaskORM, tasks[0])
+        task_orm.title = "Pending Title Change"
+        # We don't commit here.
+        
+        # 2. Call update_task_order with invalid input (out of sync) to trigger ConflictError AFTER the commit
+        with pytest.raises(ConflictError):
+            service.update_task_order(owner_id, [tasks[0], tasks[1]])
+            
+        # 3. Check if the pending change was prematurely committed
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        saved_title = cur.execute("SELECT title FROM tasks WHERE id=?", (tasks[0],)).fetchone()[0]
+        conn.close()
+        
+        assert saved_title == "O1", "Defect: Premature commit persisted the pending title change!"
+
+def test_update_task_order_audit_rollback_defect(clean_app, monkeypatch):
+    app, db_path = clean_app
+    owner_id, other_id, tasks, _, _ = seed_data(db_path)
+    
+    with app.app_context():
+        from src.infrastructure.database import db
+        session = db.session
+        task_repo = TaskRepository(session)
+        audit_repo = AuditLogRepository(session)
+        service = TaskService(task_repo, audit_repo, session=session)
+        
+        # Mock audit_repo.create to fail
+        def mock_create(*args, **kwargs):
+            raise Exception("Simulated audit failure")
+        monkeypatch.setattr(audit_repo, "create", mock_create)
+        
+        # Save original positions
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        initial_order = cur.execute("SELECT id, position FROM tasks WHERE user_id=? AND is_deleted=0 ORDER BY position ASC", (owner_id,)).fetchall()
+        
+        # 1. Try to reorder, which should fail during audit creation
+        with pytest.raises(Exception, match="Simulated audit failure"):
+            service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
+            
+        # 2. Verify everything rolled back
+        final_order = cur.execute("SELECT id, position FROM tasks WHERE user_id=? AND is_deleted=0 ORDER BY position ASC", (owner_id,)).fetchall()
+        logs = cur.execute("SELECT * FROM audit_logs WHERE action='reorder'").fetchall()
+        conn.close()
+        
+        assert final_order == initial_order, "Defect: Positions were not rolled back!"
+        assert len(logs) == 0, "Defect: Audit log was persisted despite failure!"

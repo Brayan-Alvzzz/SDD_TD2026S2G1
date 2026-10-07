@@ -583,11 +583,14 @@ class TaskService:
         if len(task_ids) != len(set(task_ids)):
             raise ValidationError("La lista contiene IDs duplicados.")
 
-        # Transacción y bloqueo estricto en SQLite
+        # Adquirir candado RESERVED/EXCLUSIVE en SQLite para evitar deadlocks
+        # sin hacer commit de la sesión, preservando así la atomicidad de transacciones mayores.
         if self.session is not None and getattr(self.session.get_bind().dialect, "name", "") == "sqlite":
-            self.session.commit()
             import sqlalchemy as sa
-            self.session.execute(sa.text("BEGIN IMMEDIATE"))
+            from src.infrastructure.models import UserORM
+            self.session.execute(
+                sa.update(UserORM).where(UserORM.id == user_id).values(id=UserORM.id)
+            )
 
         try:
             from src.infrastructure.models import TaskORM
