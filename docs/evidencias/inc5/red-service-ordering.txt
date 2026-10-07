@@ -26,7 +26,7 @@ tmp_path = PosixPath('/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/p
         """Prueba que la migración inicializa determinísticamente 'position'."""
         db_path = str(tmp_path / "mig_005.db")
         app = setup_db(db_path, run_up_to="4cee1aa5ad3f") # Hasta inc 4
-    
+
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
         # Insert users
@@ -34,24 +34,24 @@ tmp_path = PosixPath('/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/p
         u1 = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('u2@a.com', 'h', '2026-10-01')")
         u2 = cur.lastrowid
-    
+
         # Insert tasks (created_desc is the current default order)
         # Tasks for u1
         cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at) VALUES (?, 'T1', 'pendiente', '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z')", (u1,))
         cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at) VALUES (?, 'T2', 'pendiente', '2026-10-01T11:00:00Z', '2026-10-01T11:00:00Z')", (u1,))
         # Tasks for u2
         cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at) VALUES (?, 'T3', 'pendiente', '2026-10-01T09:00:00Z', '2026-10-01T09:00:00Z')", (u2,))
-    
+
         conn.commit()
         conn.close()
-    
+
         # Run all migrations (including 005)
         with app.app_context():
             upgrade(directory=os.path.abspath("migrations"))
-    
+
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
-    
+
 >       tasks_u1 = cur.execute("SELECT title, position FROM tasks WHERE user_id=? ORDER BY position ASC", (u1,)).fetchall()
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E       sqlite3.OperationalError: no such column: position
@@ -77,8 +77,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, other_id, tasks, _, _ = seed_data(db_path)
                                           ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:116: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:116:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_persist0/test_service.db'
 
@@ -89,7 +89,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -113,8 +113,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
                                                          ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:143: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:143:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_indepen0/test_service.db'
 
@@ -125,7 +125,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -149,8 +149,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
                                                          ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:162: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:162:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_assigne0/test_service.db'
 
@@ -161,7 +161,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -185,8 +185,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, other_id, tasks, t_other, t_assigned = seed_data(db_path)
                                                          ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:175: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:175:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_not_acc0/test_service.db'
 
@@ -197,7 +197,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -221,8 +221,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, _, tasks, _, _ = seed_data(db_path)
                                    ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:192: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:192:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_invalid0/test_service.db'
 
@@ -233,7 +233,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -257,8 +257,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, _, tasks, _, _ = seed_data(db_path)
                                    ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:204: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:204:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_out_of_0/test_service.db'
 
@@ -269,7 +269,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -293,8 +293,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, other_id, tasks, _, _ = seed_data(db_path)
                                           ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:217: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:217:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_empty0/test_service.db'
 
@@ -305,7 +305,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -329,8 +329,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, _, tasks, _, _ = seed_data(db_path)
                                    ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:241: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:241:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_audit0/test_service.db'
 
@@ -341,7 +341,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -365,8 +365,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, _, tasks, _, _ = seed_data(db_path)
                                    ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:261: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:261:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_update_task_order_concurr0/test_service.db'
 
@@ -377,7 +377,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position
@@ -401,8 +401,8 @@ clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8
 >       owner_id, _, tasks, _, _ = seed_data(db_path)
                                    ^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_service.py:333: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_service.py:333:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-86/test_new_tasks_added_at_end0/test_service.db'
 
@@ -413,7 +413,7 @@ db_path = '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-se
         owner_id = cur.lastrowid
         cur.execute("INSERT INTO users (email, password_hash, created_at) VALUES ('other@a.com', 'h', '2026-10-01')")
         other_id = cur.lastrowid
-    
+
         # owner tasks
 >       cur.execute("INSERT INTO tasks (user_id, title, status, created_at, updated_at, position) VALUES (?, 'O1', 'pendiente', '2026-10-01', '2026-10-01', 10)", (owner_id,))
 E       sqlite3.OperationalError: table tasks has no column named position

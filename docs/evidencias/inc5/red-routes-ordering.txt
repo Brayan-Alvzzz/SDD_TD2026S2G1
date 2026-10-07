@@ -24,11 +24,11 @@ task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cb2140
 
     def test_order_tasks_success_and_idempotence(client, user_service, task_service, task_repo):
         owner, other, t1, t2, t3, t_other, t_assigned, t_del = seed_users_and_tasks(user_service, task_service, task_repo)
-    
+
         with client.session_transaction() as sess:
             sess["user_id"] = owner.id
             sess["user_email"] = owner.email
-    
+
         res = client.patch("/api/tasks/order", json={"task_ids": [t3.id, t1.id, t2.id]})
         # Fallará porque no existe la ruta
 >       assert res.status_code == 200
@@ -79,7 +79,7 @@ task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cf7869
         with client.session_transaction() as sess:
             sess["user_id"] = owner.id
             sess["user_email"] = owner.email
-    
+
         # Not JSON
         res = client.patch("/api/tasks/order", data="not-json")
 >       assert res.status_code == 400
@@ -109,7 +109,7 @@ task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10cf7a35
         with client.session_transaction() as sess:
             sess["user_id"] = owner.id
             sess["user_email"] = owner.email
-    
+
         # Attempt to order t_assigned which belongs to other
         res = client.patch("/api/tasks/order", json={"task_ids": [t1.id, t2.id, t3.id, t_assigned.id]})
 >       assert res.status_code == 403
@@ -139,7 +139,7 @@ task_repo = <src.infrastructure.repositories.TaskRepository object at 0x10d38cc3
         with client.session_transaction() as sess:
             sess["user_id"] = owner.id
             sess["user_email"] = owner.email
-    
+
         # Missing t3
         res = client.patch("/api/tasks/order", json={"task_ids": [t1.id, t2.id]})
 >       assert res.status_code == 409
@@ -168,7 +168,7 @@ task_service = <src.domain.services.TaskService object at 0x10d55d010>
         with client.session_transaction() as sess:
             sess["user_id"] = owner.id
             sess["user_email"] = owner.email
-    
+
         res = client.patch("/api/tasks/order", json={"task_ids": []})
 >       assert res.status_code == 200
 E       assert 404 == 200

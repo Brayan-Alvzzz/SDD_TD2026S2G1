@@ -23,23 +23,23 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
 
     def test_ui_drag_and_drop_success_and_persistence(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
-    
+
         # Ir a Mis Tareas con orden manual (que es el defecto para role=owned)
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         t3_selector = f"div.task-item[data-task-id='{test_data['t3']['id']}']"
-    
+
         # Playwright action to simulate drag and drop
         # Arrancamos t1 y lo soltamos sobre t3
 >       with page.expect_response(lambda response: response.url.endswith("/api/tasks/order") and response.request.method == "PATCH", timeout=3000) as response_info:
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_ui.py:84: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_ui.py:84:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 .venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:85: in __exit__
     self._event.value
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = <playwright._impl._sync_base.EventInfo object at 0x10da116a0>
 
@@ -101,18 +101,18 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
     def test_ui_drag_and_drop_delegated(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         tdel_selector = f"div.task-item[data-task-id='{test_data['t_del']['id']}']"
-    
+
 >       with page.expect_response(lambda response: response.url.endswith("/api/tasks/order") and response.request.method == "PATCH", timeout=3000):
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-tests/integration/test_task_ordering_ui.py:107: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_task_ordering_ui.py:107:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 .venv/lib/python3.13/site-packages/playwright/_impl/_sync_base.py:85: in __exit__
     self._event.value
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = <playwright._impl._sync_base.EventInfo object at 0x10ddded50>
 
@@ -146,20 +146,20 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
     def test_ui_drag_and_drop_http_error_recovery(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         request_sent = False
         def intercept_and_fail(route):
             nonlocal request_sent
             request_sent = True
             route.fulfill(status=500, json={"status": "error", "error": "Internal Server Error"})
-    
+
         page.route("**/api/tasks/order", intercept_and_fail)
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
-    
+
         page.drag_and_drop(t1_selector, t2_selector)
-    
+
 >       assert request_sent, "El guardado no fue intentado (API request no enviada)."
 E       AssertionError: El guardado no fue intentado (API request no enviada).
 E       assert False
@@ -184,20 +184,20 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
     def test_ui_drag_and_drop_http_409_conflict(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         request_sent = False
         def intercept_and_conflict(route):
             nonlocal request_sent
             request_sent = True
             route.fulfill(status=409, json={"status": "error", "error": "Desactualizado"})
-    
+
         page.route("**/api/tasks/order", intercept_and_conflict)
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
-    
+
         page.drag_and_drop(t1_selector, t2_selector)
-    
+
 >       assert request_sent, "El guardado no fue intentado (API request no enviada)."
 E       AssertionError: El guardado no fue intentado (API request no enviada).
 E       assert False
@@ -222,20 +222,20 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
     def test_ui_drag_and_drop_network_error_recovery(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         request_sent = False
         def intercept_and_abort(route):
             nonlocal request_sent
             request_sent = True
             route.abort()
-    
+
         page.route("**/api/tasks/order", intercept_and_abort)
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
-    
+
         page.drag_and_drop(t1_selector, t2_selector)
-    
+
 >       assert request_sent, "El guardado no fue intentado (API request no enviada)."
 E       AssertionError: El guardado no fue intentado (API request no enviada).
 E       assert False
@@ -260,7 +260,7 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
     def test_ui_drag_and_drop_pending_request(page: Page, live_server, test_data):
         login(page, live_server, test_data["owner"]["email"])
         page.goto(f"{live_server}/tasks?role=owned")
-    
+
         request_count = 0
         import time
         def handle_route(route):
@@ -268,16 +268,16 @@ test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'other': {'id': 2, 'em
             request_count += 1
             time.sleep(1) # Slow response
             route.fulfill(status=200, json={"status": "success", "changed": 2})
-    
+
         page.route("**/api/tasks/order", handle_route)
-    
+
         t1_selector = f"div.task-item[data-task-id='{test_data['t1']['id']}']"
         t2_selector = f"div.task-item[data-task-id='{test_data['t2']['id']}']"
         t3_selector = f"div.task-item[data-task-id='{test_data['t3']['id']}']"
-    
+
         page.drag_and_drop(t1_selector, t2_selector)
         page.drag_and_drop(t2_selector, t3_selector)
-    
+
 >       assert request_count == 1, "Se inició una segunda petición mientras la primera estaba pendiente."
 E       AssertionError: Se inició una segunda petición mientras la primera estaba pendiente.
 E       assert 0 == 1

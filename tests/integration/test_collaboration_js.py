@@ -10,7 +10,7 @@ class TestServerThread(threading.Thread):
     def __init__(self, app, port=5005):
         threading.Thread.__init__(self)
         self.server = make_server('127.0.0.1', port, app)
-        
+
     def run(self):
         self.server.serve_forever()
 
@@ -32,19 +32,19 @@ def test_data(user_repo, task_repo, db_session):
     from src.domain.services import UserService, TaskService, CollaborationService
     from src.infrastructure.notifications import ConsoleNotificationService
     from src.infrastructure.repositories import AuditLogRepository, NotificationRepository
-    
+
     user_svc = UserService(user_repo, session=db_session)
     task_svc = TaskService(task_repo, AuditLogRepository(db_session), session=db_session)
     notif_svc = ConsoleNotificationService()
     collab_svc = CollaborationService(task_repo, user_repo, AuditLogRepository(db_session), NotificationRepository(db_session), db_session)
-    
+
     owner = user_svc.register_user("owner@js.com", "password123")
     assignee = user_svc.register_user("assignee@js.com", "password123")
-    
+
     t1 = task_svc.create_task(owner.id, "Task 1")
     t2 = task_svc.create_task(owner.id, "Task 2")
     collab_svc.assign_task(t2.id, owner.id, assignee.email)
-    
+
     return {
         "owner": {"id": owner.id, "email": owner.email},
         "assignee": {"id": assignee.id, "email": assignee.email},
@@ -61,23 +61,23 @@ def login(page: Page, live_server, email):
 def test_js_assignee_can_complete_without_reload(page: Page, live_server, test_data):
     login(page, live_server, test_data["assignee"]["email"])
     page.goto(f"{live_server}/tasks")
-    
+
     # Task 2 is assigned to assignee
     task_card = page.locator(f".notification-item[data-task-id='{test_data['t2']['id']}'], .task-item[data-task-id='{test_data['t2']['id']}'], div[data-task-id='{test_data['t2']['id']}']")
-    
+
     # Complete task
     complete_btn = task_card.locator(".btn-advance-status")
     expect(complete_btn).to_be_visible()
     complete_btn.click() # Transitions from pendiente to en_progreso
-    
+
     # Wait for the next state button and click again to complete
     expect(complete_btn).to_have_text(re.compile("Completar", re.IGNORECASE), timeout=2000)
     complete_btn.click() # Transitions from en_progreso to completada
-    
+
     # UI should update without reload: Reabrir button appears
     expect(task_card.locator(".btn-reopen-task")).to_be_visible(timeout=2000)
     expect(task_card.locator(".btn-advance-status")).not_to_be_visible()
-    
+
     # Assignee should NOT get owner controls (Editar, Eliminar)
     expect(task_card.locator(".btn-delete-task")).not_to_be_visible()
     expect(task_card.locator("text=Editar")).not_to_be_visible()
@@ -85,20 +85,20 @@ def test_js_assignee_can_complete_without_reload(page: Page, live_server, test_d
 def test_js_assignment_modal_and_requests(page: Page, live_server, test_data):
     login(page, live_server, test_data["owner"]["email"])
     page.goto(f"{live_server}/tasks")
-    
+
     task_card = page.locator(f"div[data-task-id='{test_data['t1']['id']}']")
-    
+
     # Open modal
     assign_btn = task_card.locator(".btn-open-assign-modal")
     assign_btn.click()
-    
+
     modal = page.locator("#assign-modal")
     expect(modal).to_be_visible()
-    
+
     # Assign to assignee
     modal.locator("input[name='assignee_email']").fill(test_data["assignee"]["email"])
     modal.locator(".btn-submit-assign").click()
-    
+
     # Modal should close and UI update without reload
     expect(modal).not_to_be_visible()
     expect(task_card).to_contain_text("assignee@js.com")
@@ -112,14 +112,14 @@ def test_js_mark_notification_read(page: Page, live_server, test_data, db_sessio
 
     login(page, live_server, test_data["assignee"]["email"])
     page.goto(f"{live_server}/notifications")
-    
+
     notif_item = page.locator(f".notif-card").first
     expect(notif_item).to_have_class(re.compile(r"unread"))
-    
+
     # Click to mark read
     mark_btn = notif_item.locator(".btn-mark-read")
     mark_btn.click()
-    
+
     # Unread class removed
     expect(notif_item).not_to_have_class(re.compile(r"unread"), timeout=2000)
     # Button disappears
@@ -132,12 +132,12 @@ def test_js_xss_prevention(page: Page, live_server, test_data):
     # Ensure assigning someone with an evil script email doesn't execute script
     login(page, live_server, test_data["owner"]["email"])
     page.goto(f"{live_server}/tasks")
-    
+
     page.evaluate("""
         window.xssFired = false;
         window.alert = function() { window.xssFired = true; };
     """)
-    
+
     task_card = page.locator(f"div[data-task-id='{test_data['t1']['id']}']")
     task_card.locator(".btn-open-assign-modal").click()
     modal = page.locator("#assign-modal")
@@ -146,7 +146,7 @@ def test_js_xss_prevention(page: Page, live_server, test_data):
     email_input.evaluate("el => { el.type = 'text'; el.removeAttribute('required'); }")
     email_input.fill("<script>alert('xss')</script>@js.com")
     modal.locator(".btn-submit-assign").click()
-    
+
     # The error should be displayed safely in the UI without executing scripts
     error_notification = page.locator(".alert.alert-error").first
     expect(error_notification).to_be_visible(timeout=2000)
@@ -158,44 +158,59 @@ def test_js_xss_prevention(page: Page, live_server, test_data):
         window.xssFired = false;
         showNotification("<img src=x onerror=window.xssFired=true>", "error");
     """)
-    
+
     direct_error = page.locator(".alert.alert-error").nth(1)
     expect(direct_error).to_be_visible()
-    
+
     # Verify the HTML was not parsed into elements
     assert page.locator(".alert.alert-error img").count() == 0
     expect(direct_error).to_contain_text("<img src=x onerror=window.xssFired=true>")
-    
+
     # Wait a moment to ensure onerror didn't fire
     page.wait_for_timeout(200)
     assert page.evaluate("window.xssFired") is False
 
-def test_js_unassign_without_reload(page: Page, live_server, test_data):
+def test_js_unassign_without_reload(page: Page, live_server, test_data, app):
     login(page, live_server, test_data["owner"]["email"])
     page.goto(f"{live_server}/tasks")
-    
+
     # Click unassign button inside detail page or modal
     # In list view, there might be no unassign button directly, but maybe in detail view
     page.goto(f"{live_server}/tasks/{test_data['t2']['id']}")
-    
-    # We simulate a JS delete request
-    page.evaluate(f"fetch('/api/tasks/{test_data['t2']['id']}/assignee', {{ method: 'DELETE' }})")
-    # Actually the test should click the UI
-    unassign_form = page.locator(".delete-task-assignee-form") # Not implemented yet in UI?
-    
+
+    # Pulsar el control real en la UI
+    unassign_btn = page.locator(".btn-submit-unassign")
+    unassign_btn.wait_for()
+
+    page.on("dialog", lambda dialog: dialog.accept())
+
+    unassign_btn.click()
+
+    # Comprobar el resultado visible: assignee email desaparece
+    from playwright.sync_api import expect
+    expect(page.locator(f"#task-assignee-container-{test_data['t2']['id']}")).not_to_be_visible(timeout=2000)
+
+    # Persistencia en backend
+    from src.infrastructure.repositories import TaskRepository
+    from src.infrastructure.models import TaskORM
+    with app.app_context():
+        from src.infrastructure.database import db
+        task_db = db.session.get(TaskORM, test_data['t2']['id'])
+        assert task_db.assignee_id is None
+
 def test_js_network_error_recovery(page: Page, live_server, test_data):
     login(page, live_server, test_data["owner"]["email"])
     page.goto(f"{live_server}/tasks")
-    
+
     # Route that will be intercepted
     page.route(f"**/api/tasks/{test_data['t1']['id']}/assignee", lambda route: route.abort())
-    
+
     task_card = page.locator(f"div[data-task-id='{test_data['t1']['id']}']")
     task_card.locator(".btn-open-assign-modal").click()
     modal = page.locator("#assign-modal")
     modal.locator("input[name='assignee_email']").fill(test_data["assignee"]["email"])
     modal.locator(".btn-submit-assign").click()
-    
+
     # Should show error message but NOT close modal, allowing recovery
     expect(page.locator(".alert.alert-error")).to_be_visible(timeout=2000)
     expect(modal).to_be_visible()
@@ -209,17 +224,17 @@ def test_js_idempotency_notifications(page: Page, live_server, test_data, db_ses
 
     login(page, live_server, test_data["assignee"]["email"])
     page.goto(f"{live_server}/notifications")
-    
+
     notif_item = page.locator(f".notif-card").first
     mark_btn = notif_item.locator(".btn-mark-read")
-    
+
     # Double click rapidly (using force to avoid timeout when element detaches)
     mark_btn.click()
     try:
         mark_btn.click(force=True, timeout=500)
     except Exception:
         pass
-    
+
     # Should only decrement counter once (backend returns unchanged for the second, UI handles it)
     # We just expect it doesn't crash or go negative
     expect(notif_item).not_to_have_class(re.compile(r"unread"), timeout=2000)

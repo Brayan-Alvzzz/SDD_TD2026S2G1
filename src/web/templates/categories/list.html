@@ -13,6 +13,7 @@
 <div class="card" style="margin-bottom: 2rem;">
     <h2 class="card-title" style="font-size: 1.125rem;">Nueva Categoría</h2>
     <form action="{{ url_for('categories.create_category') }}" method="POST" style="display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div style="flex: 1; min-width: 260px;">
             <input type="text" name="name" id="name" class="form-input" required maxlength="50"
                    value="{{ name or '' }}" placeholder="Nombre de la categoría (ej. Trabajo, Personal, Estudio)">
@@ -47,6 +48,7 @@
                     </a>
                     <form method="POST" action="{{ url_for('categories.delete_category_view', id=cat.id) }}" class="inline-form"
                           onsubmit="return confirm('¿Seguro que deseas eliminar la categoría \'{{ cat.name }}\'? Las tareas asociadas NO se eliminarán, solo quedarán sin categoría.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="btn btn-sm btn-danger">
                             Eliminar
                         </button>

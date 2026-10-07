@@ -1,0 +1,71 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collecting ... collected 1 item
+
+tests/integration/test_task_ordering_service.py::test_update_task_order_lock_failure_rollback FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_update_task_order_lock_failure_rollback _________________
+
+clean_app = (<Flask 'src.web.app'>, '/private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-131/test_update_task_order_lock_fa0/test_service.db')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108991220>
+
+    def test_update_task_order_lock_failure_rollback(clean_app, monkeypatch):
+        """Prueba que un fallo al adquirir el bloqueo en update_task_order ejecute el rollback limpiando la sesión."""
+        app, db_path = clean_app
+        owner_id, other_id, tasks, _, _ = seed_data(db_path)
+
+        with app.app_context():
+            from src.infrastructure.database import db
+            from src.infrastructure.models import TaskORM, UserORM
+            from sqlalchemy.orm import Session
+            import sqlalchemy as sa
+
+            session = db.session
+            task_repo = TaskRepository(session)
+            audit_repo = AuditLogRepository(session)
+            service = TaskService(task_repo, audit_repo, session=session)
+
+            # Make a pending change in the SESSION
+            task_orm = session.get(TaskORM, tasks[0])
+            task_orm.title = "Lock Fail Title"
+
+            # Mock session.get_bind to fail to simulate a failure during lock preparation
+            # This avoids SQLAlchemy's implicit rollback on session.execute, proving that
+            # our service must catch the error and call _rollback() itself.
+            def mock_get_bind(*args, **kwargs):
+                raise RuntimeError("Simulated lock preparation failure")
+
+            monkeypatch.setattr(session, "get_bind", mock_get_bind)
+
+            # 1. Try to reorder, which should fail during lock acquisition/preparation
+            with pytest.raises(RuntimeError, match="Simulated lock preparation failure"):
+                service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
+
+            # 2. Verify the pending change was rolled back IN THE SAME SESSION
+            # If _rollback() was called, the session is cleared of pending changes, and task_orm.title reverts
+>           assert task_orm.title == "O1", "Defect: Lock failure did not trigger _rollback(), leaving session dirty!"
+E           AssertionError: Defect: Lock failure did not trigger _rollback(), leaving session dirty!
+E           assert 'Lock Fail Title' == 'O1'
+E
+E             - O1
+E             + Lock Fail Title
+
+tests/integration/test_task_ordering_service.py:463: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-131/test_update_task_order_lock_fa0/test_service.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+=========================== short test summary info ============================
+FAILED tests/integration/test_task_ordering_service.py::test_update_task_order_lock_failure_rollback
+============================== 1 failed in 0.11s ===============================
+EXIT_CODE: 1

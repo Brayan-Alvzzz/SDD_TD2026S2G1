@@ -88,7 +88,7 @@ tests/
 - Endpoint y Servicio extraerán el `actor` de la sesión segura actual.
 - Se implementará el método `TaskService.update_task_order(user_id: int, task_ids: List[int]) -> int`.
 - **Validación Atómica y Concurrencia**:
-  1. Adquirir el bloqueo de escritura inmediatamente (e.g. `BEGIN IMMEDIATE` explícito o serializando la transacción) para evitar interleaved reads.
+  1. Adquirir el bloqueo de escritura inmediatamente mediante una sentencia de actualización idempotente (`sa.update(...)`) manejada por SQLAlchemy dentro del bloque transaccional general, para escalar la transacción a `RESERVED`/`EXCLUSIVE` en SQLite sin requerir commits prematuros ni consultas crudas fuera del ORM.
   2. Extraer todos los IDs vivos y propios del usuario (`is_deleted=False`).
   3. Comprobar que no hay duplicados (len(set) == len(list)). Si hay, 400.
   4. Comprobar permisos/existencia (403/404).

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}TaskControl{% endblock %} - Gestión de Tareas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -28,6 +28,7 @@
                     <a href="{{ url_for('tasks.create_task_view') }}" class="btn btn-sm btn-primary">+ Nueva Tarea</a>
                     <span class="user-badge" title="Sesión activa">{{ current_user_email }}</span>
                     <form action="{{ url_for('auth.logout') }}" method="POST" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="btn btn-sm btn-outline">Cerrar Sesión</button>
                     </form>
                 {% else %}

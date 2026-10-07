@@ -1,0 +1,389 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collected 272 items
+
+tests/integration/test_assignment_routes.py .............                [  4%]
+tests/integration/test_auth_routes.py ...FF.F.F..........                [ 11%]
+tests/integration/test_category_routes.py ....F..F...                    [ 15%]
+tests/integration/test_collaboration_html.py .......                     [ 18%]
+tests/integration/test_collaboration_js.py ....F..                       [ 20%]
+tests/integration/test_task_ordering_ui.py .......                       [ 23%]
+tests/integration/test_collaboration_rollback.py ..                      [ 24%]
+tests/integration/test_foreign_keys.py ....                              [ 25%]
+tests/integration/test_migrations.py .........                           [ 29%]
+tests/integration/test_notification_routes.py .......                    [ 31%]
+tests/integration/test_security_csrf.py F..F.                            [ 33%]
+tests/integration/test_task_access_roles.py .........                    [ 36%]
+tests/integration/test_task_list_roles.py .......                        [ 39%]
+tests/integration/test_task_ordering_service.py ..............           [ 44%]
+tests/integration/test_task_routes.py .......................F.......... [ 56%]
+                                                                         [ 56%]
+tests/integration/test_task_routes_ordering.py .........                 [ 60%]
+tests/integration/test_transaction_rollback.py .....                     [ 62%]
+tests/unit/test_category_service.py .......                              [ 64%]
+tests/unit/test_collaboration_service.py ..........                      [ 68%]
+tests/unit/test_notification_repository.py ......                        [ 70%]
+tests/unit/test_orm_relationships.py .                                   [ 70%]
+tests/unit/test_permissions.py ......                                    [ 73%]
+tests/unit/test_state_machine.py .......                                 [ 75%]
+tests/unit/test_task_service.py ........................................ [ 90%]
+.......                                                                  [ 93%]
+tests/unit/test_user_service.py ...................                      [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_register_route_duplicate_email ______________________
+
+client = <CSRFTestClient <Flask 'src.web.app'>>
+
+    def test_register_route_duplicate_email(client):
+        client.post("/register", data={
+            "email": "dupe@example.com",
+            "password": "validpassword123"
+        })
+        res = client.post("/register", data={
+            "email": "dupe@example.com",
+            "password": "validpassword123"
+        }, follow_redirects=True)
+>       assert res.status_code == 409
+E       assert 400 == 409
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_auth_routes.py:36: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_register_route_duplicate_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+___________________________ test_login_route_success ___________________________
+
+client = <CSRFTestClient <Flask 'src.web.app'>>
+
+    def test_login_route_success(client):
+        client.post("/register", data={
+            "email": "login@example.com",
+            "password": "validpassword123"
+        })
+        client.post("/logout")
+        res = client.post("/login", data={
+            "email": "login@example.com",
+            "password": "validpassword123"
+        }, follow_redirects=True)
+>       assert res.status_code == 200
+E       assert 400 == 200
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_auth_routes.py:50: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_login_route_success0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+______________________________ test_logout_route _______________________________
+
+client = <CSRFTestClient <Flask 'src.web.app'>>
+
+    def test_logout_route(client):
+        client.post("/register", data={
+            "email": "out@example.com",
+            "password": "validpassword123"
+        })
+        res = client.post("/logout", follow_redirects=True)
+>       assert res.status_code == 200
+E       assert 400 == 200
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_auth_routes.py:70: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_logout_route0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_ test_forgot_password_post_registered_and_unregistered_identical_neutral_response _
+
+client = <CSRFTestClient <Flask 'src.web.app'>>
+
+    def test_forgot_password_post_registered_and_unregistered_identical_neutral_response(client):
+        client.post("/register", data={
+            "email": "registered_user@example.com",
+            "password": "validpassword123"
+        })
+
+        neutral_msg = "Si la dirección de correo electrónico está registrada en el sistema, se ha enviado un enlace para restablecer la contraseña."
+
+        # 1. Registered email
+        res_reg = client.post("/forgot-password", data={"email": "registered_user@example.com"}, follow_redirects=True)
+>       assert res_reg.status_code == 200
+E       assert 400 == 200
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_auth_routes.py:91: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_forgot_password_post_regi0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_____________________ test_categories_multi_user_isolation _____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$0Woo...00f3e98a4136c367bd93c3132a1b643ab3b5185c034eda33032800a4cd622c3557082', created_at='2026-10-07T19:06:34.889491+00:00'))
+user_service = <src.domain.services.UserService object at 0x10b673850>
+app = <Flask 'src.web.app'>
+
+    def test_categories_multi_user_isolation(auth_client, user_service, app):
+        """Categories are strictly isolated between users: duplicate names allowed for different users."""
+        client1, user1 = auth_client
+        user2 = user_service.register_user("cat_iso_user2@example.com", "password123")
+
+        client2 = app.test_client()
+        with client2.session_transaction() as sess:
+            sess["user_id"] = user2.id
+            sess["user_email"] = user2.email
+
+        # Both users create a category named "Personal"
+        res1 = client1.post("/api/categories", json={"name": "Personal"})
+        assert res1.status_code == 201
+
+        res2 = client2.post("/api/categories", json={"name": "Personal"})
+>       assert res2.status_code == 201
+E       assert 400 == 201
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_category_routes.py:77: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_categories_multi_user_iso0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+__________________ test_delete_category_alien_or_unauthorized __________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$pmLg...5fccbef4ff9d466250c5eda6c427272b861da8dc1abbe5bd7e8dce375031cf4396ca0', created_at='2026-10-07T19:06:35.336594+00:00'))
+user_service = <src.domain.services.UserService object at 0x10c8707c0>
+app = <Flask 'src.web.app'>
+
+    def test_delete_category_alien_or_unauthorized(auth_client, user_service, app):
+        """Users cannot delete categories belonging to other users."""
+        client1, user1 = auth_client
+        user2 = user_service.register_user("cat_alien_del@example.com", "password123")
+
+        client2 = app.test_client()
+        with client2.session_transaction() as sess:
+            sess["user_id"] = user2.id
+            sess["user_email"] = user2.email
+
+        cat_res = client1.post("/api/categories", json={"name": "Privada de User 1"})
+        cat_id = cat_res.get_json()["data"]["id"]
+
+        # User 2 tries to delete User 1's category
+        del_alien = client2.delete(f"/api/categories/{cat_id}")
+>       assert del_alien.status_code in (403, 404)
+E       assert 400 in (403, 404)
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_category_routes.py:154: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_delete_category_alien_or_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+__________________ test_js_unassign_without_reload[chromium] ___________________
+
+page = <Page url='http://127.0.0.1:5005/tasks/2'>
+live_server = 'http://127.0.0.1:5005'
+test_data = {'owner': {'id': 1, 'email': 'owner@js.com'}, 'assignee': {'id': 2, 'email': 'assignee@js.com'}, 't1': {'id': 1}, 't2': {'id': 2}}
+app = <Flask 'src.web.app'>
+
+    def test_js_unassign_without_reload(page: Page, live_server, test_data, app):
+        login(page, live_server, test_data["owner"]["email"])
+        page.goto(f"{live_server}/tasks")
+
+        # Click unassign button inside detail page or modal
+        # In list view, there might be no unassign button directly, but maybe in detail view
+        page.goto(f"{live_server}/tasks/{test_data['t2']['id']}")
+
+        # Pulsar el control real en la UI
+        unassign_btn = page.locator(".btn-submit-unassign")
+        unassign_btn.wait_for()
+        unassign_btn.click()
+
+        # Comprobar el resultado visible: assignee email desaparece
+        from playwright.sync_api import expect
+>       expect(page.locator(f"#task-assignee-container-{test_data['t2']['id']}")).not_to_be_visible(timeout=2000)
+E       AssertionError: Locator expected not to be visible
+E       Actual value: visible
+E       Call log:
+E         - Expect "not_to_be_visible" locator("#task-assignee-container-2") with timeout 2000ms
+E         - waiting for locator("#task-assignee-container-2")
+E           21 × locator resolved to <p id="task-assignee-container-2">…</p>
+E              - unexpected value "visible"
+E
+E       Aria snapshot:
+E       - paragraph:
+E         - strong: "Asignada a:"
+E         - text: assignee@js.com
+
+tests/integration/test_collaboration_js.py:188: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_js_unassign_without_reloa0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+____________________ test_csrf_missing_token_rejected_post _____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$8fzC...fa8bc62ebe2ba905a6dae3693b2e82e8f203420ec382958a97dc602c60897d275b686', created_at='2026-10-07T19:07:03.144027+00:00'))
+app = <Flask 'src.web.app'>
+
+    def test_csrf_missing_token_rejected_post(auth_client, app):
+        client, user = auth_client
+
+        with app.app_context():
+            initial_task_count = db.session.query(TaskORM).count()
+            initial_audit_count = db.session.query(AuditLogORM).count()
+
+        response = client.post("/tasks", data={
+            "title": "CSRF Attack Task",
+            "description": "No token"
+        })
+
+>       assert response.status_code == 400
+E       assert 302 == 400
+E        +  where 302 = <WrapperTestResponse streamed [302 FOUND]>.status_code
+
+tests/integration/test_security_csrf.py:33: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_csrf_missing_token_reject0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+___________________ test_csrf_missing_token_rejected_delete ____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$BjvT...7f8eba547296964e52b59b539103fa607a3d8c83b349ed323bc29f3ae239de595a5b0', created_at='2026-10-07T19:07:03.633190+00:00'))
+task_service = <src.domain.services.TaskService object at 0x10dfede80>
+app = <Flask 'src.web.app'>
+
+    def test_csrf_missing_token_rejected_delete(auth_client, task_service, app):
+        client, user = auth_client
+        with app.app_context():
+            task = task_service.create_task(user.id, "To Delete", "")
+            task_id = task.id
+
+        response = client.delete(f"/api/tasks/{task_id}")
+
+>       assert response.status_code == 400
+E       assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+
+tests/integration/test_security_csrf.py:103: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_csrf_missing_token_reject1/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_____________ test_patch_api_task_priority_unauthorized_and_alien ______________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$txcO...4cb5bebb8713dbd08a929680d9a5846296b152825e8cdcebd515ad14ced5ac55564b4', created_at='2026-10-07T19:07:15.055915+00:00'))
+user_service = <src.domain.services.UserService object at 0x10d833a10>
+task_service = <src.domain.services.TaskService object at 0x10d832580>
+app = <Flask 'src.web.app'>
+
+    def test_patch_api_task_priority_unauthorized_and_alien(auth_client, user_service, task_service, app):
+        """PATCH /api/tasks/<id>/priority enforces authentication and ownership."""
+        auth_c, owner = auth_client
+        task = task_service.create_task(owner.id, "Tarea Privada")
+
+        # 1. Unauthenticated request
+        unauth_client = app.test_client()
+        unauth_res = unauth_client.patch(f"/api/tasks/{task.id}/priority", json={"priority": "alta"})
+        assert unauth_res.status_code in (401, 302)
+
+        # 2. Alien user request
+        alien_user = user_service.register_user("alien_priority@example.com", "password123")
+        alien_client = app.test_client()
+        with alien_client.session_transaction() as sess:
+            sess["user_id"] = alien_user.id
+            sess["user_email"] = alien_user.email
+
+        alien_res = alien_client.patch(f"/api/tasks/{task.id}/priority", json={"priority": "alta"})
+>       assert alien_res.status_code in (403, 404)
+E       assert 400 in (403, 404)
+E        +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+
+tests/integration/test_task_routes.py:404: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-140/test_patch_api_task_priority_u0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+=============================== warnings summary ===============================
+tests/integration/test_collaboration_js.py:9
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_collaboration_js.py:9: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_collaboration_js.py)
+    class TestServerThread(threading.Thread):
+
+tests/integration/test_task_ordering_ui.py:8
+  /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1/tests/integration/test_task_ordering_ui.py:8: PytestCollectionWarning: cannot collect test class 'TestServerThread' because it has a __init__ constructor (from: tests/integration/test_task_ordering_ui.py)
+    class TestServerThread(threading.Thread):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_auth_routes.py::test_register_route_duplicate_email
+FAILED tests/integration/test_auth_routes.py::test_login_route_success - asse...
+FAILED tests/integration/test_auth_routes.py::test_logout_route - assert 400 ...
+FAILED tests/integration/test_auth_routes.py::test_forgot_password_post_registered_and_unregistered_identical_neutral_response
+FAILED tests/integration/test_category_routes.py::test_categories_multi_user_isolation
+FAILED tests/integration/test_category_routes.py::test_delete_category_alien_or_unauthorized
+FAILED tests/integration/test_collaboration_js.py::test_js_unassign_without_reload[chromium]
+FAILED tests/integration/test_security_csrf.py::test_csrf_missing_token_rejected_post
+FAILED tests/integration/test_security_csrf.py::test_csrf_missing_token_rejected_delete
+FAILED tests/integration/test_task_routes.py::test_patch_api_task_priority_unauthorized_and_alien
+================= 10 failed, 262 passed, 2 warnings in 56.37s ==================
+EXIT_CODE: 1

@@ -1,0 +1,323 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/sebastianquintanamorales/Developer/SDD_TD2026S2G1
+plugins: cov-7.1.0, playwright-0.9.0, base-url-2.1.0
+collected 5 items
+
+tests/integration/test_security_csrf.py FFFFF                            [100%]
+
+=================================== FAILURES ===================================
+____________________ test_csrf_missing_token_rejected_post _____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$AAD0...5b1cc9426d4cf3fc463eeb4faad44a5ad54ccba679eef055494fd4102575c9c538265', created_at='2026-10-07T20:02:54.409672+00:00'))
+app = <Flask 'src.web.app'>
+
+    def test_csrf_missing_token_rejected_post(auth_client, app):
+        client, user = auth_client
+
+        with app.app_context():
+            initial_task_count = db.session.query(TaskORM).count()
+            initial_audit_count = db.session.query(AuditLogORM).count()
+
+        from flask.testing import FlaskClient
+        app.test_client_class = FlaskClient
+        raw_client = app.test_client()
+        with client.session_transaction() as sess:
+            with raw_client.session_transaction() as raw_sess:
+                for k, v in sess.items():
+                    raw_sess[k] = v
+
+        response = raw_client.post("/tasks", data={
+            "title": "CSRF Attack Task",
+            "description": "No token"
+        })
+
+>       assert response.status_code == 400
+E       assert 302 == 400
+E        +  where 302 = <WrapperTestResponse streamed [302 FOUND]>.status_code
+
+tests/integration/test_security_csrf.py:41: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-164/test_csrf_missing_token_reject0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_____________________ test_csrf_invalid_token_rejected_put _____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$LBX1...abfb4c32e0d8e2353df61d18fc446f1aa1456573e33110ce1f10536c6a71351638a75', created_at='2026-10-07T20:02:54.555205+00:00'))
+task_service = <src.domain.services.TaskService object at 0x10917a0d0>
+app = <Flask 'src.web.app'>
+
+    def test_csrf_invalid_token_rejected_put(auth_client, task_service, app):
+        client, user = auth_client
+
+        with app.app_context():
+            task = task_service.create_task(user.id, "Original Task", "")
+            task_id = task.id
+            initial_audit_count = db.session.query(AuditLogORM).count()
+
+        # Intento PUT vía API
+        response = client.put(f"/api/tasks/{task_id}", json={
+            "title": "Hacked Title"
+        }, headers={"X-CSRFToken": "invalid-token-123"})
+
+>       assert response.status_code == 400
+E       assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+
+tests/integration/test_security_csrf.py:62: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-164/test_csrf_invalid_token_reject0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+_________________ test_csrf_other_session_token_rejected_patch _________________
+
+client = <CSRFTestClient <Flask 'src.web.app'>>
+user_service = <src.domain.services.UserService object at 0x108939810>
+task_service = <src.domain.services.TaskService object at 0x109487bb0>
+app = <Flask 'src.web.app'>
+
+    def test_csrf_other_session_token_rejected_patch(client, user_service, task_service, app):
+        user1 = user_service.register_user("user1@example.com", "password123")
+        user2 = user_service.register_user("user2@example.com", "password123")
+
+        with app.app_context():
+            task = task_service.create_task(user1.id, "User 1 Task", "")
+            task_id = task.id
+
+        # Inicia sesión como user2 y obtiene SU token CSRF
+        with client.session_transaction() as sess:
+            sess["user_id"] = user2.id
+            sess["user_email"] = user2.email
+
+>       token_user2 = get_csrf_token(client)
+                      ^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_security_csrf.py:83:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/integration/test_security_csrf.py:8: in get_csrf_token
+    response = client.get("/tasks")
+               ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1166: in get
+    return self.open(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:43: in open
+    return super().open(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/testing.py:235: in open
+    response = super().open(
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1120: in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:992: in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1268: in run_wsgi_app
+    app_rv = app(environ, start_response)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1536: in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1514: in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1511: in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:919: in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:917: in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:902: in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/web/auth_routes.py:36: in decorated_function
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+src/web/task_routes.py:67: in list_tasks_view
+    return render_template(
+.venv/lib/python3.13/site-packages/flask/templating.py:151: in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/templating.py:132: in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:1295: in render
+    self.environment.handle_exception()
+.venv/lib/python3.13/site-packages/jinja2/environment.py:942: in handle_exception
+    raise rewrite_traceback_stack(source=source)
+src/web/templates/tasks/list.html:1: in top-level template code
+    {% extends "base.html" %}
+src/web/templates/base.html:5: in top-level template code
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+cls = <enum '_PassArg'>, obj = Undefined
+
+    @classmethod
+    def from_obj(cls, obj: F) -> t.Optional["_PassArg"]:
+>       if hasattr(obj, "jinja_pass_arg"):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       jinja2.exceptions.UndefinedError: 'csrf_token' is undefined
+
+.venv/lib/python3.13/site-packages/jinja2/utils.py:92: UndefinedError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-164/test_csrf_other_session_token_0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+___________________ test_csrf_missing_token_rejected_delete ____________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$plpe...b0d3f6374dafd78151ff6c7135d08f93f482896d40351164375c1fa0c9620ed32085e', created_at='2026-10-07T20:02:54.950404+00:00'))
+task_service = <src.domain.services.TaskService object at 0x108fefd10>
+app = <Flask 'src.web.app'>
+
+    def test_csrf_missing_token_rejected_delete(auth_client, task_service, app):
+        client, user = auth_client
+        with app.app_context():
+            task = task_service.create_task(user.id, "To Delete", "")
+            task_id = task.id
+
+        from flask.testing import FlaskClient
+        app.test_client_class = FlaskClient
+        raw_client = app.test_client()
+        with client.session_transaction() as sess:
+            with raw_client.session_transaction() as raw_sess:
+                for k, v in sess.items():
+                    raw_sess[k] = v
+        response = raw_client.delete(f"/api/tasks/{task_id}")
+
+>       assert response.status_code == 400
+E       assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+
+tests/integration/test_security_csrf.py:118: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-164/test_csrf_missing_token_reject1/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+________________________ test_csrf_valid_token_accepted ________________________
+
+auth_client = (<CSRFTestClient <Flask 'src.web.app'>>, User(id=1, email='testuser@example.com', password_hash='scrypt:32768:8:1$ZYms...cbb9084bc1bfd9432027f48aa0e759d50fb0159d510cdfd15f9916c92e30ce7338b5f', created_at='2026-10-07T20:02:55.073292+00:00'))
+task_service = <src.domain.services.TaskService object at 0x108ea89e0>
+app = <Flask 'src.web.app'>
+
+    def test_csrf_valid_token_accepted(auth_client, task_service, app):
+        client, user = auth_client
+>       token = get_csrf_token(client)
+                ^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_security_csrf.py:127:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/integration/test_security_csrf.py:8: in get_csrf_token
+    response = client.get("/tasks")
+               ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1166: in get
+    return self.open(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:43: in open
+    return super().open(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/testing.py:235: in open
+    response = super().open(
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1120: in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:992: in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/werkzeug/test.py:1268: in run_wsgi_app
+    app_rv = app(environ, start_response)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1536: in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1514: in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:1511: in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:919: in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:917: in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/app.py:902: in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/web/auth_routes.py:36: in decorated_function
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+src/web/task_routes.py:67: in list_tasks_view
+    return render_template(
+.venv/lib/python3.13/site-packages/flask/templating.py:151: in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flask/templating.py:132: in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:1295: in render
+    self.environment.handle_exception()
+.venv/lib/python3.13/site-packages/jinja2/environment.py:942: in handle_exception
+    raise rewrite_traceback_stack(source=source)
+src/web/templates/tasks/list.html:1: in top-level template code
+    {% extends "base.html" %}
+src/web/templates/base.html:5: in top-level template code
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+cls = <enum '_PassArg'>, obj = Undefined
+
+    @classmethod
+    def from_obj(cls, obj: F) -> t.Optional["_PassArg"]:
+>       if hasattr(obj, "jinja_pass_arg"):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       jinja2.exceptions.UndefinedError: 'csrf_token' is undefined
+
+.venv/lib/python3.13/site-packages/jinja2/utils.py:92: UndefinedError
+---------------------------- Captured stdout setup -----------------------------
+[DB RESOLUTION] Flask opening database file: /private/var/folders/lt/yk4f3pm115568jnmrh8fb6lw0000gn/T/pytest-of-sebastianquintanamorales/pytest-164/test_csrf_valid_token_accepted0/test_temp.db
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 636b0ec3f801, 001_initial_schema
+INFO  [alembic.runtime.migration] Running upgrade 636b0ec3f801 -> 3acae1929949, 002_task_lifecycle_recovery
+INFO  [alembic.runtime.migration] Running upgrade 3acae1929949 -> a6aa1e24bf8e, 003_task_organization
+INFO  [alembic.runtime.migration] Running upgrade a6aa1e24bf8e -> 4cee1aa5ad3f, task_collaboration
+INFO  [alembic.runtime.migration] Running upgrade 4cee1aa5ad3f -> 6e525f39f386, 005_task_ordering
+=========================== short test summary info ============================
+FAILED tests/integration/test_security_csrf.py::test_csrf_missing_token_rejected_post
+FAILED tests/integration/test_security_csrf.py::test_csrf_invalid_token_rejected_put
+FAILED tests/integration/test_security_csrf.py::test_csrf_other_session_token_rejected_patch
+FAILED tests/integration/test_security_csrf.py::test_csrf_missing_token_rejected_delete
+FAILED tests/integration/test_security_csrf.py::test_csrf_valid_token_accepted
+============================== 5 failed in 0.89s ===============================
+Exit code: 1
