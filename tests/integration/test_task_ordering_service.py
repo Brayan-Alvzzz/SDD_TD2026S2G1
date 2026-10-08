@@ -260,73 +260,142 @@ def test_update_task_order_concurrency(clean_app):
     app, db_path = clean_app
     owner_id, _, tasks, _, _ = seed_data(db_path)
 
-    # We want to simulate a concurrent transaction.
-    # We will acquire a write lock on the DB using a separate connection.
-    event_lock_acquired = threading.Event()
-    event_release_lock = threading.Event()
-
-    def lock_db_thread():
-        conn = sqlite3.connect(db_path, timeout=5.0)
-        conn.execute("BEGIN EXCLUSIVE") # Lock DB
-        event_lock_acquired.set()
-        event_release_lock.wait(10.0) # Hold it for a bit
-        conn.rollback()
-        conn.close()
-
-    t = threading.Thread(target=lock_db_thread)
-    t.start()
-
-    # Wait until the thread holds the lock
-    event_lock_acquired.wait(2.0)
-
     with app.app_context():
         from src.infrastructure.database import db
-        session = db.session
-        service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
+        from src.infrastructure.models import TaskORM, AuditLogORM
+        from sqlalchemy.orm import Session
+        import sqlalchemy as sa
+        from sqlalchemy.exc import OperationalError
 
-        # Attempt to update order. This should block and potentially raise OperationalError (database is locked)
-        # if timeout is reached, OR it successfully completes once the lock is released.
-        # SQLite's default timeout in Python is 5 seconds. We release the lock after 0.5s to see if it recovers,
-        # but let's actually just check that it behaves atomically.
-        event_release_lock.set() # Release immediately so it doesn't actually timeout, just proves synchronization.
+        # Confirma los datos iniciales antes de invocar el servicio
+        with Session(db.engine) as indep_session:
+            initial_tasks = indep_session.execute(
+                sa.select(TaskORM)
+                .where(TaskORM.user_id == owner_id, TaskORM.is_deleted == False)
+                .order_by(TaskORM.position.asc())
+            ).scalars().all()
+            initial_order = [t.id for t in initial_tasks]
+            initial_audit_count = indep_session.query(AuditLogORM).count()
+        assert initial_order == [tasks[0], tasks[1], tasks[2]]
 
-        # Let's ensure the service uses BEGIN IMMEDIATE to prevent read-modify-write interleaved.
-        # A true concurrency test of read-modify-write:
-        # We can mock nothing. Just call update_task_order.
-        changed = service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
-        assert changed == 2
+        def lock_and_hold(event_acquired, event_release, thread_errors):
+            conn = None
+            try:
+                conn = sqlite3.connect(db_path, timeout=5.0)
+                conn.execute("BEGIN EXCLUSIVE")
+                event_acquired.set()
+                event_release.wait(5.0) # Espera acotada
+            except Exception as e:
+                thread_errors.append(e)
+            finally:
+                if conn:
+                    try:
+                        conn.rollback()
+                        conn.close()
+                    except Exception as e:
+                        thread_errors.append(e)
 
-    t.join()
+        with Session(db.engine) as indep_session:
+            current_tasks = indep_session.execute(
+                sa.select(TaskORM)
+                .where(TaskORM.user_id == owner_id, TaskORM.is_deleted == False)
+                .order_by(TaskORM.position.asc())
+            ).scalars().all()
+            initial_positions = [(t.id, t.position) for t in current_tasks]
 
-    # Let's do a more explicit concurrency conflict:
-    # While update_task_order is doing the SET validation, if someone else inserted a task,
-    # the BEGIN IMMEDIATE prevents insertion.
-    # If the user sends stale IDs, it's caught by ConflictError.
+        # ---------------------------------------------------------
+        # Caso 1: Agotamiento del timeout (Fallo)
+        # ---------------------------------------------------------
+        event_acquired_1 = threading.Event()
+        event_release_1 = threading.Event()
+        errors_1 = []
 
-    # If we want a pure timeout test to ensure lock works:
-    def lock_and_block():
-        conn = sqlite3.connect(db_path, timeout=1.0)
-        conn.execute("BEGIN EXCLUSIVE")
-        time.sleep(6.0)
-        conn.rollback()
-        conn.close()
+        t1 = threading.Thread(target=lock_and_hold, args=(event_acquired_1, event_release_1, errors_1))
+        t1.start()
 
-    t2 = threading.Thread(target=lock_and_block)
-    t2.start()
-    time.sleep(0.2)
+        try:
+            assert event_acquired_1.wait(2.0), "El hilo 1 no adquirió el bloqueo a tiempo"
+            assert not errors_1, f"Error en hilo 1: {errors_1}"
 
-    with app.app_context():
-        from src.infrastructure.database import db
-        session = db.session
-        # Enforce short timeout on this session's engine to fail fast
-        session.get_bind().dispose()
-        # In a real scenario, this will raise an OperationalError 'database is locked'.
-        # We don't necessarily catch OperationalError in service, it propagates as a 500 or gets handled by app.
-        with pytest.raises(Exception):
+            session = db.session
+            # Timeout corto exclusivamente para esta prueba
+            session.execute(sa.text("PRAGMA busy_timeout = 100"))
+            timeout_val = session.execute(sa.text("PRAGMA busy_timeout")).scalar()
+            assert timeout_val == 100
+
             service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
-            service.update_task_order(owner_id, [tasks[0], tasks[1], tasks[2]])
 
-    t2.join()
+            with pytest.raises(OperationalError) as exc_info:
+                service.update_task_order(owner_id, [tasks[0], tasks[2], tasks[1]])
+
+            # Comprueba la excepción concreta y su causa
+            assert "database is locked" in str(exc_info.value.orig)
+        finally:
+            event_release_1.set()
+            t1.join(timeout=2.0)
+            assert not t1.is_alive(), "El hilo 1 no terminó"
+            if errors_1:
+                raise errors_1[0]
+
+        # Comprueba resultado desde sesión independiente (no hay cambios ni commit)
+        with Session(db.engine) as indep_session:
+            current_tasks = indep_session.execute(
+                sa.select(TaskORM)
+                .where(TaskORM.user_id == owner_id, TaskORM.is_deleted == False)
+                .order_by(TaskORM.position.asc())
+            ).scalars().all()
+            assert [(t.id, t.position) for t in current_tasks] == initial_positions
+            assert indep_session.query(AuditLogORM).count() == initial_audit_count
+
+        # ---------------------------------------------------------
+        # Caso 2: Liberación del bloqueo y éxito
+        # ---------------------------------------------------------
+        event_acquired_2 = threading.Event()
+        event_release_2 = threading.Event()
+        errors_2 = []
+
+        t2 = threading.Thread(target=lock_and_hold, args=(event_acquired_2, event_release_2, errors_2))
+        t2.start()
+
+        try:
+            assert event_acquired_2.wait(2.0), "El hilo 2 no adquirió el bloqueo a tiempo"
+            assert not errors_2, f"Error en hilo 2: {errors_2}"
+
+            session = db.session
+            session.execute(sa.text("PRAGMA busy_timeout = 5000"))
+            timeout_val = session.execute(sa.text("PRAGMA busy_timeout")).scalar()
+            assert timeout_val == 5000
+
+            service = TaskService(TaskRepository(session), AuditLogRepository(session), session=session)
+
+            # Liberamos el bloqueo ANTES de invocar al servicio, documentando un caso
+            # de éxito tras liberación confirmada sin afirmar que se espera concurrentemente
+            event_release_2.set()
+            t2.join(timeout=2.0)
+            assert not t2.is_alive(), "El hilo 2 no terminó"
+
+            changed = service.update_task_order(owner_id, [tasks[1], tasks[0], tasks[2]])
+            assert changed == 2
+        finally:
+            event_release_2.set()
+            if t2.is_alive():
+                t2.join(timeout=2.0)
+            if errors_2:
+                raise errors_2[0]
+
+        # Comprueba éxito íntegro desde sesión independiente (posiciones exactas y auditoría)
+        with Session(db.engine) as indep_session:
+            current_tasks = indep_session.execute(
+                sa.select(TaskORM)
+                .where(TaskORM.user_id == owner_id, TaskORM.is_deleted == False)
+                .order_by(TaskORM.position.asc())
+            ).scalars().all()
+            assert [(t.id, t.position) for t in current_tasks] == [
+                (tasks[1], 10),
+                (tasks[0], 20),
+                (tasks[2], 30)
+            ]
+            assert indep_session.query(AuditLogORM).count() == initial_audit_count + 1
 
 def test_new_tasks_added_at_end(clean_app):
     app, db_path = clean_app
