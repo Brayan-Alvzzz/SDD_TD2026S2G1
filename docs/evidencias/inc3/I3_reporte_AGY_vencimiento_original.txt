@@ -1,0 +1,136 @@
+  Execution summary for Phases 5 and 6 (T026–T033 complete). Implementing overdue task...
+  Se han completado con éxito las Fases 5 y 6 (T026–T033) del Incremento 3 conforme a la
+  constitución del proyecto y bajo estricto aislamiento de base de datos.               
+  ──────                                                                                
+  ### 1. Implementación de Indicación de Tareas Vencidas en Backend (HU-09, Fase 5)     
+                                                                                        
+  Siguiendo el flujo TDD (fase roja verificada previamente):                            
+                                                                                        
+  • Cálculo dinámico en backend: Se implementó en TaskService.calculate_is_overdue y    
+  TaskRepository._to_domain:                                                            
+      • Ayer (due_date < fecha_actual_utc): is_overdue = True para tareas pendientes o  
+      en progreso.                                                                      
+      • Hoy (due_date == fecha_actual_utc): is_overdue = False (la fecha límite abarca  
+      el día completo).                                                                 
+      • Futuro / Sin fecha: is_overdue = False.                                         
+      • Completadas (status == 'completada'): Estrictamente is_overdue = False, incluso 
+      si su fecha límite es pasada.                                                     
+      • Eliminadas (is_deleted == True): Estrictamente is_overdue = False.              
+      • Reapertura (HU-06): Al reabrir una tarea completada con fecha pasada, vuelve a  
+      evaluar inmediatamente a is_overdue = True.                                       
+  • Vista e interfaz:                                                                   
+      • En list.html:93-95, se renderiza la insignia visual <span class="badge badge-   
+      overdue" id="task-overdue-{{ task.id }}">Vencida</span> junto a la fecha límite si
+      task.is_overdue.                                                                  
+      • En style.css:377, se estilizó .badge-overdue con fondo rojo destacado (#dc2626) 
+      y texto blanco.                                                                   
+      • En task_routes.py:87, la API expone el campo booleano is_overdue en los         
+      endpoints de listado, detalle y actualización de estado.                          
+                                                                                        
+  ──────                                                                                
+  ### 2. Identificación y Análisis de la Advertencia en Pytest                          
+                                                                                        
+  Advertencia detectada:                                                                
+                                                                                        
+    tests/integration/test_migrations.py::test_migration_preserves_existing_data        
+      UserWarning: Unnamed CHECK constraint on reflected table 'audit_logs' is being    
+  omitted from the table recreate;                                                      
+      pass the constraint explicitly using batch_alter_table.table_args. Naming CHECK   
+  constraints avoids this going forward.                                                
+                                                                                        
+  • Origen: Esta advertencia ocurre exclusivamente en la prueba                         
+  test_migration_preserves_existing_data, cuando se toma una copia temporal de          
+  taskcontrol_backup.db (que viene en el esquema del Incremento 1) y se actualiza a     
+  través de la revisión 002 (3acae1929949_002_task_lifecycle_recovery.py).              
+  En SQLite, la reflexión de esquemas de SQLAlchemy no asocia nombres a restricciones   
+  CHECK a nivel de metadatos de tabla. Al ejecutar batch_alter_table('audit_logs',      
+  recreate='always'), Alembic avisa informativamente que omite la restricción CHECK     
+  anterior no nombrada y recrea la tabla con la nueva restricción CHECK definida en la  
+  migración.                                                                            
+  • ¿Requiere corrección?: No.                                                          
+      1. Comportamiento deseado: En revisiones 002 y 003, la intención era precisamente 
+      reemplazar la restricción anterior para admitir nuevas acciones (reopen,          
+      priority_change, category_change). Omitir la vieja y aplicar la nueva es la       
+      operación esperada.                                                               
+      2. Inmutabilidad de migraciones pasadas: La revisión 002 forma parte del          
+      Incremento 2 histórico ("archivos del profesor"). Modificar archivos de           
+      migraciones pasadas rompería el principio de no alterar código base anterior.     
+      3. Verificación funcional: La prueba                                              
+      test_migration_003_audit_logs_check_constraint_allows_new_actions verifica al 100%
+      que las 7 acciones son aceptadas y cualquier acción inválida es rechazada por el  
+      motor SQLite.                                                                     
+                                                                                        
+  ──────                                                                                
+  ### 3. Resultados de Pruebas y Recorrido Manual                                       
+                                                                                        
+  1. Suite Automatizada Completa (T031):                                                
+      • Total de pruebas: 153 pasadas (100% éxito, 0 fallos).                           
+      • Cobertura de código: 85% global (src/domain/models.py: 100%,                    
+      src/domain/state_machine.py: 100%, src/infrastructure/repositories.py: 93%,       
+      src/domain/services.py: 87%, src/web/task_routes.py: 84%, src/web/category_routes.
+      py: 88%).                                                                         
+  2. Recorrido Manual según quickstart.md (T032):                                       
+      • Ejecutado de extremo a extremo sobre base de datos temporal aislada             
+      (quickstart_inc3_temp.db).                                                        
+      • Escenario A (HU-07): Creación con prioridad por defecto media, orden cronológico
+      preservado (created_at DESC), ordenamiento explícito por prioridad (alta → media →
+      baja), combinación con filtros de estado y auditoría priority_change validados.   
+      • Escenario B (HU-08): Categoría única por usuario, filtrado por categoría,       
+      eliminación de categoría comprobando que las tareas asignadas no se eliminan y    
+      quedan desvinculadas con category_id = NULL (ON DELETE SET NULL).                 
+      • Escenario C (HU-09): Tarea de ayer con insignia «Vencida», tareas de hoy, futuro
+      o sin fecha sin insignia; eliminación de insignia al marcar como completada y     
+      reaparición inmediata de la insignia al reabrir la tarea.                         
+      • Base de datos temporal eliminada tras la ejecución.                             
+  3. Control de Calidad y Sintaxis (T033):                                              
+      • Compilación sintáctica exitosa sin errores (py_compile), aislamiento estricto   
+      multiusuario preservado y sin filtración de datos sensibles.                      
+                                                                                        
+  ──────                                                                                
+  ### 4. Verificación de Integridad de las Bases Reales                                 
+                                                                                        
+  Verificación realizada al finalizar las pruebas:                                      
+                                                                                        
+  • taskcontrol.db: {'users': 1, 'tasks': 4, 'audit_logs': 7} (intacta)                 
+  • taskcontrol_backup.db: {'users': 1, 'tasks': 4, 'audit_logs': 7} (intacta)          
+  ──────                                                                                
+  ### 5. Resumen de Archivos Modificados y Creados en el Incremento 3                   
+                                                                                        
+  #### Modificados:                                                                     
+                                                                                        
+  • models.py: Extensiones a entidad Task (priority, category_id, category_name,        
+  is_overdue) y nueva entidad Category.                                                 
+  • services.py: CategoryService, cálculo de vencimiento en TaskService, auditoría de   
+  priority_change y category_change.                                                    
+  • models.py: Mapeo ORM de CategoryORM y relación TaskORM con claves foráneas e índices.
+  • repositories.py: CategoryRepository, ordenamiento por prioridad y filtrado por      
+  categoría en TaskRepository.                                                          
+  • app.py: Registro del blueprint category_bp.                                         
+  • task_routes.py: Integración de parámetros sort, category_id, endpoints PATCH        
+  /priority y PATCH /category.                                                          
+  • style.css: Estilos para insignias de prioridades, categorías y badge roja de tarea  
+  vencida (.badge-overdue).                                                             
+  • base.html: Enlace a gestión de categorías en la barra de navegación.                
+  • list.html: Controles de ordenamiento por prioridad, filtrado por categoría, e       
+  insignias visuales de prioridad, categoría y vencimiento.                             
+  • create.html: Campos para selección de prioridad y categoría.                        
+  • edit.html: Edición de prioridad y categoría.                                        
+  • conftest.py: Fixtures de category_repo y category_service.                          
+  • test_migrations.py: Pruebas de migración 003 y restricción de audit_logs.           
+  • test_task_routes.py: Pruebas de integración de ordenamiento, prioridades y          
+  vencimiento.                                                                          
+  • test_task_service.py: Pruebas unitarias de ordenamiento, prioridades y cálculo de   
+  tareas vencidas.                                                                      
+  • tasks.md: Todas las tareas T001–T033 marcadas como completadas [X].                 
+                                                                                        
+  #### Nuevos:                                                                          
+                                                                                        
+  • a6aa1e24bf8e_003_task_organization.py: Migración versionada 003 para categories,    
+  columnas priority y category_id, y ampliación de chk_audit_logs_action.               
+  • category_routes.py: Blueprint y controladores para gestión de categorías web y API. 
+  • list.html: Plantilla Jinja2 de categorías con conteo de tareas y confirmación de    
+  eliminación.                                                                          
+  • test_category_service.py: Pruebas unitarias de CRUD de categorías, validaciones y   
+  desvinculación sin cascada.                                                           
+  • test_category_routes.py: Pruebas de integración de rutas de categorías y aislamiento
+  multiusuario.                                                                         

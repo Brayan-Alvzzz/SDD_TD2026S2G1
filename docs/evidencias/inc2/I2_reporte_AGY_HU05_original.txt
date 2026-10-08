@@ -1,0 +1,109 @@
+  Verification confirms no changes to the core configuration or teacher files; no code...
+  Se ha completado la implementación de la HU-05 (Eliminación Lógica de Tareas)         
+  correspondiente a las tareas T019–T026 de tasks.md, siguiendo estrictamente el enfoque
+  test-first y respetando todas las compuertas de seguridad.                            
+  ──────                                                                                
+  ### 1. Fase Roja (Test-First)                                                         
+                                                                                        
+  Antes de modificar el modelo de dominio, repositorios o rutas, se incorporaron los    
+  casos de prueba automatizados y se ejecutaron para certificar su fallo:               
+                                                                                        
+  1. Pruebas unitarias en test_task_service.py (T019):                                  
+      • test_soft_delete_task_success: eliminación lógica, persistencia de              
+      is_deleted=True, deleted_at y registro de auditoría con action='delete'.          
+      • test_soft_delete_excludes_from_list_tasks: exclusión automática de tareas       
+      eliminadas en el listado general y en listados filtrados por estado.              
+      • test_soft_delete_duplicate_attempt_fails: rechazo ante un intento de re-        
+      eliminación.                                                                      
+      • test_soft_delete_unauthorized_alien_task: denegación con UnauthorizedError si un
+      usuario intenta eliminar una tarea que pertenece a otro.                          
+      • test_soft_delete_blocks_subsequent_modifications: bloqueo de edición o          
+      transición de estado sobre tareas ya eliminadas con ValidationError.              
+  2. Pruebas de integración en test_task_routes.py (T020):                              
+      • test_soft_delete_web_route_success: POST /tasks/<id>/delete redirige (302) a    
+      /tasks, muestra mensaje flash y oculta la tarea.                                  
+      • test_soft_delete_api_route_success: DELETE /api/tasks/<id> retorna 200 JSON con 
+      {"status": "success", "data": {"id": id, "is_deleted": True}}.                    
+      • test_soft_delete_unauthenticated_rejected: rechazo con redirección a /login     
+      (web) o 401 (API) para peticiones sin sesión.                                     
+      • test_soft_delete_nonexistent_or_already_deleted_or_alien: retorno estricto de   
+      404 para tareas inexistentes, de terceros o ya eliminadas.                        
+                                                                                        
+                                                                                        
+  Resultado de la fase roja: Las 9 nuevas pruebas fallaron como se esperaba             
+  (AttributeError: 'TaskService' object has no attribute 'delete_task' y códigos 404/405
+  en endpoints).                                                                        
+  ──────                                                                                
+  ### 2. Implementación de HU-05 (T021–T026)                                            
+                                                                                        
+  • T021 (models.py):                                                                   
+  Se amplió el dataclass Task con los campos is_deleted: bool = False y deleted_at:     
+  Optional[str] = None.                                                                 
+  • T022 (repositories.py):                                                             
+      • TaskRepository.list_by_user() filtra por defecto TaskORM.is_deleted == False.   
+      • Se implementó TaskRepository.soft_delete(task_id, user_id, deleted_at) sobre la 
+      sesión compartida con flush().                                                    
+      • Se actualizaron get_by_id() y update() para mapear is_deleted y deleted_at.     
+  • T023 & T024 (services.py):                                                          
+      • Se implementó TaskService.delete_task(task_id, user_id): valida propiedad,      
+      rechaza doble eliminación con NotFoundError, persiste el borrado lógico y registra
+      el log de auditoría con action='delete' dentro de la misma transacción atómica    
+      compartida (_commit() / _rollback()).                                             
+      • Se blindaron update_task y update_task_status para rechazar cualquier mutación  
+      sobre tareas con is_deleted == True lanzando ValidationError.                     
+  • Ajuste en Migración 002 (3acae1929949_002_task_lifecycle_recovery.py):              
+  En bases temporales creadas desde cero, se aseguró que Alembic descarte la restricción
+  reflejada previa chk_audit_logs_action antes de generar el nuevo CHECK ampliado con   
+  'delete' y 'reopen'.                                                                  
+  • T025 (task_routes.py):                                                              
+      • Ruta Web: POST /tasks/<id>/delete con redirección 302 y mensaje flash de        
+      confirmación.                                                                     
+      • Ruta REST: DELETE /api/tasks/<id> retornando 200 JSON con {"status": "success", 
+      "data": {"id": id, "is_deleted": True}}.                                          
+      • Respuestas 401 si no está autenticado y 404 si la tarea no existe, ya fue       
+      eliminada o pertenece a otro usuario.                                             
+  • T026 (UI & Confirmación Nativa):                                                    
+      • En list.html:64-69, se agregó el formulario y botón "Eliminar" con estilo .btn- 
+      danger.                                                                           
+      • En tasks.js:60-68, se vinculó el evento nativo confirm("¿Está seguro de que     
+      desea eliminar esta tarea?") mediante delegación en el contenedor de tareas,      
+      preservándolo también durante las actualizaciones optimistas de estado.           
+      • En style.css:159-166, se agregaron las clases .btn-danger y su hover.           
+                                                                                        
+  ──────                                                                                
+  ### 3. Resultados de la Suite Completa de Pruebas                                     
+                                                                                        
+  Ejecución de python -m pytest -v tests/:                                              
+                                                                                        
+    ============================= test session starts =============================     
+    platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0                         
+    rootdir: C:\Users\ASUS\Documents\SDD_TD2026S2G1                                     
+    collected 57 items                                                                  
+                                                                                        
+    tests/integration/test_auth_routes.py (7 passed)                                    
+    tests/integration/test_foreign_keys.py (4 passed)                                   
+    tests/integration/test_migrations.py (3 passed)                                     
+    tests/integration/test_task_routes.py (13 passed: 9 anteriores + 4 de soft delete)  
+    tests/integration/test_transaction_rollback.py (2 passed)                           
+    tests/unit/test_state_machine.py (5 passed)                                         
+    tests/unit/test_task_service.py (15 passed: 10 anteriores + 5 de soft delete)       
+    tests/unit/test_user_service.py (8 passed)                                          
+                                                                                        
+    ======================= 57 passed, 2 warnings in 15.53s =======================     
+  ──────                                                                                
+  ### 4. Verificación de Integridad y Control de Alcance                                
+                                                                                        
+  1. Bases de datos de trabajo y respaldo intactas:                                     
+      • taskcontrol.db: users=1, tasks=4, audit_logs=7, alembic_version=3acae1929949    
+      (intacta).                                                                        
+      • taskcontrol_backup.db: users=1, tasks=4, audit_logs=7, alembic_version=none     
+      (respaldo original intacto).                                                      
+  2. **Tareas marcadas en tasks.md**:                                                   
+      • T019 a T026 marcadas como completadas [X].                                      
+  3. Restricciones respetadas:                                                          
+      • No se inició la HU-06 ni la HU-14.                                              
+      • No se realizaron operaciones git commit ni git push.                            
+      • La constitución y los archivos del profesor se mantienen sin alteración.        
+                                                                                        
+                                                                                        
+  La implementación de la HU-05 se encuentra detenida para tu revisión.

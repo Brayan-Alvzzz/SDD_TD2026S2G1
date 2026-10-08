@@ -1,0 +1,76 @@
+  The temporary script `check_dbs.py` exists outside the repository's tracked working d...
+  Se ha completado satisfactoriamente la Fase 3 (T008–T014) correspondiente a la HU-07: 
+  Prioridad de tareas y ordenamiento, siguiendo estrictamente la metodología TDD y las  
+  restricciones de aislamiento de base de datos.                                        
+  ──────                                                                                
+  ### 1. Resumen de Implementación y TDD                                                
+                                                                                        
+  1. Fase Roja (Pruebas antes de implementar):                                          
+      • test_task_service.py: 11 pruebas unitarias añadidas (T008) cubriendo asignación 
+      por defecto (media), validación de valores (alta, media, baja), rechazo de valores
+      inválidos, auditoría priority_change, orden por defecto created_desc, orden por   
+      prioridad priority_desc (alta → media → baja) y priority_asc, con desempate       
+      secundario determinista por created_at DESC.                                      
+      • test_task_routes.py: 6 pruebas de integración añadidas (T009) para endpoints Web
+      y API: creación con prioridad explícita, actualización vía POST /tasks/<id>/edit, 
+      actualización parcial vía PATCH /api/tasks/<id>/priority (con rechazo 400 por     
+      valor inválido y 401/403 para usuarios no autenticados o ajenos), y listados      
+      combinando filtros de estado y orden por prioridad.                               
+      • Ejecución inicial previa confirmando fallas esperadas (fase roja).              
+  2. Fase Verde (Implementación):                                                       
+      • Repositorio (repositories.py - T010): Soporte para persistir priority en        
+      inserción y actualización, mapeo en _to_domain, y ordenamiento SQL determinista   
+      con cláusula CASE WHEN (priority_desc, priority_asc, created_desc) y desempate por
+      created_at DESC.                                                                  
+      • Servicio de Dominio (services.py - T011): Validación de dominios de prioridad   
+      con valor por defecto 'media'; implementación de update_task_priority con registro
+      atómico del evento de auditoría priority_change; soporte de priority en           
+      update_task y parámetro sort en list_tasks.                                       
+      • Controladores y Rutas (task_routes.py - T012): Lectura de query param sort en   
+      GET /tasks y GET /api/tasks; serialización de campos de prioridad en respuestas   
+      JSON; captura de priority en formularios de creación y edición; e incorporación   
+      del endpoint PATCH /api/tasks/<int:id>/priority.                                  
+      • Vistas y Estilos (T013):                                                        
+          • list.html: Selector desplegable de ordenamiento (created_desc por defecto,  
+          priority_desc, priority_asc) preservando filtros activos e insignias visuales 
+          de prioridad para cada tarea.                                                 
+          • create.html: Campo <select> con prioridad predeterminada "Media".           
+          • edit.html: Campo <select> preseleccionado con la prioridad actual de la     
+          tarea.                                                                        
+          • style.css: Clases estilizadas .badge-priority-alta, .badge-priority-media y 
+          .badge-priority-baja.                                                         
+                                                                                        
+                                                                                        
+  ──────                                                                                
+  ### 2. Resultados de Pruebas Automatizadas (T014)                                     
+                                                                                        
+  • Pruebas Unitarias de Tareas: tests/unit/test_task_service.py → 31 pasadas (100%).   
+  • Pruebas de Integración de Tareas: tests/integration/test_task_routes.py → 26 pasadas
+  (100%).                                                                               
+  • Suite Completa de Regresión:                                                        
+    tests/integration/test_auth_routes.py ................... [ 16%]                    
+    tests/integration/test_foreign_keys.py ....             [ 20%]                      
+    tests/integration/test_migrations.py ....               [ 23%]                      
+    tests/integration/test_task_routes.py .......................... [ 46%]             
+    tests/integration/test_transaction_rollback.py .....    [ 50%]                      
+    tests/unit/test_state_machine.py .......                [ 56%]                      
+    tests/unit/test_task_service.py ............................... [ 83%]              
+    tests/unit/test_user_service.py ...................     [100%]                      
+    ======================= 115 passed, 1 warning in 33.73s =======================     
+  (Cero regresiones respecto a los 97 tests iniciales + 18 tests nuevos de la fase).    
+  ──────                                                                                
+  ### 3. Verificación de Integridad de Bases de Datos Reales                            
+                                                                                        
+  Se ejecutó verificación en modo solo lectura (read-only) para certificar que las bases
+  reales no sufrieron modificaciones:                                                   
+                                                                                        
+  • taskcontrol.db: {'users': 1, 'alembic_version': 1, 'password_reset_tokens': 0,      
+  'tasks': 4, 'audit_logs': 7} (Intacta)                                                
+  • taskcontrol_backup.db: {'users': 1, 'tasks': 4, 'audit_logs': 7} (Intacta)          
+  ──────                                                                                
+  ### 4. Estado de Tareas en tasks.md                                                   
+                                                                                        
+  Las tareas T008 a T014 quedaron marcadas con [X].                                     
+                                                                                        
+  Detenido conforme a la instrucción para recibir tus indicaciones antes de iniciar la  
+  Fase 4 (HU-08: Categorías).                                                           

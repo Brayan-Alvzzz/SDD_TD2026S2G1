@@ -1,0 +1,87 @@
+  Se han completado con éxito las Fases 1 y 2 (T001 a T007) del Incremento 3, deteniendo
+  la ejecución en la compuerta de migración obligatoria conforme a lo solicitado.       
+  ──────                                                                                
+  ### 1. Correcciones de Referencias y Archivo Real de Migración                        
+                                                                                        
+  • Generación de la Migración: Se generó la revisión Alembic 003 apuntando a una base  
+  de datos aislada temporal (clean_init.db), obteniendo su nombre y revisión real:      
+      • Archivo real: a6aa1e24bf8e_003_task_organization.py                             
+      • Identificador de revisión: a6aa1e24bf8e (revisa 3acae1929949).                  
+  • Alineación del Plan y Tareas:                                                       
+      • Se corrigió la referencia inconsistente en plan.md (Líneas 16, 116 y 264) y en  
+      tasks.md para reflejar exactamente a6aa1e24bf8e_003_task_organization.py.         
+                                                                                        
+  ──────                                                                                
+  ### 2. Resumen de Tareas Ejecutadas (Fases 1 y 2)                                     
+                                                                                        
+   Tarea │ Estado │ Descripción y Evidencia
+  ───────┼────────┼─────────────────────────────────────────────────────────────────────
+   T001  │  [X]   │ Ejecución de la suite previa de 97 pruebas (pytest -v), confirmando
+         │        │ 97/97 aprobadas limpiamente (línea base del Incremento 2 intacta).
+   T002  │  [X]   │ Incorporación de la entidad de dominio Category y campos priority,
+         │        │ category_id, category_name, is_overdue en models.py. Creación de
+         │        │ CategoryORM con uq_categories_user_name, extensión de TaskORM con
+         │        │ priority ('media'), category_id (FK SET NULL), chk_tasks_priority,
+         │        │ e índices en models.py.
+   T003  │  [X]   │ Implementación previa (TDD - Fase Roja) de pruebas de integración
+         │        │ en test_migrations.py verificando actualización desde cero,
+         │        │ preservación de datos sin conteos fijos, asignación de default
+         │        │ media a tareas preexistentes y ampliación de restricción CHECK en
+         │        │ audit_logs. Se comprobó que fallaban antes de generar la migración.
+   T004  │  [X]   │ Generación de la revisión Alembic
+         │        │ a6aa1e24bf8e_003_task_organization.py sobre base temporal
+         │        │ clean_init.db.
+   T005  │  [X]   │ Refinamiento de la migración utilizando modo batch de Alembic
+         │        │ (recreate="always" para SQLite) para crear categories, modificar
+         │        │ tasks y recrear audit_logs ampliando chk_audit_logs_action para
+         │        │ admitir priority_change y category_change conservando todas las
+         │        │ filas previas.
+   T006  │  [X]   │ Ejecución de la suite de pruebas de migración (pytest -v
+         │        │ tests/integration/test_migrations.py), aprobando las 4 pruebas de
+         │        │ integración al 100%.
+   T007  │  [X]   │ MANDATORY STOP GATE: Verificación formal de la migración sobre
+         │        │ bases temporales aisladas y copia efímera con conteos dinámicos.
+  ──────                                                                                
+  ### 3. Resultados de la Compuerta de Migración (Stop Gate T007)                       
+                                                                                        
+  Se ejecutó la verificación integral de compuerta con los siguientes resultados:       
+                                                                                        
+  1. Base limpia temporal: Creó exitosamente las tablas categories, tasks, users,       
+  audit_logs, password_reset_tokens con todas sus columnas (priority, category_id),     
+  claves foráneas e índices.                                                            
+  2. Copia temporal efímera de la base de datos:                                        
+      • Conteos pre-migración: users=1, tasks=4, audit_logs=7.                          
+      • Aplicación de upgrade() a a6aa1e24bf8e.                                         
+      • Conteos post-migración: users=1, tasks=4, audit_logs=7 (100% preservación de    
+      registros).                                                                       
+      • Verificación de tareas preexistentes: las 4 tareas recibieron automáticamente   
+      priority='media' y category_id=None.                                              
+      • La tabla audit_logs acepta los nuevos eventos priority_change y category_change,
+      y rechaza acciones no autorizadas.                                                
+  3. Suite completa de pruebas: 98 pruebas aprobadas (97 originales + nuevas pruebas de 
+  migración e integridad).                                                              
+  ──────                                                                                
+  ### 4. Estado de Aislamiento de Bases Reales                                          
+                                                                                        
+  • taskcontrol.db: Intacta (users=1, tasks=4, audit_logs=7, columnas de tareas en      
+  revisión 002 sin columnas priority ni category_id).                                   
+  • taskcontrol_backup.db: Intacta (users=1, tasks=4, audit_logs=7, esquema original de 
+  revisión 001).                                                                        
+  ──────                                                                                
+  ### 5. Archivos Modificados y Creados                                                 
+                                                                                        
+  • Modelos:                                                                            
+      • models.py                                                                       
+      • models.py                                                                       
+  • Migraciones:                                                                        
+      • a6aa1e24bf8e_003_task_organization.py                                           
+  • Pruebas:                                                                            
+      • test_migrations.py                                                              
+  • Documentación de Especificación y Seguimiento:                                      
+      • plan.md                                                                         
+      • tasks.md                                                                        
+                                                                                        
+                                                                                        
+  La compuerta de migración queda superada. Quedo atento a tus instrucciones para       
+  proceder con la implementación de la Fase 3: User Story 1 (HU-07 - Prioridad de Tareas
+  y Ordenamiento).

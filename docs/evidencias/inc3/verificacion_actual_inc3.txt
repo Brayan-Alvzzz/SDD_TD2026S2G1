@@ -1,0 +1,87 @@
+================================================================================
+VERIFICACIÓN ACTUAL - INCREMENTO 3 (HU-07, HU-08, HU-09 Y CORRECCIONES)
+================================================================================
+Distinción de evidencia:
+Esta es una ejecución de verificación realizada sobre la copia actual de trabajo
+(directorio extraído de ZIP, sin repositorio Git local en .git; no se inventa commit).
+No corresponde a una evidencia histórica RED ni GREEN, ni sustituye los reportes
+originales de AGY (I3_reporte_AGY_*.txt, reporte_chat_vencimiento_original.txt) ni las
+capturas fotográficas originales conservadas.
+
+Fecha de ejecución: 2026-10-07 21:41:01 -05:00
+Comando:
+pytest -v tests/integration/test_migrations.py::test_migration_003_preserves_existing_tasks_with_default_priority tests/integration/test_migrations.py::test_migration_003_audit_logs_check_constraint_allows_new_actions tests/unit/test_category_service.py tests/integration/test_category_routes.py tests/unit/test_task_service.py::test_create_task_assigns_default_media_priority tests/unit/test_task_service.py::test_create_task_with_explicit_priority tests/unit/test_task_service.py::test_create_task_invalid_priority_raises_validation_error tests/unit/test_task_service.py::test_update_task_priority_success_and_audit_log tests/unit/test_task_service.py::test_update_task_priority_invalid_value_fails tests/unit/test_task_service.py::test_update_task_priority_unauthorized_user_fails tests/unit/test_task_service.py::test_update_task_priority_deleted_task_fails tests/unit/test_task_service.py::test_list_tasks_default_order_is_created_descending tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_desc tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_asc tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_tie_breaking tests/integration/test_task_routes.py::test_create_task_with_priority_web_and_api tests/integration/test_task_routes.py::test_edit_task_post_updates_priority tests/integration/test_task_routes.py::test_patch_api_task_priority_success_and_validations tests/integration/test_task_routes.py::test_patch_api_task_priority_unauthorized_and_alien tests/integration/test_task_routes.py::test_task_list_sort_by_priority_web_and_api tests/integration/test_task_routes.py::test_task_list_sort_by_priority_combined_with_status_filter tests/unit/test_task_service.py::test_create_task_with_valid_category tests/unit/test_task_service.py::test_create_task_with_alien_category_rejected tests/unit/test_task_service.py::test_create_task_with_nonexistent_category_rejected tests/unit/test_task_service.py::test_update_task_category_success_and_audit tests/unit/test_task_service.py::test_unlink_task_category_with_none_and_audit tests/unit/test_task_service.py::test_update_task_category_alien_or_unauthorized tests/unit/test_task_service.py::test_list_tasks_filter_by_category_id_and_none tests/integration/test_task_routes.py::test_assign_category_preserves_title_description_and_due_date tests/unit/test_task_service.py::test_overdue_yesterday_is_true tests/unit/test_task_service.py::test_overdue_today_is_false tests/unit/test_task_service.py::test_overdue_tomorrow_is_false tests/unit/test_task_service.py::test_overdue_completed_task_with_past_due_date_is_false tests/unit/test_task_service.py::test_overdue_soft_deleted_task_is_false tests/unit/test_task_service.py::test_overdue_null_or_empty_due_date_is_false tests/unit/test_task_service.py::test_overdue_reopened_past_due_task_becomes_overdue tests/unit/test_task_service.py::test_overdue_update_due_date_toggles_flag tests/integration/test_task_routes.py::test_api_tasks_contract_includes_is_overdue tests/integration/test_task_routes.py::test_tasks_list_html_renders_overdue_badge tests/integration/test_task_routes.py::test_tasks_list_html_does_not_render_overdue_badge_for_today_or_future tests/integration/test_task_routes.py::test_completed_past_due_task_removes_overdue_badge_in_view_and_api tests/integration/test_task_routes.py::test_reopened_past_due_task_restores_overdue_badge tests/integration/test_task_routes.py::test_task_status_and_reopen_api_contract_for_dynamic_overdue_ui tests/integration/test_task_routes.py::test_get_edit_task_view_preloads_all_fields_and_preserves_post_errors
+
+Código de salida: 0
+Resultado: 60 passed in 32.37s
+
+============================= SALIDA REAL DE PYTEST =============================
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ASUS\Documents\SDD_TD2026S2G1-final\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ASUS\Downloads\SDD_TD2026S2G1_base_con_evidencias_1a3\SDD_TD2026S2G1-main
+plugins: base-url-2.1.0, cov-7.1.0, playwright-0.9.0
+collecting ... collected 60 items
+
+tests/integration/test_migrations.py::test_migration_003_preserves_existing_tasks_with_default_priority PASSED [  1%]
+tests/integration/test_migrations.py::test_migration_003_audit_logs_check_constraint_allows_new_actions PASSED [  3%]
+tests/unit/test_category_service.py::test_create_category_success PASSED [  5%]
+tests/unit/test_category_service.py::test_create_category_validation_errors PASSED [  6%]
+tests/unit/test_category_service.py::test_create_category_duplicate_same_user_rejected PASSED [  8%]
+tests/unit/test_category_service.py::test_create_category_multi_user_isolation PASSED [ 10%]
+tests/unit/test_category_service.py::test_list_categories_with_active_task_count PASSED [ 11%]
+tests/unit/test_category_service.py::test_delete_category_unlinks_tasks_without_deleting_them_or_losing_audit PASSED [ 13%]
+tests/unit/test_category_service.py::test_delete_category_unauthorized_and_nonexistent PASSED [ 15%]
+tests/integration/test_category_routes.py::test_get_categories_unauthenticated_rejected PASSED [ 16%]
+tests/integration/test_category_routes.py::test_create_and_list_categories_web PASSED [ 18%]
+tests/integration/test_category_routes.py::test_create_and_list_categories_api PASSED [ 20%]
+tests/integration/test_category_routes.py::test_create_category_validation_and_duplicate_rejection PASSED [ 21%]
+tests/integration/test_category_routes.py::test_categories_multi_user_isolation PASSED [ 23%]
+tests/integration/test_category_routes.py::test_delete_category_api_unlinks_tasks_without_deleting_them PASSED [ 25%]
+tests/integration/test_category_routes.py::test_delete_category_web_unlinks_tasks PASSED [ 26%]
+tests/integration/test_category_routes.py::test_delete_category_alien_or_unauthorized PASSED [ 28%]
+tests/integration/test_category_routes.py::test_patch_api_task_category PASSED [ 30%]
+tests/integration/test_category_routes.py::test_patch_api_task_category_alien_rejected PASSED [ 31%]
+tests/integration/test_category_routes.py::test_task_listing_filter_by_category_and_none PASSED [ 33%]
+tests/unit/test_task_service.py::test_create_task_assigns_default_media_priority PASSED [ 35%]
+tests/unit/test_task_service.py::test_create_task_with_explicit_priority PASSED [ 36%]
+tests/unit/test_task_service.py::test_create_task_invalid_priority_raises_validation_error PASSED [ 38%]
+tests/unit/test_task_service.py::test_update_task_priority_success_and_audit_log PASSED [ 40%]
+tests/unit/test_task_service.py::test_update_task_priority_invalid_value_fails PASSED [ 41%]
+tests/unit/test_task_service.py::test_update_task_priority_unauthorized_user_fails PASSED [ 43%]
+tests/unit/test_task_service.py::test_update_task_priority_deleted_task_fails PASSED [ 45%]
+tests/unit/test_task_service.py::test_list_tasks_default_order_is_created_descending PASSED [ 46%]
+tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_desc PASSED [ 48%]
+tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_asc PASSED [ 50%]
+tests/unit/test_task_service.py::test_list_tasks_sort_by_priority_tie_breaking PASSED [ 51%]
+tests/integration/test_task_routes.py::test_create_task_with_priority_web_and_api PASSED [ 53%]
+tests/integration/test_task_routes.py::test_edit_task_post_updates_priority PASSED [ 55%]
+tests/integration/test_task_routes.py::test_patch_api_task_priority_success_and_validations PASSED [ 56%]
+tests/integration/test_task_routes.py::test_patch_api_task_priority_unauthorized_and_alien PASSED [ 58%]
+tests/integration/test_task_routes.py::test_task_list_sort_by_priority_web_and_api PASSED [ 60%]
+tests/integration/test_task_routes.py::test_task_list_sort_by_priority_combined_with_status_filter PASSED [ 61%]
+tests/unit/test_task_service.py::test_create_task_with_valid_category PASSED [ 63%]
+tests/unit/test_task_service.py::test_create_task_with_alien_category_rejected PASSED [ 65%]
+tests/unit/test_task_service.py::test_create_task_with_nonexistent_category_rejected PASSED [ 66%]
+tests/unit/test_task_service.py::test_update_task_category_success_and_audit PASSED [ 68%]
+tests/unit/test_task_service.py::test_unlink_task_category_with_none_and_audit PASSED [ 70%]
+tests/unit/test_task_service.py::test_update_task_category_alien_or_unauthorized PASSED [ 71%]
+tests/unit/test_task_service.py::test_list_tasks_filter_by_category_id_and_none PASSED [ 73%]
+tests/integration/test_task_routes.py::test_assign_category_preserves_title_description_and_due_date PASSED [ 75%]
+tests/unit/test_task_service.py::test_overdue_yesterday_is_true PASSED   [ 76%]
+tests/unit/test_task_service.py::test_overdue_today_is_false PASSED      [ 78%]
+tests/unit/test_task_service.py::test_overdue_tomorrow_is_false PASSED   [ 80%]
+tests/unit/test_task_service.py::test_overdue_completed_task_with_past_due_date_is_false PASSED [ 81%]
+tests/unit/test_task_service.py::test_overdue_soft_deleted_task_is_false PASSED [ 83%]
+tests/unit/test_task_service.py::test_overdue_null_or_empty_due_date_is_false PASSED [ 85%]
+tests/unit/test_task_service.py::test_overdue_reopened_past_due_task_becomes_overdue PASSED [ 86%]
+tests/unit/test_task_service.py::test_overdue_update_due_date_toggles_flag PASSED [ 88%]
+tests/integration/test_task_routes.py::test_api_tasks_contract_includes_is_overdue PASSED [ 90%]
+tests/integration/test_task_routes.py::test_tasks_list_html_renders_overdue_badge PASSED [ 91%]
+tests/integration/test_task_routes.py::test_tasks_list_html_does_not_render_overdue_badge_for_today_or_future PASSED [ 93%]
+tests/integration/test_task_routes.py::test_completed_past_due_task_removes_overdue_badge_in_view_and_api PASSED [ 95%]
+tests/integration/test_reopened_past_due_task_restores_overdue_badge PASSED [ 96%]
+tests/integration/test_task_routes.py::test_task_status_and_reopen_api_contract_for_dynamic_overdue_ui PASSED [ 98%]
+tests/integration/test_task_routes.py::test_get_edit_task_view_preloads_all_fields_and_preserves_post_errors PASSED [100%]
+
+============================= 60 passed in 32.37s =============================

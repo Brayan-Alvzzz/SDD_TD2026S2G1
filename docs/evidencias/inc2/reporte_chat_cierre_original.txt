@@ -1,0 +1,146 @@
+  ### Reporte de Cierre del Incremento 2 (Fase 6: Polish & Cross-Cutting Concerns)      
+  ──────                                                                                
+  ### 1. Ejecución de la Suite Completa y Cobertura (T042)                              
+                                                                                        
+  Se ejecutó la suite de pruebas completa con cobertura (pytest -v --cov=src):          
+                                                                                        
+  • Resultado general: 97 pasadas (100% éxito) en 32.07 segundos (39 pruebas heredadas  
+  del Incremento 1 + 58 pruebas nuevas unitarias, de integración, transaccionales y de  
+  migraciones).                                                                         
+  • Cobertura total: 87% en src/ (919 sentencias, 122 no cubiertas en módulos no        
+  transitados como scripts de seed CLI).                                                
+  • Detalle de cobertura por módulo:                                                    
+      • models.py: 100%                                                                 
+      • state_machine.py: 100%                                                          
+      • exceptions.py: 100%                                                             
+      • services.py: 92%                                                                
+      • models.py: 100%                                                                 
+      • repositories.py: 96%                                                            
+      • notifications.py: 89%                                                           
+      • app.py: 85%                                                                     
+      • auth_routes.py: 89%                                                             
+      • task_routes.py: 88%                                                             
+                                                                                        
+  ──────                                                                                
+  ### 2. Revisión de Estilo, Calidad y Seguridad (T044)                                 
+                                                                                        
+  • Estilo y formato (PEP 8):                                                           
+      • Revisión de sintaxis y longitud de líneas en todos los archivos nuevos y        
+      modificados de src/ y tests/.                                                     
+      • Ajuste de sentencias largas en services.py, repositories.py y auth_routes.py.   
+  • Seguridad de tokens y contraseñas:                                                  
+      • Emisión condicionada: ENABLE_CONSOLE_PASSWORD_RESET está en False por defecto en
+      app.py y en ConsoleNotificationService. Si no hay mecanismo de entrega configurado
+      y activo, el servicio ni genera ni revoca tokens, manteniendo la respuesta neutra 
+      hacia el usuario.                                                                 
+      • No exposición en respuestas web ni logs: La prueba automatizada                 
+      test_token_never_exposed_in_html_or_json_responses valida de manera exhaustiva que
+      ni el token plano ni su hash SHA-256 se filtran en HTML ni en respuestas JSON. No 
+      se escriben tokens ni contraseñas a archivos de registro persistentes.            
+      • Mitigación de enumeración de cuentas (SC-004): El servicio aplica una operación 
+      argon2 simulada cuando el correo no existe para mitigar diferencias temporales    
+      respecto a correos registrados                                                    
+      (test_timing_mitigation_between_existing_and_nonexistent_email).                  
+      • Atipicidad y consumo atómico: Un solo uso garantizado por hash SHA-256          
+      almacenado, expiración a 30 minutos y revocación previa en nuevas solicitudes.    
+                                                                                        
+  ──────                                                                                
+  ### 3. Actualización de la Guía Rápida                                                
+                                                                                        
+  Se actualizó quickstart.md en su Sección 4:                                           
+                                                                                        
+  • Explica cómo levantar un entorno de pruebas manuales con una base SQLite temporal   
+  aislada (quickstart_temp.db) aplicando las migraciones versionadas (flask db upgrade).
+  • Detalla cómo habilitar explícitamente $env:ENABLE_CONSOLE_PASSWORD_RESET = "true"   
+  solo para la consola de desarrollo local.                                             
+  • Proporciona los comandos de limpieza al finalizar las pruebas manuales.             
+  • No se modificaron README-1.txt, incrementos-2-a-5-speckit.md ni archivos fuera de la
+  especificación.                                                                       
+  ──────                                                                                
+  ### 4. Recorrido Manual E2E (T043) y Puntos a Comprobar en Navegador                  
+                                                                                        
+  La verificación programática de los 3 flujos (HU-05 eliminación suave, HU-06          
+  reapertura de completadas y HU-14 recuperación de contraseña) se validó de extremo a  
+  extremo mediante pruebas de integración sobre bases temporales.                       
+                                                                                        
+  No obstante, T043 se mantiene desmarcada ([ ]) en tasks.md porque las siguientes      
+  interacciones nativas del navegador deben ser comprobadas interactivamente por el     
+  usuario:                                                                              
+                                                                                        
+  #### Pasos para la comprobación en el navegador:                                      
+                                                                                        
+  1. Configurar el entorno temporal:                                                    
+    $env:DATABASE_PATH = "quickstart_temp.db"                                           
+    $env:ENABLE_CONSOLE_PASSWORD_RESET = "true"                                         
+    flask --app src.web.app:create_app db upgrade                                       
+    python -m src.web.app                                                               
+                                                                                        
+  2. Escenario HU-05 (Eliminación Lógica):                                              
+      • Registrarse en http://localhost:5000/register y crear una tarea de prueba.      
+      • En /tasks, pulsar «Eliminar».                                                   
+      • Comprobar visualmente: Debe saltar un único diálogo nativo confirm: "¿Está      
+      seguro de que desea eliminar esta tarea?".                                        
+      • Al pulsar Cancelar, no debe borrarse. Al confirmar, la tarea desaparece y       
+      muestra mensaje flash de confirmación.                                            
+      • Intentar ingresar a /tasks/<id>/edit de la tarea eliminada: comprobar que       
+      devuelve pantalla de error 404 Not Found.                                         
+  3. Escenario HU-06 (Reapertura de Tarea):                                             
+      • Crear una tarea, iniciarla y completarla.                                       
+      • En estado completada, verificar que el botón disponible es «Reabrir ↺».         
+      • Comprobar visualmente: Al pulsar «Reabrir ↺», la fila transiciona de forma      
+      optimista e inmediata a insignia pendiente y reaparece el botón «Iniciar ▶».      
+  4. Escenario HU-14 (Recuperación por Consola):                                        
+      • Cerrar sesión e ir a http://localhost:5000/forgot-password.                     
+      • Solicitar con un correo inexistente: comprobar respuesta neutra y verificar que 
+      en la terminal no se imprime ningún enlace.                                       
+      • Solicitar con el correo registrado: comprobar la misma respuesta neutra y       
+      verificar que en la terminal del servidor se imprime el bloque con el enlace      
+      http://localhost:5000/reset-password/<token>.                                     
+      • Abrir el enlace en el navegador, definir nueva contraseña de al menos 8         
+      caracteres e iniciar sesión en /login con la nueva clave.                         
+      • Intentar volver a usar el mismo enlace: comprobar que redirige a /login         
+      indicando enlace no válido/expirado.                                              
+  5. Limpieza posterior:                                                                
+    Remove-Item env:DATABASE_PATH                                                       
+    Remove-Item env:ENABLE_CONSOLE_PASSWORD_RESET                                       
+    if (Test-Path "quickstart_temp.db") { Remove-Item "quickstart_temp.db" }            
+                                                                                        
+  ──────                                                                                
+  ### 5. Estado de Tareas en tasks.md                                                   
+                                                                                        
+  En tasks.md:                                                                          
+                                                                                        
+  • [X] T042: Suite automatizada ejecutada con 97/97 pruebas y 87% de cobertura.        
+  • [ ] T043: Pendiente de la verificación interactiva visual en navegador descrita     
+  arriba.                                                                               
+  • [X] T044: Verificación de estilo PEP 8 y seguridad de tokens/contraseñas completada.
+  ──────                                                                                
+  ### 6. Archivos Modificados y Pendientes de Commit                                    
+                                                                                        
+  • specs/002-task-lifecycle-access-recovery/quickstart.md                              
+  • specs/002-task-lifecycle-access-recovery/tasks.md                                   
+  • src/domain/models.py                                                                
+  • src/domain/services.py                                                              
+  • src/infrastructure/repositories.py                                                  
+  • src/infrastructure/notifications.py (nuevo sin seguimiento)                         
+  • src/web/app.py                                                                      
+  • src/web/auth_routes.py                                                              
+  • src/web/templates/auth/login.html                                                   
+  • src/web/templates/auth/forgot_password.html (nuevo sin seguimiento)                 
+  • src/web/templates/auth/reset_password.html (nuevo sin seguimiento)                  
+  • tests/conftest.py                                                                   
+  • tests/integration/test_auth_routes.py                                               
+  • tests/integration/test_transaction_rollback.py                                      
+  • tests/unit/test_user_service.py                                                     
+  ──────                                                                                
+  ### 7. Integridad de Bases Reales y Riesgos                                           
+                                                                                        
+  • Bases de datos reales:                                                              
+      • taskcontrol.db: [users=1, tasks=4, audit_logs=7] (intacta).                     
+      • taskcontrol_backup.db: [users=1, tasks=4, audit_logs=7] (intacta).              
+  • Riesgos:                                                                            
+      • Ninguno detectado a nivel de regresión o integridad de datos; las migraciones y 
+      modelos respetan estrictamente las transacciones atómicas y restricciones CHECK.  
+  • Acciones pendientes:                                                                
+      • No se ha realizado git commit, git push, PR ni merge, a la espera de tu         
+      validación visual de T043.     

@@ -1,0 +1,76 @@
+  Undefined variables in Jinja2 evaluate as `jinja2.runtime.Undefined`, not `None`. Thi...
+  Se ha corregido el formulario GET de edición de tareas y se han añadido las pruebas de
+  regresión solicitadas.                                                                
+  ──────                                                                                
+  ### 1. Causa Raíz Identificada y Corrección                                           
+                                                                                        
+  • Causa raíz en Jinja2:                                                               
+  Cuando una plantilla se renderiza en una petición GET pasando únicamente task y       
+  categories, las variables title, description y due_date son objetos Undefined. En     
+  Jinja2, la expresión title is not none evalúa a True (dado que Undefined es una       
+  instancia interna y no el literal None), por lo que Jinja2 evaluaba a title (cadena   
+  vacía) en lugar de recurrir al else task.title.                                       
+  • **Solución implementada en edit.html:13-58**:                                       
+      • Se sustituyó la comprobación por el test nativo is defined:                     
+          • Título: {{ title if title is defined else task.title }}                     
+          • Descripción: {{ description if description is defined else (task.description
+          or '') }}                                                                     
+          • Fecha límite: {{ due_date if due_date is defined else (task.due_date or '') 
+          }}                                                                            
+          • Prioridad: {% set selected_priority = priority if priority is defined else  
+          task.priority %}                                                              
+          • Categoría: {% set active_cat_id = category_id if category_id is defined else
+          task.category_id %}                                                           
+      • Comportamiento en GET: Las variables del formulario no están definidas (is      
+      defined evalúa a False), por lo que se precargan fielmente todos los datos        
+      actuales del objeto task.                                                         
+      • Comportamiento en fallo de validación de POST: update_task_view pasa            
+      explícitamente title, description, due_date, priority y category_id al renderizar 
+      con código 400. En este caso is defined evalúa a True, preservando exactamente lo 
+      que el usuario escribió.                                                          
+                                                                                        
+  ──────                                                                                
+  ### 2. Pruebas de Regresión Añadidas                                                  
+                                                                                        
+  En test_task_routes.py:574-658 se agregaron dos pruebas automatizadas:                
+                                                                                        
+  1. test_get_edit_task_view_preloads_all_fields_and_preserves_post_errors:             
+      • Crea una tarea completa con título, descripción, fecha límite, prioridad alta y 
+      categoría asignada.                                                               
+      • Solicita GET /tasks/<id>/edit y comprueba que el HTML precarga los valores en   
+      value="...", el cuerpo del <textarea>, la opción seleccionada de prioridad y la   
+      opción seleccionada de categoría.                                                 
+      • Envía un POST /tasks/<id>/edit con título inválido (en blanco) y campos         
+      modificados; comprueba que la respuesta 400 conserva el borrador editado por el   
+      usuario.                                                                          
+  2. test_assign_category_preserves_title_description_and_due_date:                     
+      • Crea una tarea activa con título, descripción y fecha límite.                   
+      • Asigna una categoría vía PATCH /api/tasks/<id>/category y confirma que el título,
+      descripción y fecha límite persisten intactos.                                    
+      • Actualiza la categoría vía el formulario web POST /tasks/<id>/edit con los datos
+      precargados y confirma que la nueva categoría se asocia sin alterar título,       
+      descripción ni fecha límite.                                                      
+                                                                                        
+  ──────                                                                                
+  ### 3. Resultados de Pruebas                                                          
+                                                                                        
+  • Pruebas de regresión específicas:                                                   
+    tests\integration\test_task_routes.py ..  [100%]                                    
+    ====================== 2 passed in 1.05s ======================                     
+                                                                                        
+  • Integración de rutas de tareas (tests/integration/test_task_routes.py):             
+    tests\integration\test_task_routes.py ................................. [100%]      
+    ============================= 33 passed in 11.90s =============================     
+                                                                                        
+  • Suite completa de regresión (pytest -v):                                            
+    ======================= 155 passed, 1 warning in 47.90s =======================     
+                                                                                        
+  ──────                                                                                
+  ### 4. Integridad de las Bases Reales                                                 
+                                                                                        
+  Verificación ejecutada al finalizar:                                                  
+                                                                                        
+    taskcontrol.db: {'users': 1, 'tasks': 4, 'audit_logs': 7}                           
+    taskcontrol_backup.db: {'users': 1, 'tasks': 4, 'audit_logs': 7}                    
+                                                                                        
+  Ambas bases de datos reales permanecieron estrictamente intactas y sin modificaciones.

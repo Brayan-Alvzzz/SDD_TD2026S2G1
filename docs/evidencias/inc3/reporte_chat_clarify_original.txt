@@ -1,0 +1,62 @@
+  ### Análisis de Ambigüedades y Cobertura (speckit-clarify)                            
+                                                                                        
+  Tras escanear exhaustivamente la especificación spec.md frente a los requerimientos de
+  HU-07, HU-08 y HU-09, no se detectaron ambigüedades críticas que impidan o bloqueen la
+  implementación.                                                                       
+                                                                                        
+  Los criterios esenciales y las reglas de negocio se encuentran completamente          
+  delimitados y libres de ambigüedad funcional:                                         
+                                                                                        
+  1. HU-07 (Prioridad): Valores explícitos (alta, media, baja), valor predeterminado    
+  obligatorio (media), ordenamiento descendente por defecto en listado combinable con   
+  filtros de estado y auditoría inmutable en cambios de prioridad.                      
+  2. HU-08 (Categorías): Entidad de dominio propia aislada por usuario, relación 0..1   
+  (máximo una o ninguna categoría), desvinculación segura sin cascada (category_id =    
+  NULL), filtro por categoría en listado; decisiones accesorias como renombrar o        
+  reordenar por categoría quedaron formalmente excluidas de alcance.                    
+  3. HU-09 (Vencimiento en Backend): Formato de fecha estricto YYYY-MM-DD sin componente
+  de hora, condición de vencimiento evaluada en backend en UTC (due_date <              
+  fecha_actual_utc), regla inequívoca para tareas con fecha límite de hoy (aún no       
+  vencidas), y exclusión absoluta de falsos positivos en tareas completadas o eliminadas.
+  ──────                                                                                
+  ### Resumen de Cobertura por Taxonomía                                                
+                                                                                        
+   Categoría                          │ Estado │ Observación
+  ────────────────────────────────────┼────────┼────────────────────────────────────────
+   Alcance Funcional y Comportamiento │ Clear  │ Metas de usuario y criterios
+                                      │        │ delimitados; funciones accesorias
+                                      │        │ excluidas explícitamente.
+   Modelo de Dominio y Datos          │ Clear  │ Entidades Task (con priority,
+                                      │        │ category_id, is_overdue) y Category
+                                      │        │ (id, user_id, name, created_at)
+                                      │        │ especificadas.
+   Interacción y Flujo UX             │ Clear  │ Formularios estándar, filtros de
+                                      │        │ estado/categoría y distintivo visual
+                                      │        │ destacado en listado.
+   Atributos de Calidad y Rendimiento │ Clear  │ Tiempos de respuesta < 1s, aislamiento
+                                      │        │ multi-usuario estricto.
+   Seguridad y Autorización           │ Clear  │ Verificación en backend en cada
+                                      │        │ consulta/mutación; prohibición de
+                                      │        │ acceso a datos ajenos.
+   Casos Borde y Manejo de Errores    │ Clear  │ Regla para fecha de hoy, categorías
+                                      │        │ eliminadas concurrentemente,
+                                      │        │ reapertura de vencidas y tareas sin
+                                      │        │ categoría.
+   Terminología y Consistencia        │ Clear  │ Vocabulario alineado con la
+                                      │        │ Constitución de TaskControl
+                                      │        │ (Principios I a V).
+  ──────                                                                                
+  ### Estado de Calidad de la Especificación                                            
+                                                                                        
+  • Archivo de especificación: spec.md                                                  
+  • Lista de verificación de calidad: requirements.md (16/16 ítems cumplidos).          
+  • Preguntas formuladas: 0 (no se requirieron preguntas adicionales al estar resueltos 
+  todos los puntos de decisión funcional).                                              
+  ──────                                                                                
+  ### Siguiente Paso Recomendado                                                        
+                                                                                        
+  La especificación está lista para proceder a la planificación de la arquitectura      
+  técnica, diseño de base de datos (migración Alembic 003) y contratos de interfaces    
+  mediante:                                                                             
+                                                                                        
+    /speckit-plan 

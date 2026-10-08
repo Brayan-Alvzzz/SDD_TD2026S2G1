@@ -1,0 +1,103 @@
+  Focusing on Phase 4, the priority is to create tests that verify user isolation and t...
+  Se ha completado con éxito la Fase 4 (T015–T025) correspondiente a la HU-08:          
+  Categorías de tareas sin eliminación en cascada, cumpliendo con la metodología TDD y  
+  todas las directrices de aislamiento relacional y de base de datos.                   
+  ──────                                                                                
+  ### 1. Resumen del Ciclo TDD y Desarrollo                                             
+                                                                                        
+  1. Fase Roja (Pruebas escritas primero):                                              
+      • test_category_service.py (T015): 7 pruebas unitarias para creación con          
+      saneamiento de espacios (trim), longitud (1–50 caracteres), unicidad de nombre por
+      usuario, aislamiento multi-usuario (usuarios distintos pueden tener categorías con
+      el mismo nombre), listado con conteo de tareas activas (task_count),              
+      desvinculación de tareas al eliminar categoría sin borrarlas ni perder auditoría, 
+      y rechazo ante intentos no autorizados.                                           
+      • test_task_service.py (T016): 7 pruebas unitarias para creación de tareas con    
+      categoría válida, rechazo al asignar categorías ajenas o inexistentes,            
+      actualización de categoría registrando el evento de auditoría category_change,    
+      desvinculación explícita con None, y filtros en list_tasks por ID de categoría o  
+      por tareas sin categoría ('none').                                                
+      • test_category_routes.py (T017): 11 pruebas de integración para endpoints Web    
+      (GET /categories, POST /categories, POST /categories/<id>/delete) y API (GET      
+      /api/categories, POST /api/categories, DELETE /api/categories/<id>, PATCH         
+      /api/tasks/<id>/category), verificando autenticación, autorización multi-usuario, 
+      filtros combinados (category_id + status + sort) y desvinculación sin cascada.    
+      • Ejecución inicial registrando 25 pruebas fallidas esperadas en la fase roja.    
+  2. Fase Verde (Implementación de Producción):                                         
+      • Repositorio de Categorías (repositories.py - T018): Implementación de           
+      CategoryRepository con métodos create, list_by_user (calculando atómicamente el   
+      conteo de tareas activas task_count mediante LEFT OUTER JOIN y filtrado is_deleted
+      == False), get_by_id, get_by_user_and_name, y delete aprovechando la restricción  
+      referencial SQLite ON DELETE SET NULL.                                            
+      • Repositorio de Tareas (repositories.py - T019): Resolución robusta de           
+      category_name en _to_domain y soporte integral para filtrar por ID numérico o     
+      'none' en consultas SQL.                                                          
+      • Servicio de Categorías (services.py - T020): Implementación de CategoryService  
+      con validación de nombre (no vacío, trim, <= 50 caracteres, unicidad por usuario  
+      que genera ConflictError), list_categories y delete_category dentro de límites    
+      transaccionales atómicos (_commit() / _rollback()).                               
+      • Servicio de Tareas (services.py - T021): Validación estricta de propiedad de la 
+      categoría en create_task y update_task; implementación de update_task_category con
+      registro inmutable en auditoría (action='category_change').                       
+      • Controladores de Categorías (category_routes.py - T022): Blueprint category_bp  
+      con rutas Web y API completas, registrado en app.py.                              
+      • Controladores de Tareas (task_routes.py - T023): Soporte para category_id en    
+      creación y edición Web/API, inyección de categorías en vistas de formulario, y    
+      nuevo endpoint PATCH /api/tasks/<int:id>/category.                                
+      • Vistas y Estilos (T024):                                                        
+          • list.html: Plantilla de administración de categorías personales con         
+          formulario de alta, conteo de tareas activas y confirmación de eliminación    
+          segura.                                                                       
+          • list.html: Desplegable de filtro por categoría ("Todas las categorías", "Sin
+          categoría", categorías del usuario), combinado con orden de prioridad y estado,
+          junto con la insignia visual 📁 {categoría}.                                  
+          • create.html y edit.html: Selector <select> de categorías disponibles del    
+          usuario autenticado.                                                          
+          • base.html: Enlace directo de navegación "Categorías" en el navbar principal.
+          • style.css: Clases estilizadas .badge-category y .badge-no-category.         
+                                                                                        
+                                                                                        
+  ──────                                                                                
+  ### 2. Verificaciones Clave                                                           
+                                                                                        
+  • Aislamiento Multi-usuario: Se verificó que usuarios distintos pueden registrar      
+  categorías con nombres idénticos (ej. "Personal") de manera completamente             
+  independiente; ningún usuario puede consultar, asignar ni eliminar categorías ajenas  
+  (respuestas 401/403/404).                                                             
+  • Eliminación Segura sin Cascada ni Pérdida de Auditoría: Se comprobó que al eliminar 
+  una categoría vía Web o API, el motor SQLite ejecuta ON DELETE SET NULL, desvinculando
+  las tareas asociadas (category_id = None), las cuales permanecen activas en el sistema
+  sin alteración de sus estados ni pérdida de sus registros históricos en audit_logs.   
+  ──────                                                                                
+  ### 3. Resultados de Pruebas Automatizadas (T025)                                     
+                                                                                        
+    tests/integration/test_auth_routes.py ...................                [ 13%]     
+    tests/integration/test_category_routes.py ...........                    [ 21%]     
+    tests/integration/test_foreign_keys.py ....                              [ 24%]     
+    tests/integration/test_migrations.py ....                                [ 27%]     
+    tests/integration/test_task_routes.py ..........................         [ 45%]     
+    tests/integration/test_transaction_rollback.py .....                     [ 49%]     
+    tests/unit/test_category_service.py .......                              [ 54%]     
+    tests/unit/test_state_machine.py .......                                 [ 59%]     
+    tests/unit/test_task_service.py ......................................   [ 86%]     
+    tests/unit/test_user_service.py ...................                      [100%]     
+                                                                                        
+    ======================= 140 passed, 1 warning in 43.96s =======================     
+                                                                                        
+  • 140 pruebas ejecutadas y aprobadas al 100% (25 pruebas nuevas de la Fase 4 + 115    
+  pruebas previas sin regresiones).                                                     
+  ──────                                                                                
+  ### 4. Integridad de Bases de Datos Reales                                            
+                                                                                        
+  Verificación en modo solo lectura (read-only):                                        
+                                                                                        
+  • taskcontrol.db: {'users': 1, 'alembic_version': 1, 'password_reset_tokens': 0,      
+  'tasks': 4, 'audit_logs': 7} (Intacta)                                                
+  • taskcontrol_backup.db: {'users': 1, 'tasks': 4, 'audit_logs': 7} (Intacta)          
+  ──────                                                                                
+  ### 5. Estado de Tareas en tasks.md                                                   
+                                                                                        
+  Las tareas T015 a T025 han sido marcadas como completadas [X].                        
+                                                                                        
+  Detenido conforme a tus indicaciones a la espera de instrucciones para iniciar la Fase
+  5 (HU-09: Indicación Confiable de Tareas Vencidas).                                   
