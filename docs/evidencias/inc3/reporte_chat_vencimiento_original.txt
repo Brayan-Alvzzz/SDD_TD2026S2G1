@@ -1,0 +1,85 @@
+  The JavaScript code updating task statuses was incomplete; it missed updating the ove...
+  Se ha corregido la actualización inmediata en el frontend de la etiqueta «Vencida» al 
+  completar y reabrir tareas, manteniendo íntegra la regla de cálculo del backend y sin 
+  tocar las bases de datos reales ni los archivos del profesor.                         
+  ──────                                                                                
+  ### 1. Causa Raíz y Solución Implementada                                             
+                                                                                        
+  • Causa raíz:                                                                         
+      1. En tasks.js, al pulsar «Completar» se actualizaba únicamente la insignia de    
+      estado (task-badge-${taskId} a completada), pero no se manipulaba ni ocultaba la  
+      etiqueta de vencimiento (task-overdue-${taskId}). De igual forma, al pulsar       
+      «Reabrir» no se restauraba dicha etiqueta.                                        
+      2. Los endpoints PATCH /api/tasks/<id>/status y POST /api/tasks/<id>/reopen no    
+      incluían la propiedad is_overdue en el objeto data de su respuesta JSON,          
+      impidiendo al frontend sincronizarse de forma dinámica con el estado calculado por
+      el backend.                                                                       
+  • Modificaciones realizadas:                                                          
+      1. Endpoints de API (task_routes.py):                                             
+          • Se añadió "is_overdue": updated.is_overdue en la respuesta de PATCH         
+          /api/tasks/<id>/status.                                                       
+          • Se añadió "is_overdue": reopened.is_overdue en la respuesta de POST         
+          /api/tasks/<id>/reopen.                                                       
+          • Se mantiene la regla estricta: due_date < fecha_actual_utc en UTC, tarea no 
+          eliminada y estado distinto de completada.                                    
+      2. Plantilla Jinja2 (list.html:91-96):                                            
+          • Se asignó id="task-due-{{ task.id }}" al elemento contenedor de la fecha    
+          límite para permitir al script cliente ubicar e insertar la insignia dinámica 
+          en caso de reapertura.                                                        
+      3. Controlador JavaScript (tasks.js:5-105):                                       
+          • Se implementó la función auxiliar setOverdueBadge(taskId, isOverdue):       
+              • Si isOverdue === false: oculta inmediatamente la etiqueta con display = 
+              'none'.                                                                   
+              • Si isOverdue === true: muestra la etiqueta existente o crea un elemento 
+              <span class="badge badge-overdue">Vencida</span> y lo inserta tras #task- 
+              due-${taskId} si la tarjeta fue cargada inicialmente en estado completada.
+          • Al pulsar «Completar»: Oculta la etiqueta «Vencida» de forma optimista e    
+          inmediata (mostrando únicamente la tarjeta como «COMPLETADA»). Si la llamada a
+          la API falla, el rollback restaura la visualización anterior; al responder con
+          éxito, sincroniza con result.data.is_overdue (false).                         
+          • Al pulsar «Reabrir»: Tras confirmar la reapertura con éxito, evalúa result. 
+          data.is_overdue del backend; si la fecha límite ya pasó (true), reaparece     
+          inmediatamente la etiqueta «Vencida».                                         
+                                                                                        
+                                                                                        
+  ──────                                                                                
+  ### 2. Prueba de Regresión Añadida                                                    
+                                                                                        
+  En test_task_routes.py:659-701 se añadió la prueba de integración:                    
+                                                                                        
+  • test_task_status_and_reopen_api_contract_for_dynamic_overdue_ui:                    
+      • Verifica que los identificadores del DOM (#task-due-{id} y #task-overdue-{id})  
+      están presentes en la vista /tasks.                                               
+      • Comprueba que la transición a en_progreso sobre una tarea vencida conserva      
+      is_overdue: True.                                                                 
+      • Comprueba que la transición a completada sobre una tarea vencida retorna de     
+      inmediato is_overdue: False.                                                      
+      • Comprueba que la reapertura POST /api/tasks/{id}/reopen retorna de inmediato    
+      is_overdue: True.                                                                 
+      • Comprueba que para una tarea con fecha futura, completar y reabrir retorna      
+      consistentemente is_overdue: False.                                               
+                                                                                        
+  ──────                                                                                
+  ### 3. Resultados de Pruebas                                                          
+                                                                                        
+  • Prueba de regresión específica:                                                     
+    tests\integration\test_task_routes.py .  [100%]                                     
+    ====================== 1 passed in 0.78s ======================                     
+                                                                                        
+  • Pruebas de tareas vencidas (pytest -k "overdue"):                                   
+    tests\integration\test_task_routes.py ......                                        
+    tests\unit\test_task_service.py ........                                            
+    ===================== 14 passed in 4.91s ======================                     
+                                                                                        
+  • Suite completa de pruebas (pytest -v):                                              
+    ======================= 156 passed, 1 warning in 47.79s =======================     
+                                                                                        
+  ──────                                                                                
+  ### 4. Verificación de Integridad de las Bases Reales                                 
+                                                                                        
+  Verificación ejecutada tras todas las pruebas:                                        
+                                                                                        
+    taskcontrol.db: {'users': 1, 'tasks': 4, 'audit_logs': 7}                           
+    taskcontrol_backup.db: {'users': 1, 'tasks': 4, 'audit_logs': 7}                    
+                                                                                        
+  Ambos archivos se encuentran estrictamente intactos y sin modificaciones. 

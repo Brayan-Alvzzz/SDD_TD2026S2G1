@@ -1,0 +1,123 @@
+  Initial focus is on strictly adhering to the specified user story (HU-14) and task li...
+  Se ha completado la implementación de HU-14: Recuperación de Contraseña y             
+  Restablecimiento Seguro de Acceso (tareas T034–T041 de tasks.md) siguiendo            
+  estrictamente desarrollo guiado por pruebas (Test-First).                             
+  ──────                                                                                
+  ### 1. Resumen de la Implementación                                                   
+                                                                                        
+  1. Entidad de Dominio y Persistencia (T036, T037):                                    
+      • Se definió la dataclass de dominio PasswordResetToken (id, user_id, token_hash, 
+      expires_at, used, created_at).                                                    
+      • Se implementó PasswordResetTokenRepository con métodos create_token,            
+      find_active_by_hash, mark_as_used y revoke_all_for_user.                          
+      • Se añadió UserRepository.update_password para actualizar de forma segura el hash
+      de la contraseña.                                                                 
+  2. Servicio de Notificación en Terminal Local (T038):                                 
+      • Se creó ConsoleNotificationService en src/infrastructure/notifications.py.      
+      • Imprime el enlace de recuperación con el token únicamente en la terminal del    
+      servidor (sys.stdout) para facilitar pruebas locales sin pasarela SMTP, sin       
+      persistir tokens en disco ni en archivos de logs permanentes, y con advertencia   
+      explícita de entorno local.                                                       
+  3. Capa de Dominio y Unidad de Trabajo Atómica (T039):                                
+      • En UserService:                                                                 
+          • request_password_reset(email, base_url): Valida la sintaxis del correo. Si  
+          el usuario existe, genera un token criptográfico de 32 bytes (secrets.        
+          token_urlsafe(32)), almacena únicamente su hash SHA-256 (token_hash), define  
+          caducidad estricta de 30 minutos, revoca de forma preventiva cualquier token  
+          anterior no utilizado para ese usuario y despacha la notificación a consola.  
+          Si el correo no existe, ejecuta operaciones ficticias para mitigar variaciones
+          de tiempo. En ambos casos, no filtra la existencia del usuario.               
+          • reset_password(token, new_password, new_password_confirm): Valida           
+          coincidencia de contraseñas y longitud mínima de 8 caracteres; valida que el  
+          token exista por su hash SHA-256, no esté marcado como used y no haya superado
+          los 30 minutos de vida.                                                       
+          • Atomicidad transaccional: La actualización del hash de contraseña y el      
+          consumo del token (mark_as_used) se ejecutan en la misma transacción (self.   
+          _commit()); ante cualquier fallo, ambas operaciones se revierten (self.       
+          _rollback()).                                                                 
+                                                                                        
+  4. Rutas HTTP y Contratos Web/API (T040):                                             
+      • Conformes a password-recovery-api.json:                                         
+          • GET /forgot-password: Renderiza la vista de solicitud de recuperación.      
+          • POST /forgot-password: Retorna status 200 con la respuesta neutra invariable
+          "Si la dirección de correo electrónico está registrada en el sistema, se ha   
+          enviado un enlace para restablecer la contraseña." tanto para correos         
+          registrados como no registrados (mitigación de enumeración de usuarios). El   
+          token nunca se expone en la respuesta web ni en la API.                       
+          • GET /reset-password/<token>: Valida la vigencia y no consumo del token. Si  
+          es inválido o expiró, redirige 302 a /login con mensaje de error; si es válido,
+          presenta el formulario de nueva contraseña (status 200).                      
+          • POST /reset-password/<token>: Consume el token y actualiza la contraseña de 
+          forma atómica. Redirige a /login en interacción web o retorna 200 JSON en API 
+          REST. Responde 400 ante discrepancias de contraseña o tokens ya               
+          consumidos/expirados.                                                         
+                                                                                        
+  5. Plantillas Jinja2 e Interfaz (T041):                                               
+      • Creada forgot_password.html.                                                    
+      • Creada reset_password.html.                                                     
+      • Añadido el enlace de recuperación «¿Olvidó su contraseña?» en login.html:24-31. 
+                                                                                        
+  ──────                                                                                
+  ### 2. Resultados de las Pruebas Automatizadas                                        
+                                                                                        
+  • Fase Roja (Red Phase): 19 pruebas fallaron intencionalmente antes de implementar el 
+  código de dominio y rutas.                                                            
+  • Fase Verde (Green Phase): Ejecución de la suite completa tomando las 73 pruebas     
+  anteriores como base más las 20 nuevas pruebas de HU-14 (unitarias, integración de    
+  rutas, notificación a terminal y rollback transaccional):                             
+                                                                                        
+    ======================= 93 passed, 2 warnings in 27.81s =======================     
+                                                                                        
+  Desglose de pruebas de la suite:                                                      
+                                                                                        
+  • tests/integration/test_auth_routes.py: 17 passed                                    
+  • tests/integration/test_foreign_keys.py: 4 passed                                    
+  • tests/integration/test_migrations.py: 3 passed                                      
+  • tests/integration/test_task_routes.py: 20 passed                                    
+  • tests/integration/test_transaction_rollback.py: 5 passed                            
+  • tests/unit/test_state_machine.py: 7 passed                                          
+  • tests/unit/test_task_service.py: 20 passed                                          
+  • tests/unit/test_user_service.py: 17 passed                                          
+  ──────                                                                                
+  ### 3. Verificación de Integridad de Bases de Datos                                   
+                                                                                        
+  Las bases de datos reales permanecen aisladas e intactas:                             
+                                                                                        
+  • taskcontrol.db: [users=1, tasks=4, audit_logs=7]                                    
+  • taskcontrol_backup.db: [users=1, tasks=4, audit_logs=7]                             
+  ──────                                                                                
+  ### 4. Archivos Modificados y Creados                                                 
+                                                                                        
+  • tasks.md (Marcadas T034–T041 como completadas)                                      
+  • models.py                                                                           
+  • services.py                                                                         
+  • repositories.py                                                                     
+  • notifications.py (Nuevo)                                                            
+  • auth_routes.py                                                                      
+  • login.html                                                                          
+  • forgot_password.html (Nuevo)                                                        
+  • reset_password.html (Nuevo)                                                         
+  • test_user_service.py                                                                
+  • test_auth_routes.py                                                                 
+  • test_transaction_rollback.py                                                        
+  ──────                                                                                
+  ### 5. Tareas Marcadas en tasks.md                                                    
+                                                                                        
+  [✓] T034 [P] [US3] Unit tests for password reset token lifecycle and security in      
+  tests/unit/test_user_service.py                                                       
+  [✓] T035 [P] [US3] Integration tests for password recovery HTTP endpoints in          
+  tests/integration/test_auth_routes.py                                                 
+  [✓] T036 [P] [US3] Define PasswordResetToken domain entity dataclass in               
+  src/domain/models.py                                                                  
+  [✓] T037 [P] [US3] Implement PasswordResetTokenRepository in                          
+  src/infrastructure/repositories.py                                                    
+  [✓] T038 [P] [US3] Implement ConsoleNotificationService in                            
+  src/infrastructure/notifications.py                                                   
+  [✓] T039 [US3] Implement UserService.request_password_reset(email) and UserService.   
+  reset_password(token, new_password, new_password_confirm) in src/domain/services.py   
+  [✓] T040 [US3] Implement aligned authentication routes in src/web/auth_routes.py      
+  [✓] T041 [US3] Create Jinja2 templates for forgot/reset password and add recovery link
+  in login.html                                                                         
+                                                                                        
+  Se detiene la ejecución aquí para revisión conforme a las instrucciones. No se han    
+  ejecutado operaciones de git commit ni push.     

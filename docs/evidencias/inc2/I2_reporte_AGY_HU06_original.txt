@@ -1,0 +1,101 @@
+  Se ha completado la implementación de HU-06: Reapertura de Tareas Completadas (tareas 
+  T027–T033 de tasks.md) siguiendo estrictamente desarrollo guiado por pruebas (Test-   
+  First).                                                                               
+  ──────                                                                                
+  ### 1. Resumen de la Implementación                                                   
+                                                                                        
+  1. Máquina de estados (T030):                                                         
+      • Se añadió TaskStateMachine.validate_reopen(current_status), que valida de forma 
+      determinista que solo el estado "completada" puede transicionar a "pendiente".    
+      Cualquier otro estado (pendiente, en_progreso o desconocido) genera               
+      InvalidStateTransitionError.                                                      
+  2. Capa de Dominio y Servicio (T031):                                                 
+      • Se implementó TaskService.reopen_task(task_id, user_id).                        
+      • Valida propiedad y existencia (tareas ajenas o inexistentes lanzan              
+      UnauthorizedError / NotFoundError).                                               
+      • Bloquea explícitamente tareas eliminadas lógicamente con NotFoundError.         
+      • Registra de forma inmutable el evento de auditoría con action="reopen" y        
+      details={"from": "completada", "to": "pendiente", "reason": "reopen_by_user"}.    
+      • Todo se ejecuta bajo una única unidad de trabajo transaccional: si el registro  
+      de auditoría falla, se revierte tanto la modificación del estado de la tarea como 
+      la auditoría.                                                                     
+  3. Rutas HTTP (T032):                                                                 
+      • Conformes a task-lifecycle-api.json:                                            
+          • POST /tasks/<id>/reopen (Web): redirige 302 a /tasks con flash tras         
+          reapertura exitosa; responde 400 para estados no completados y 404 para tareas
+          ajenas/inexistentes/eliminadas.                                               
+          • POST /api/tasks/<id>/reopen (REST API): responde 200 con {"status":         
+          "success", "message": "...", "data": {"id": id, "status": "pendiente"}}; 400  
+          para transiciones inválidas; 404 para inexistente/ajena/eliminada; 401 si no  
+          está autenticado.                                                             
+                                                                                        
+  4. Interfaz de Usuario y Optimistic UI (T033):                                        
+      • En list.html:62-68, el botón «Reabrir ↺» se renderiza condicional y             
+      exclusivamente para tareas en estado completada.                                  
+      • En tasks.js:10-61, se conectó el manejo asíncrono vía API.post con actualización
+      optimista de la insignia y rollback ante fallos de servidor o de red.             
+      • En api.js:66-95, se añadió soporte para API.post.                               
+      • En style.css:159-166, se definió la clase .btn-secondary.                       
+                                                                                        
+  ──────                                                                                
+  ### 2. Pruebas Automatizadas                                                          
+                                                                                        
+  Se partió de las 60 pruebas existentes y se añadieron 13 pruebas específicas para HU- 
+  06 (unitarias, integración de rutas y rollback):                                      
+                                                                                        
+  • Fase Roja Inicial: 12 pruebas fallaron intencionalmente antes del código funcional. 
+  • Fase Verde:                                                                         
+    collected 73 items                                                                  
+                                                                                        
+    tests/integration/test_auth_routes.py ...............                    [ 9%]      
+    tests/integration/test_foreign_keys.py ....                             [ 15%]      
+    tests/integration/test_migrations.py ...                                [ 19%]      
+    tests/integration/test_task_routes.py ....................              [ 46%]      
+    tests/integration/test_transaction_rollback.py ....                     [ 52%]      
+    tests/unit/test_state_machine.py .......                                [ 61%]      
+    tests/unit/test_task_service.py ....................                    [ 89%]      
+    tests/unit/test_user_service.py ........                                [100%]      
+                                                                                        
+    ======================= 73 passed, 2 warnings in 19.84s =======================     
+                                                                                        
+  ──────                                                                                
+  ### 3. Verificación de Integridad de Bases de Datos                                   
+                                                                                        
+  Las bases reales no sufrieron modificaciones:                                         
+                                                                                        
+  • taskcontrol.db: users=1, tasks=4, logs=7 (intacta)                                  
+  • taskcontrol_backup.db: users=1, tasks=4, logs=7 (intacta)                           
+  ──────                                                                                
+  ### 4. Archivos Modificados                                                           
+                                                                                        
+  • tasks.md (Marcadas T027–T033 como completadas)                                      
+  • state_machine.py                                                                    
+  • services.py                                                                         
+  • task_routes.py                                                                      
+  • list.html                                                                           
+  • api.js                                                                              
+  • tasks.js                                                                            
+  • style.css                                                                           
+  • test_state_machine.py                                                               
+  • test_task_service.py                                                                
+  • test_transaction_rollback.py                                                        
+  • test_task_routes.py                                                                 
+  ──────                                                                                
+  ### 5. Tareas Marcadas en tasks.md                                                    
+                                                                                        
+  [✓] T027 [P] [US2] Unit tests for state machine reopen validation in                  
+  tests/unit/test_state_machine.py                                                      
+  [✓] T028 [P] [US2] Unit tests for reopen service in tests/unit/test_task_service.py   
+  [✓] T029 [P] [US2] Integration tests for reopen HTTP endpoints in                     
+  tests/integration/test_task_routes.py                                                 
+  [✓] T030 [P] [US2] Implement deterministic reopen transition TaskStateMachine.        
+  validate_reopen(current_status) in src/domain/state_machine.py                        
+  [✓] T031 [US2] Implement TaskService.reopen_task(task_id, user_id) in                 
+  src/domain/services.py                                                                
+  [✓] T032 [US2] Implement HTTP routes POST /tasks/<id>/reopen and POST                 
+  /api/tasks/<id>/reopen in src/web/task_routes.py                                      
+  [✓] T033 [US2] Update src/web/templates/tasks/list.html to conditionally render       
+  "Reabrir" button and update src/web/static/js/tasks.js                                
+                                                                                        
+  Se detiene la ejecución aquí conforme a las instrucciones: no se inició HU-14 ni se   
+  realizaron operaciones de git commit/push.  

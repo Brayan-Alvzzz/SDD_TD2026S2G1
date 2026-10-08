@@ -1,0 +1,84 @@
+================================================================================
+VERIFICACIÓN ACTUAL - INCREMENTO 2 (HU-05, HU-06, HU-14 Y FUNDACIÓN ORM)
+================================================================================
+Distinción de evidencia:
+Esta es una ejecución de verificación realizada sobre la copia actual de trabajo
+(directorio extraído de ZIP, sin repositorio Git local en .git; no se inventa commit).
+No corresponde a una evidencia histórica RED ni GREEN, ni sustituye los reportes
+originales de AGY (I2_reporte_AGY_*.txt, reporte_chat_cierre_original.txt) ni las
+capturas fotográficas originales conservadas.
+
+Fecha de ejecución: 2026-10-07 21:40:02 -05:00
+Comando:
+pytest -v tests/integration/test_foreign_keys.py tests/integration/test_transaction_rollback.py tests/integration/test_migrations.py::test_clean_database_upgrade_from_scratch tests/integration/test_migrations.py::test_migration_preserves_existing_data tests/integration/test_task_routes.py::test_soft_delete_web_route_success tests/integration/test_task_routes.py::test_soft_delete_api_route_success tests/integration/test_task_routes.py::test_soft_delete_unauthenticated_rejected tests/integration/test_task_routes.py::test_soft_delete_nonexistent_or_already_deleted_or_alien tests/integration/test_task_routes.py::test_deleted_task_cannot_be_opened_in_edit_view tests/integration/test_task_routes.py::test_deleted_task_status_change_via_api_returns_controlled_error tests/integration/test_task_routes.py::test_reopen_task_web_route_success tests/integration/test_task_routes.py::test_reopen_task_api_route_success tests/integration/test_task_routes.py::test_reopen_task_unauthenticated_rejected tests/integration/test_task_routes.py::test_reopen_task_non_completed_fails tests/integration/test_task_routes.py::test_reopen_task_nonexistent_alien_or_deleted_fails tests/integration/test_auth_routes.py::test_forgot_password_get_route tests/integration/test_auth_routes.py::test_forgot_password_post_registered_and_unregistered_identical_neutral_response tests/integration/test_auth_routes.py::test_token_never_exposed_in_html_or_json_responses tests/integration/test_auth_routes.py::test_forgot_password_post_invalid_email_format tests/integration/test_auth_routes.py::test_forgot_password_api_json tests/integration/test_auth_routes.py::test_reset_password_get_valid_token tests/integration/test_auth_routes.py::test_reset_password_get_invalid_or_expired_token tests/integration/test_auth_routes.py::test_reset_password_post_success tests/integration/test_auth_routes.py::test_reset_password_post_validation_mismatch_and_short tests/integration/test_auth_routes.py::test_reset_password_api_json tests/integration/test_auth_routes.py::test_login_page_contains_forgot_password_link tests/integration/test_auth_routes.py::test_forgot_password_delivery_disabled_does_not_issue_or_revoke_token tests/unit/test_state_machine.py::test_validate_reopen_from_completed_success tests/unit/test_state_machine.py::test_validate_reopen_from_non_completed_fails tests/unit/test_task_service.py::test_soft_delete_task_success tests/unit/test_task_service.py::test_soft_delete_excludes_from_list_tasks tests/unit/test_task_service.py::test_soft_delete_duplicate_attempt_fails tests/unit/test_task_service.py::test_soft_delete_unauthorized_alien_task tests/unit/test_task_service.py::test_soft_delete_blocks_subsequent_modifications tests/unit/test_task_service.py::test_reopen_task_success tests/unit/test_task_service.py::test_reopen_task_non_completed_fails tests/unit/test_task_service.py::test_reopen_task_deleted_fails tests/unit/test_task_service.py::test_reopen_task_unauthorized_alien tests/unit/test_task_service.py::test_reopen_task_nonexistent_fails tests/unit/test_user_service.py::test_request_password_reset_registered_email_success tests/unit/test_user_service.py::test_request_password_reset_nonexistent_email_neutral tests/unit/test_user_service.py::test_request_password_reset_invalid_email_format tests/unit/test_user_service.py::test_request_password_reset_revokes_previous_tokens tests/unit/test_user_service.py::test_reset_password_success tests/unit/test_user_service.py::test_reset_password_single_use_cannot_reuse tests/unit/test_user_service.py::test_reset_password_expired_token tests/unit/test_user_service.py::test_reset_password_validation_failures tests/unit/test_console_notification_service_local_terminal_only tests/unit/test_when_delivery_not_configured_does_not_issue_or_revoke_tokens tests/unit/test_timing_mitigation_between_existing_and_nonexistent_email
+
+Código de salida: 0
+Resultado: 57 passed in 26.82s
+
+============================= SALIDA REAL DE PYTEST =============================
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ASUS\Documents\SDD_TD2026S2G1-final\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ASUS\Downloads\SDD_TD2026S2G1_base_con_evidencias_1a3\SDD_TD2026S2G1-main
+plugins: base-url-2.1.0, cov-7.1.0, playwright-0.9.0
+collecting ... collected 57 items
+
+tests/integration/test_foreign_keys.py::test_sqlite_foreign_keys_pragma_enabled PASSED [  1%]
+tests/integration/test_foreign_keys.py::test_invalid_foreign_key_rejected_on_task_creation PASSED [  3%]
+tests/integration/test_foreign_keys.py::test_invalid_foreign_key_rejected_on_audit_log_creation PASSED [  5%]
+tests/integration/test_foreign_keys.py::test_foreign_keys_reactivated_even_if_migration_fails PASSED [  7%]
+tests/integration/test_transaction_rollback.py::test_create_task_rolls_back_when_audit_fails PASSED [  8%]
+tests/integration/test_transaction_rollback.py::test_update_task_status_rolls_back_when_audit_fails PASSED [ 10%]
+tests/integration/test_transaction_rollback.py::test_delete_task_rolls_back_when_audit_fails PASSED [ 12%]
+tests/integration/test_transaction_rollback.py::test_reopen_task_rolls_back_when_audit_fails PASSED [ 14%]
+tests/integration/test_transaction_rollback.py::test_reset_password_rolls_back_when_token_consumption_fails PASSED [ 15%]
+tests/integration/test_migrations.py::test_clean_database_upgrade_from_scratch PASSED [ 17%]
+tests/integration/test_migrations.py::test_migration_preserves_existing_data PASSED [ 19%]
+tests/integration/test_task_routes.py::test_soft_delete_web_route_success PASSED [ 21%]
+tests/integration/test_task_routes.py::test_soft_delete_api_route_success PASSED [ 22%]
+tests/integration/test_task_routes.py::test_soft_delete_unauthenticated_rejected PASSED [ 24%]
+tests/integration/test_task_routes.py::test_soft_delete_nonexistent_or_already_deleted_or_alien PASSED [ 26%]
+tests/integration/test_task_routes.py::test_deleted_task_cannot_be_opened_in_edit_view PASSED [ 28%]
+tests/integration/test_task_routes.py::test_deleted_task_status_change_via_api_returns_controlled_error PASSED [ 29%]
+tests/integration/test_task_routes.py::test_reopen_task_web_route_success PASSED [ 31%]
+tests/integration/test_task_routes.py::test_reopen_task_api_route_success PASSED [ 33%]
+tests/integration/test_task_routes.py::test_reopen_task_unauthenticated_rejected PASSED [ 35%]
+tests/integration/test_task_routes.py::test_reopen_task_non_completed_fails PASSED [ 36%]
+tests/integration/test_task_routes.py::test_reopen_task_nonexistent_alien_or_deleted_fails PASSED [ 38%]
+tests/integration/test_auth_routes.py::test_forgot_password_get_route PASSED [ 40%]
+tests/integration/test_auth_routes.py::test_forgot_password_post_registered_and_unregistered_identical_neutral_response PASSED [ 42%]
+tests/integration/test_auth_routes.py::test_token_never_exposed_in_html_or_json_responses PASSED [ 43%]
+tests/integration/test_auth_routes.py::test_forgot_password_post_invalid_email_format PASSED [ 45%]
+tests/integration/test_auth_routes.py::test_forgot_password_api_json PASSED [ 47%]
+tests/integration/test_auth_routes.py::test_reset_password_get_valid_token PASSED [ 49%]
+tests/integration/test_auth_routes.py::test_reset_password_get_invalid_or_expired_token PASSED [ 50%]
+tests/integration/test_auth_routes.py::test_reset_password_post_success PASSED [ 52%]
+tests/integration/test_auth_routes.py::test_reset_password_post_validation_mismatch_and_short PASSED [ 54%]
+tests/integration/test_auth_routes.py::test_reset_password_api_json PASSED [ 56%]
+tests/integration/test_auth_routes.py::test_login_page_contains_forgot_password_link PASSED [ 57%]
+tests/integration/test_auth_routes.py::test_forgot_password_delivery_disabled_does_not_issue_or_revoke_token PASSED [ 59%]
+tests/unit/test_state_machine.py::test_validate_reopen_from_completed_success PASSED [ 61%]
+tests/unit/test_state_machine.py::test_validate_reopen_from_non_completed_fails PASSED [ 63%]
+tests/unit/test_task_service.py::test_soft_delete_task_success PASSED    [ 64%]
+tests/unit/test_task_service.py::test_soft_delete_excludes_from_list_tasks PASSED [ 66%]
+tests/unit/test_task_service.py::test_soft_delete_duplicate_attempt_fails PASSED [ 68%]
+tests/unit/test_task_service.py::test_soft_delete_unauthorized_alien_task PASSED [ 70%]
+tests/unit/test_task_service.py::test_soft_delete_blocks_subsequent_modifications PASSED [ 71%]
+tests/unit/test_task_service.py::test_reopen_task_success PASSED         [ 73%]
+tests/unit/test_task_service.py::test_reopen_task_non_completed_fails PASSED [ 75%]
+tests/unit/test_task_service.py::test_reopen_task_deleted_fails PASSED   [ 77%]
+tests/unit/test_task_service.py::test_reopen_task_unauthorized_alien PASSED [ 78%]
+tests/unit/test_task_service.py::test_reopen_task_nonexistent_fails PASSED [ 80%]
+tests/unit/test_user_service.py::test_request_password_reset_registered_email_success PASSED [ 82%]
+tests/unit/test_user_service.py::test_request_password_reset_nonexistent_email_neutral PASSED [ 84%]
+tests/unit/test_user_service.py::test_request_password_reset_invalid_email_format PASSED [ 85%]
+tests/unit/test_user_service.py::test_request_password_reset_revokes_previous_tokens PASSED [ 87%]
+tests/unit/test_user_service.py::test_reset_password_success PASSED      [ 89%]
+tests/unit/test_user_service.py::test_reset_password_single_use_cannot_reuse PASSED [ 91%]
+tests/unit/test_user_service.py::test_reset_password_expired_token PASSED [ 92%]
+tests/unit/test_user_service.py::test_reset_password_validation_failures PASSED [ 94%]
+tests/unit/test_user_service.py::test_console_notification_service_local_terminal_only PASSED [ 96%]
+tests/unit/test_user_service.py::test_when_delivery_not_configured_does_not_issue_or_revoke_tokens PASSED [ 98%]
+tests/unit/test_timing_mitigation_between_existing_and_nonexistent_email PASSED [100%]
+
+============================= 57 passed in 26.82s =============================

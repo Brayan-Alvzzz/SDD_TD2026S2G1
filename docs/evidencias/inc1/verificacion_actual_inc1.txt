@@ -1,0 +1,65 @@
+================================================================================
+VERIFICACIÓN ACTUAL - INCREMENTO 1 (HU-01 a HU-04, HU-12, HU-13)
+================================================================================
+Distinción de evidencia:
+Esta es una ejecución de verificación realizada sobre la copia actual de trabajo
+(directorio extraído de ZIP, sin repositorio Git local en .git; no se inventa commit).
+No corresponde a una evidencia histórica RED ni GREEN, ni sustituye las capturas
+originales ni los reportes conservados de sesiones previas.
+
+Fecha de ejecución: 2026-10-07 21:35:44 -05:00
+Comando:
+pytest -v tests/integration/test_auth_routes.py::test_register_route_get tests/integration/test_auth_routes.py::test_register_route_success tests/integration/test_auth_routes.py::test_register_route_short_password tests/integration/test_auth_routes.py::test_register_route_duplicate_email tests/integration/test_auth_routes.py::test_login_route_success tests/integration/test_auth_routes.py::test_login_route_invalid_credentials tests/integration/test_auth_routes.py::test_logout_route tests/integration/test_task_routes.py::test_unauthenticated_user_redirected tests/integration/test_task_routes.py::test_empty_tasks_view tests/integration/test_task_routes.py::test_create_task_and_list_flow tests/integration/test_task_routes.py::test_create_task_validation_error tests/integration/test_task_routes.py::test_multi_user_isolation tests/integration/test_task_routes.py::test_api_tasks_get_json tests/integration/test_task_routes.py::test_api_patch_task_status_transition_and_audit tests/integration/test_task_routes.py::test_edit_task_view_and_post_update tests/integration/test_task_routes.py::test_edit_task_put_api tests/unit/test_state_machine.py::test_valid_transitions tests/unit/test_state_machine.py::test_reopen_direct_transition_blocked tests/unit/test_state_machine.py::test_completed_to_in_progress_blocked tests/unit/test_state_machine.py::test_skip_states_pending_to_completed_blocked tests/unit/test_state_machine.py::test_unknown_state_fails tests/unit/test_task_service.py::test_create_task_success tests/unit/test_task_service.py::test_create_task_empty_title_fails tests/unit/test_task_service.py::test_create_task_title_too_long_fails tests/unit/test_task_service.py::test_create_task_description_too_long_fails tests/unit/test_task_service.py::test_list_tasks_ordered_descending tests/unit/test_task_service.py::test_list_tasks_filter_by_status tests/unit/test_task_service.py::test_audit_log_created_on_task_creation tests/unit/test_task_service.py::test_update_task_success tests/unit/test_task_service.py::test_update_task_validation_failures tests/unit/test_task_service.py::test_update_task_unauthorized_user tests/unit/test_user_service.py::test_register_user_success tests/unit/test_user_service.py::test_register_user_short_password_fails tests/unit/test_user_service.py::test_register_user_empty_or_spaces_password_fails tests/unit/test_user_service.py::test_register_user_invalid_email_format tests/unit/test_user_service.py::test_register_duplicate_email_fails tests/unit/test_user_service.py::test_authenticate_user_success tests/unit/test_user_service.py::test_authenticate_user_wrong_password_fails tests/unit/test_user_service.py::test_authenticate_nonexistent_user_fails
+
+Código de salida: 0
+Resultado: 39 passed in 16.63s
+
+============================= SALIDA REAL DE PYTEST =============================
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ASUS\Documents\SDD_TD2026S2G1-final\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ASUS\Downloads\SDD_TD2026S2G1_base_con_evidencias_1a3\SDD_TD2026S2G1-main
+plugins: base-url-2.1.0, cov-7.1.0, playwright-0.9.0
+collecting ... collected 39 items
+
+tests/integration/test_auth_routes.py::test_register_route_get PASSED    [  2%]
+tests/integration/test_auth_routes.py::test_register_route_success PASSED [  5%]
+tests/integration/test_auth_routes.py::test_register_route_short_password PASSED [  7%]
+tests/integration/test_auth_routes.py::test_register_route_duplicate_email PASSED [ 10%]
+tests/integration/test_auth_routes.py::test_login_route_success PASSED   [ 12%]
+tests/integration/test_auth_routes.py::test_login_route_invalid_credentials PASSED [ 15%]
+tests/integration/test_auth_routes.py::test_logout_route PASSED          [ 17%]
+tests/integration/test_task_routes.py::test_unauthenticated_user_redirected PASSED [ 20%]
+tests/integration/test_task_routes.py::test_empty_tasks_view PASSED      [ 23%]
+tests/integration/test_task_routes.py::test_create_task_and_list_flow PASSED [ 25%]
+tests/integration/test_task_routes.py::test_create_task_validation_error PASSED [ 28%]
+tests/integration/test_task_routes.py::test_multi_user_isolation PASSED  [ 30%]
+tests/integration/test_task_routes.py::test_api_tasks_get_json PASSED    [ 33%]
+tests/integration/test_task_routes.py::test_api_patch_task_status_transition_and_audit PASSED [ 35%]
+tests/integration/test_task_routes.py::test_edit_task_view_and_post_update PASSED [ 38%]
+tests/integration/test_task_routes.py::test_edit_task_put_api PASSED     [ 41%]
+tests/unit/test_state_machine.py::test_valid_transitions PASSED          [ 43%]
+tests/unit/test_state_machine.py::test_reopen_direct_transition_blocked PASSED [ 46%]
+tests/unit/test_state_machine.py::test_completed_to_in_progress_blocked PASSED [ 48%]
+tests/unit/test_state_machine.py::test_skip_states_pending_to_completed_blocked PASSED [ 51%]
+tests/unit/test_state_machine.py::test_unknown_state_fails PASSED        [ 53%]
+tests/unit/test_task_service.py::test_create_task_success PASSED         [ 56%]
+tests/unit/test_task_service.py::test_create_task_empty_title_fails PASSED [ 58%]
+tests/unit/test_task_service.py::test_create_task_title_too_long_fails PASSED [ 61%]
+tests/unit/test_task_service.py::test_create_task_description_too_long_fails PASSED [ 64%]
+tests/unit/test_task_service.py::test_list_tasks_ordered_descending PASSED [ 66%]
+tests/unit/test_task_service.py::test_list_tasks_filter_by_status PASSED [ 69%]
+tests/unit/test_task_service.py::test_audit_log_created_on_task_creation PASSED [ 71%]
+tests/unit/test_task_service.py::test_update_task_success PASSED         [ 74%]
+tests/unit/test_task_service.py::test_update_task_validation_failures PASSED [ 76%]
+tests/unit/test_task_service.py::test_update_task_unauthorized_user PASSED [ 79%]
+tests/unit/test_user_service.py::test_register_user_success PASSED       [ 82%]
+tests/unit/test_user_service.py::test_register_user_short_password_fails PASSED [ 84%]
+tests/unit/test_user_service.py::test_register_user_empty_or_spaces_password_fails PASSED [ 87%]
+tests/unit/test_user_service.py::test_register_user_invalid_email_format PASSED [ 89%]
+tests/unit/test_user_service.py::test_register_duplicate_email_fails PASSED [ 92%]
+tests/unit/test_user_service.py::test_authenticate_user_success PASSED   [ 94%]
+tests/unit/test_user_service.py::test_authenticate_user_wrong_password_fails PASSED [ 97%]
+tests/unit/test_user_service.py::test_authenticate_nonexistent_user_fails PASSED [100%]
+
+============================= 39 passed in 16.63s =============================

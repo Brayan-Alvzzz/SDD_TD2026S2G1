@@ -1,0 +1,71 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\ASUS\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ASUS\Documents\Codex\2026-10-01\referenced-chatgpt-conversation-this-is-an\work\project-inspection-2\SDD_TD2026S2G1
+collecting ... collected 39 items
+
+tests/integration/test_auth_routes.py::test_register_route_get PASSED    [  2%]
+tests/integration/test_auth_routes.py::test_register_route_success PASSED [  5%]
+tests/integration/test_auth_routes.py::test_register_route_short_password PASSED [  7%]
+tests/integration/test_auth_routes.py::test_register_route_duplicate_email PASSED [ 10%]
+tests/integration/test_auth_routes.py::test_login_route_success PASSED   [ 12%]
+tests/integration/test_auth_routes.py::test_login_route_invalid_credentials PASSED [ 15%]
+tests/integration/test_auth_routes.py::test_logout_route PASSED          [ 17%]
+tests/integration/test_task_routes.py::test_unauthenticated_user_redirected PASSED [ 20%]
+tests/integration/test_task_routes.py::test_empty_tasks_view PASSED      [ 23%]
+tests/integration/test_task_routes.py::test_create_task_and_list_flow PASSED [ 25%]
+tests/integration/test_task_routes.py::test_create_task_validation_error PASSED [ 28%]
+tests/integration/test_task_routes.py::test_multi_user_isolation PASSED  [ 30%]
+tests/integration/test_task_routes.py::test_api_tasks_get_json PASSED    [ 33%]
+tests/integration/test_task_routes.py::test_api_patch_task_status_transition_and_audit PASSED [ 35%]
+tests/integration/test_task_routes.py::test_edit_task_view_and_post_update PASSED [ 38%]
+tests/integration/test_task_routes.py::test_edit_task_put_api PASSED     [ 41%]
+tests/unit/test_state_machine.py::test_valid_transitions PASSED          [ 43%]
+tests/unit/test_state_machine.py::test_reopen_direct_transition_blocked PASSED [ 46%]
+tests/unit/test_state_machine.py::test_completed_to_in_progress_blocked PASSED [ 48%]
+tests/unit/test_state_machine.py::test_skip_states_pending_to_completed_blocked PASSED [ 51%]
+tests/unit/test_state_machine.py::test_unknown_state_fails PASSED        [ 53%]
+tests/unit/test_task_service.py::test_create_task_success PASSED         [ 56%]
+tests/unit/test_task_service.py::test_create_task_empty_title_fails PASSED [ 58%]
+tests/unit/test_task_service.py::test_create_task_title_too_long_fails PASSED [ 61%]
+tests/unit/test_task_service.py::test_create_task_description_too_long_fails PASSED [ 64%]
+tests/unit/test_task_service.py::test_list_tasks_ordered_descending FAILED [ 66%]
+tests/unit/test_task_service.py::test_list_tasks_filter_by_status PASSED [ 69%]
+tests/unit/test_task_service.py::test_audit_log_created_on_task_creation PASSED [ 71%]
+tests/unit/test_task_service.py::test_update_task_success PASSED         [ 74%]
+tests/unit/test_task_service.py::test_update_task_validation_failures PASSED [ 76%]
+tests/unit/test_task_service.py::test_update_task_unauthorized_user PASSED [ 79%]
+tests/unit/test_user_service.py::test_register_user_success PASSED       [ 82%]
+tests/unit/test_user_service.py::test_register_user_short_password_fails PASSED [ 84%]
+tests/unit/test_user_service.py::test_register_user_empty_or_spaces_password_fails PASSED [ 87%]
+tests/unit/test_user_service.py::test_register_user_invalid_email_format PASSED [ 89%]
+tests/unit/test_user_service.py::test_register_duplicate_email_fails PASSED [ 92%]
+tests/unit/test_user_service.py::test_authenticate_user_success PASSED   [ 94%]
+tests/unit/test_user_service.py::test_authenticate_user_wrong_password_fails PASSED [ 97%]
+tests/unit/test_user_service.py::test_authenticate_nonexistent_user_fails PASSED [100%]
+
+================================== FAILURES ===================================
+_____________________ test_list_tasks_ordered_descending ______________________
+
+task_service = <src.domain.services.TaskService object at 0x000002904295AF00>
+user_service = <src.domain.services.UserService object at 0x000002904295AFF0>
+
+    def test_list_tasks_ordered_descending(task_service, user_service):
+        user = user_service.register_user("taskuser5@example.com", "password123")
+        t1 = task_service.create_task(user.id, "Tarea 1 Antigua")
+        t2 = task_service.create_task(user.id, "Tarea 2 Nueva")
+    
+        tasks = task_service.list_tasks(user.id)
+        assert len(tasks) == 2
+        # Newest task appears first (created_at DESC)
+>       assert tasks[0].id == t2.id
+E       AssertionError: assert 1 == 2
+E        +  where 1 = Task(id=1, user_id=1, title='Tarea 1 Antigua', description=None, due_date=None, status='pendiente', created_at='2026-10-02T01:46:17.483156+00:00', updated_at='2026-10-02T01:46:17.483156+00:00').id
+E        +  and   2 = Task(id=2, user_id=1, title='Tarea 2 Nueva', description=None, due_date=None, status='pendiente', created_at='2026-10-02T01:46:17.483156+00:00', updated_at='2026-10-02T01:46:17.483156+00:00').id
+
+tests\unit\test_task_service.py:51: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/unit/test_task_service.py::test_list_tasks_ordered_descending - AssertionError: assert 1 == 2
+ +  where 1 = Task(id=1, user_id=1, title='Tarea 1 Antigua', description=None, due_date=None, status='pendiente', created_at='2026-10-02T01:46:17.483156+00:00', updated_at='2026-10-02T01:46:17.483156+00:00').id
+ +  and   2 = Task(id=2, user_id=1, title='Tarea 2 Nueva', description=None, due_date=None, status='pendiente', created_at='2026-10-02T01:46:17.483156+00:00', updated_at='2026-10-02T01:46:17.483156+00:00').id
+======================== 1 failed, 38 passed in 41.36s ========================
